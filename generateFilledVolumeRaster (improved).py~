@@ -1,6 +1,5 @@
 ##====================================
 ## Raster Calculator / Map Algebra
-## Developed by Jared Johnston
 ## Usage: Set workspace, catchment_DEM, and list_of_levels_to_fill_to variables then run in python window with:
 ## `execfile(r'S:\Infrastructure Planning\S000297 - Bulk Water\CP0008427 Toonpan Water Treatment Plant\Data\GIS Data\Site Options\JCU_hills\generateFilledVolumeRaster.py')`
 
