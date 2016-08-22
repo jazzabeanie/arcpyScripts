@@ -51,22 +51,22 @@ def calculate_field_proportion_based_on_area(field_to_calculate, total_area_fiel
 	arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_area_proportion_of_total(!"+total_area_field+"!, !Shape_Area!, !" + field_to_calculate + "!)", "PYTHON_9.3", """def return_area_proportion_of_total(GMZ_total_area, Shape_Area, field_to_calculate):
 	return Shape_Area/GMZ_total_area * field_to_calculate""")
 #
-def calculate_field_proportion_based_on_number_of_lots(field_to_calculate, total_properties_field, local_number_of_properties_field):
+def calculate_field_proportion_based_on_number_of_lots(field_to_calculate, larger_properties_field, local_number_of_properties_field):
 	"""
 	Calculates the field_to_calculate for each polygon based on the number of lots in that polygon, compared to total number of lots on the larger polygon form which the data should be interpolated.
 	Arguments should be the names of the fields as strings
 	"""
-	print("    Calculating %s field based on the proportion of the total properties value in the %s field" % (field_to_calculate, total_properties_field))
-	arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_number_proportion_of_total(!"+total_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!)", "PYTHON_9.3", """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate):
+	print("    Calculating %s field based on the proportion of the total properties value in the %s field" % (field_to_calculate, larger_properties_field))
+	arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_number_proportion_of_total(!"+larger_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!)", "PYTHON_9.3", """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate):
 	new_value =  (float(local_properties)/total_properties) * field_to_calculate
 	return int(new_value)""")
 #
-def calculate_field_proportion_based_on_combination(field_to_calculate, total_properties_field, local_number_of_properties_field, total_area_field):
+def calculate_field_proportion_based_on_combination(field_to_calculate, larger_properties_field, local_number_of_properties_field, total_area_field):
 	"""
 	Calculates the the field based on area, and by number of lots, and assigned the average between the two as the value.
 	"""
 	print("    Calculating %s field as the average value between area and number of lots method")
-	arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_average_value(!"+total_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!, !" + total_area_field + "!, !Shape_Area!)", "PYTHON_9.3", """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate):
+	arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_average_value(!"+larger_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!, !" + total_area_field + "!, !Shape_Area!)", "PYTHON_9.3", """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate):
 	new_value =  (float(local_properties)/total_properties) * field_to_calculate
 	return int(new_value)
 def return_area_proportion_of_total(GMZ_total_area, Shape_Area, field_to_calculate):
@@ -134,15 +134,13 @@ def join_growthmodel_table_to_intersecting_polygons():
 	print("Output: %s" % intersecting_polygons)
 #
 def add_total_and_local_GMZ_fields():
-	local_number_of_properties_field = "loc_num_prop"
-	total_properties_field = "tot_num_prop"
 	add_property_count_to_layer_x_with_name_x(intersecting_polygons, local_number_of_properties_field)
 	data_layer_rejoined = workspace + "data_layer_rejoined" # this layer will store the intersecting polygons layer back into GMZs so that the total properties in each GMZ includes any double counting.
 	fieldmappings_data = arcpy.FieldMappings()
-	# total_properties_field:
+	# map total_properties_including_double_counted_field:
 	fm_total_properties_rejoined = arcpy.FieldMap()
 	fm_total_properties_rejoined.addInputField(intersecting_polygons, local_number_of_properties_field)
-	renameFieldMap(fm_total_properties_rejoined, total_properties_field)
+	renameFieldMap(fm_total_properties_rejoined, total_properties_including_double_counted_field)
 	fm_total_properties_rejoined.mergeRule = "Sum"
 	fieldmappings_data.addFieldMap(fm_total_properties_rejoined)
 	print("    Creating %s layer" % data_layer_rejoined)
@@ -151,9 +149,16 @@ def add_total_and_local_GMZ_fields():
 	print ("    intersecting_polygons = %s" % intersecting_polygons)
 	print ("    data_layer_rejoined = %s" % data_layer_rejoined)
 	arcpy.SpatialJoin_analysis (data_layer, intersecting_polygons, data_layer_rejoined, "JOIN_ONE_TO_ONE", "KEEP_COMMON", fieldmappings_data, "INTERSECT", -0.5)
-	print("    %s includes %s field" % (data_layer_rejoined, total_properties_field))
-	arcpy.JoinField_management (data_layer, "OBJECTID", data_layer_rejoined,  "TARGET_FID", total_properties_field)
-	print("    %s field joined to %s" % (total_properties_field, data_layer_rejoined))
+	print("    %s includes %s field" % (data_layer_rejoined, total_properties_including_double_counted_field))
+	arcpy.JoinField_management (data_layer, "OBJECTID", data_layer_rejoined,  "TARGET_FID", total_properties_including_double_counted_field)
+	print("    %s field joined to %s" % (total_properties_including_double_counted_field, data_layer_rejoined))
+#
+def max_total_properties_field():
+	"""
+	Calculates the total_properties_including_double_counted_field to be the max of itself or the total_properties_field.
+	"""
+	arcpy.CalculateField_management (intersecting_polygons, total_properties_including_double_counted_field, "max([!"+total_properties_including_double_counted_field+"!, !"+total_properties_field+"!])", "PYTHON_9.3")
+
 
 ## Script arguments - There are the values that will typically change. They have been built to be used in a model builder with default values proivded if none are received from the model. Change these defualt to use in a script.
 #
@@ -202,6 +207,9 @@ if growthmodel_csv == '#' or not growthmodel_csv:
     print("you have not provided a growthmodel_csv. Using default: %s" % growthmodel_csv)
 
 ## Local variables:
+local_number_of_properties_field = "local_counted_properties"
+total_properties_including_double_counted_field = "total_double_counted_properties" # the number of properties counted in the intersecting polygons, then joined back together in the GMZs (or data_layer)
+total_properties_field = "total_counted_properties"
 intersecting_polygons = workspace + "intersecting_polygons"
 growthmodel_table = workspace + "growthmodel_table"
 field_list = ["POP_2011", "Total_2011", "POP_2016", "Total_2016", "POP_2021", "Total_2021", "POP_2026", "Total_2026", "POP_2031", "Total_20131", "POP_2036", "Total_2036", "POP_2041", "Total_2041", "POP_2046", "Total_2046", "POP_2051", "Total_2051", "POP_Full", "Total_Full"]
@@ -211,7 +219,7 @@ delete_if_exists(growthmodel_table)
 print("Converting Growth Model from a .csv into a gdb table")
 arcpy.CopyRows_management (growthmodel_csv, growthmodel_table)
 
-add_property_count_to_layer_x_with_name_x(data_layer, "GMZ_counted_prop")
+add_property_count_to_layer_x_with_name_x(data_layer, total_properties_field)
 
 for item in redistribution_layers:
 	print("STARTING %s" % item)
@@ -232,6 +240,8 @@ for item in redistribution_layers:
 
 	add_property_count_to_layer_x_with_name_x(intersecting_polygons, local_number_of_properties_field)
 
+	max_total_properties_field()
+
 	## Recalculate groth model fields
 	total_area_field = "GMZ_TOTAL_AREA"
 	for GM_field in field_list:
@@ -240,14 +250,14 @@ for item in redistribution_layers:
 				calculate_field_proportion_based_on_area(GM_field, total_area_field)
 			elif distribution_method == 2:
 				print("calculating %s field from total GMZ number of properties" % GM_field)
-				calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_field, local_number_of_properties_field)
+				calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field)
 			elif distribution_method == 3:
 				if GM_field in  ["POP_2016", "Total_2016"]:
-					calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_field, local_number_of_properties_field)
+					calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field)
 				elif GM_field in  ["POP_2036", "Total_2036", "POP_2041", "Total_2041", "POP_2046", "Total_2046", "POP_2051", "Total_2051", "POP_Full", "Total_Full"]:
 					calculate_field_proportion_based_on_area(GM_field, total_area_field)
 				elif GM_field in  ["POP_2021", "Total_2021", "POP_2026", "Total_2026", "POP_2031", "Total_20131"]:
-					calculate_field_proportion_based_on_combination(GM_field, total_properties_field, local_number_of_properties_field, total_area_field)
+					calculate_field_proportion_based_on_combination(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field, total_area_field)
 	
 
 
