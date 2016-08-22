@@ -25,6 +25,7 @@ import arcpy
 workspace = "C:\\TempArcGIS\\scratch.gdb\\"
 arcpy.env.OverwriteOutput = True
 
+## disabling Z and M bounds as I think this causes a data bounds error
 # https://geonet.esri.com/thread/79969
 print('Z: ' + arcpy.env.outputZFlag)
 arcpy.env.outputZFlag = "Disabled"
@@ -36,6 +37,11 @@ print('M: ' + arcpy.env.outputMFlag)
 
 ## defining functions
 #TODO: move these functions into a module and import that in the preprocessing stage
+def delete_if_exists(feature):
+	if arcpy.Exists(feature):
+		print("The following output filename already exists and will now be deleted: %s" % feature)
+		arcpy.Delete_management(feature)
+#
 def calculate_field_proportion_based_on_area(field_to_calculate, total_area_field):
 	"""
 	Calculates the field_to_calculate for each polygon based on its percentage of the total area of the polygon to calculate from
@@ -55,6 +61,22 @@ def calculate_field_proportion_based_on_number_of_lots(field_to_calculate, total
 	new_value =  (float(local_properties)/total_properties) * field_to_calculate
 	return int(new_value)""")
 #
+def calculate_field_proportion_based_on_combination(field_to_calculate, total_properties_field, local_number_of_properties_field, total_area_field):
+	"""
+	Calculates the the field based on area, and by number of lots, and assigned the average between the two as the value.
+	"""
+	print("    Calculating %s field as the average value between area and number of lots method")
+	arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_average_value(!"+total_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!, !" + total_area_field + "!, !Shape_Area!)", "PYTHON_9.3", """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate):
+	new_value =  (float(local_properties)/total_properties) * field_to_calculate
+	return int(new_value)
+def return_area_proportion_of_total(GMZ_total_area, Shape_Area, field_to_calculate):
+	return Shape_Area/GMZ_total_area * field_to_calculate
+def return_average_value(total_properties, local_properties, field_to_calculate, GMZ_total_area, Shape_Area):
+	properties = return_number_proportion_of_total(total_properties, local_properties, field_to_calculate)
+	area = return_area_proportion_of_total(GMZ_total_area, Shape_Area, field_to_calculate)
+	average = (area + properties) / 2
+	return average""")
+#
 def add_property_count_to_layer_x_with_name_x(feature_class, field_name):
 	"""
 	Adds a field to the polygons containing the number of properties (from the SDE) in that polygon. Note that one property will get counted multiple time, once for every polygon that part of it is contained in.
@@ -63,12 +85,8 @@ def add_property_count_to_layer_x_with_name_x(feature_class, field_name):
 	# see: http://gis.stackexchange.com/questions/35468/what-is-the-proper-syntax-and-usage-for-arcgis-in-memory-workspace
 	properties_SpatialJoin = workspace + "properties_SpatialJoin"
 	stats = workspace + "stats"
-	if arcpy.Exists(properties_SpatialJoin):
-		print("    The following file already exists and will now be deleted: %s" % properties_SpatialJoin)
-		arcpy.Delete_management(properties_SpatialJoin)
-	if arcpy.Exists(stats):
-		print("    The following file already exists and will now be deleted: %s" % stats)
-		arcpy.Delete_management(stats)
+	delete_if_exists(properties_SpatialJoin)
+	delete_if_exists(stats)
 	print("    joining properties to "+ feature_class +" and outputing to %s" % properties_SpatialJoin)
 	arcpy.SpatialJoin_analysis(feature_class, properties, properties_SpatialJoin, "JOIN_ONE_TO_MANY", "KEEP_ALL", "", "INTERSECT")
 	print("    Calculating statistics table at stats")
@@ -80,7 +98,7 @@ def add_property_count_to_layer_x_with_name_x(feature_class, field_name):
 	arcpy.AddField_management (feature_class, field_name, "SHORT", "#", "#", "#", "Number of Properties")
 	arcpy.CalculateField_management (feature_class, field_name, "!FREQUENCY!", "PYTHON_9.3")
 	arcpy.DeleteField_management (feature_class, "FREQUENCY")
-
+#
 def renameFieldMap(fieldMap, name_text):
 	"""
 	Sets the output fieldname of a FieldMap object. Used when creating FieldMappings.
@@ -88,7 +106,7 @@ def renameFieldMap(fieldMap, name_text):
 	type_name = fieldMap.outputField
 	type_name.name = name_text
 	fieldMap.outputField = type_name
-
+#
 def field_exists_in_feature_class(field_name, feature_class):
 	"""
 	returns true if field (parameter 1), exists in feature class (parameter 2). returns false if not.
@@ -99,37 +117,57 @@ def field_exists_in_feature_class(field_name, feature_class):
 		return True
 	else:
 		return False
-
+#
 def create_intersecting_polygons():
 	"""
 	Creates intersecting_polygons layer by intersecting redistribution_layer (PS_Catchments) and data_layer (GMZ).
 	"""
-	if arcpy.Exists(intersecting_polygons):
-		print("The following output filename already exists and will now be deleted: %s" % intersecting_polygons)
-		arcpy.Delete_management(intersecting_polygons)
-	else:
-		print("intersecting_polygons does not exist: %s" % intersecting_polygons)
+	delete_if_exists(intersecting_polygons)
 	print("Computing the polygons that intersect both features")
 	arcpy.Intersect_analysis ([redistribution_layer, data_layer], intersecting_polygons, "ALL", "", "INPUT")
 	print("Output: %s" % intersecting_polygons)
-
+#
 def join_growthmodel_table_to_intersecting_polygons():
 	fields_to_be_joined = "" # this list may need to be edited depending on what is required of the tool. To join all fields, set this variable to an empty string (""). To specify a list of fields, use a list, eg, ["POP_2011", "Total_2011", "POP_2016", "Total_2016"]. Although, this list may be better set in the fields_list variable.
 	print("Joining growthmodel to interseting polygons")
 	arcpy.JoinField_management (intersecting_polygons, "GMZ", growthmodel_table, "GMZ", fields_to_be_joined)
 	print("Output: %s" % intersecting_polygons)
-
-## Script arguments
 #
-redistribution_parameter = arcpy.GetParameterAsText(0)
-if redistribution_parameter == '#' or not redistribution_parameter:
-    #raise ValueError('You must provide a redistribution_parameter')
-    redistribution_parameter = r'SouthernSuburbs_PS_Catchments' # provide a default value if unspecified
+def add_total_and_local_GMZ_fields():
+	local_number_of_properties_field = "loc_num_prop"
+	total_properties_field = "tot_num_prop"
+	add_property_count_to_layer_x_with_name_x(intersecting_polygons, local_number_of_properties_field)
+	data_layer_rejoined = workspace + "data_layer_rejoined" # this layer will store the intersecting polygons layer back into GMZs so that the total properties in each GMZ includes any double counting.
+	fieldmappings_data = arcpy.FieldMappings()
+	# total_properties_field:
+	fm_total_properties_rejoined = arcpy.FieldMap()
+	fm_total_properties_rejoined.addInputField(intersecting_polygons, local_number_of_properties_field)
+	renameFieldMap(fm_total_properties_rejoined, total_properties_field)
+	fm_total_properties_rejoined.mergeRule = "Sum"
+	fieldmappings_data.addFieldMap(fm_total_properties_rejoined)
+	print("    Creating %s layer" % data_layer_rejoined)
+	delete_if_exists(data_layer_rejoined)
+	print ("    data_layer = %s" % data_layer)
+	print ("    intersecting_polygons = %s" % intersecting_polygons)
+	print ("    data_layer_rejoined = %s" % data_layer_rejoined)
+	arcpy.SpatialJoin_analysis (data_layer, intersecting_polygons, data_layer_rejoined, "JOIN_ONE_TO_ONE", "KEEP_COMMON", fieldmappings_data, "INTERSECT", -0.5)
+	print("    %s includes %s field" % (data_layer_rejoined, total_properties_field))
+	arcpy.JoinField_management (data_layer, "OBJECTID", data_layer_rejoined,  "TARGET_FID", total_properties_field)
+	print("    %s field joined to %s" % (total_properties_field, data_layer_rejoined))
+
+## Script arguments - There are the values that will typically change. They have been built to be used in a model builder with default values proivded if none are received from the model. Change these defualt to use in a script.
+#
+redistribution_layer_name = arcpy.GetParameterAsText(0)
+if redistribution_layer_name == '#' or not redistribution_layer_name:
+    #raise ValueError('You must provide a redistribution_layer_name')
+    redistribution_layer_name = r'SouthernSuburbs_PS_Catchments' # provide a default value if unspecified
+    print("you have not provided a redistribution_layer_name. Using default: %s" % redistribution_layer_name)
+## Switch the commented out section below to execute the tool on multiple layers
 #redistribution_layers = [	'RiversideRidge_PS_catchments',
 #				'RoseneathTruckStop_PS_catchments',
 #				'TheVillage_PS_catchments',
 #				'FairfieldWaters_PS_catchments']
-redistribution_layers = [redistribution_parameter, ]
+redistribution_layers = [redistribution_layer_name, ]
 print("redistribution layers:")
 for layer in redistribution_layers:
 	print("    " + layer)
@@ -139,26 +177,23 @@ if data_layer == '#' or not data_layer:
     #raise ValueError('You must provide a data_layer')
     data_layer = r'S:\Infrastructure Planning\Spatial Data\Water_sewer\Sewer_Catchments_2015\Sewer_Catchments_2015.mdb\GMZ_2015' # provide a default value if unspecified
 print("data layer: %s" % data_layer)
-if arcpy.Exists(workspace + "data_layer"):
-	print("The scratch data_layer will be delted and replaced: %s" % workspace + "data_layer")
-	arcpy.Delete_management(workspace + "data_layer")
-#arcpy.CopyFeatures_management(data_layer, workspace + "data_layer")
+delete_if_exists(workspace + "data_layer")
 arcpy.Select_analysis (data_layer, workspace + "data_layer")
 data_layer = workspace + "data_layer"
-print("new data layer location: %s" % data_layer)
+print("new data layer: %s" % data_layer)
 #
 distribution_method = arcpy.GetParameterAsText(2)
 if distribution_method == '#' or not distribution_method:
-    distribution_method = 2 # 1 - by area, 2 - by number of properties.
+    distribution_method = 3 # 1 - by area, 2 - by number of properties, 3 - by a combination of the two methods.
+    									    # for distribution_method = 3, number of properties method is used for 2016, area method is used for >2036, and 
+									    # the average of the two is used for 2016-2036.
     arcpy.AddMessage("you have not provided a distribution_method. 1 = distribute by area, 2 = distribute my number of properties. Using %s by default" % distribution_method)
 #
 output_filename = arcpy.GetParameterAsText(3)
 if output_filename == '#' or not output_filename:
     output_filename = workspace + "redistributedPolygon" # provide a default value if unspecified
     print("you have not provided an output_layer. This tool will now delete the default file and rewrite it: %s" % output_filename)
-    if arcpy.Exists(output_filename):
-    	print("The following output filename already exists and will now be deleted: %s" % output_filename)
-    	arcpy.Delete_management(output_filename)
+    delete_if_exists(output_filename)
 #
 # this table should be created from growth model outputs provided by Brian. The fields in the table I'm currently using are ["GMZ", "POP 2011", "Total 2011", "POP 2016", "Total 2016", "POP 2021", "Total 2021", "POP 2026", "Total 2026", "POP 2031", "Total 20131", "POP 2036", "Total 2036", "POP 2041", "Total 2041", "POP 2046", "Total 2046", "POP 2051", "Total 2051", "POP Full", "Total Full"]
 growthmodel_csv = arcpy.GetParameterAsText(4)
@@ -169,94 +204,51 @@ if growthmodel_csv == '#' or not growthmodel_csv:
 ## Local variables:
 intersecting_polygons = workspace + "intersecting_polygons"
 growthmodel_table = workspace + "growthmodel_table"
-#field_list = ["POP_2011", "Total_2011", "POP_2016", "Total_2016", "POP_2021", "Total_2021", "POP_2026", "Total_2026", "POP_2031", "Total_20131", "POP_2036", "Total_2036", "POP_2041", "Total_2041", "POP_2046", "Total_2046", "POP_2051", "Total_2051", "POP_Full", "Total_Full"]
-field_list = ["POP_2011", "Total_2011", "POP_2016", "Total_2016"]
+field_list = ["POP_2011", "Total_2011", "POP_2016", "Total_2016", "POP_2021", "Total_2021", "POP_2026", "Total_2026", "POP_2031", "Total_20131", "POP_2036", "Total_2036", "POP_2041", "Total_2041", "POP_2046", "Total_2046", "POP_2051", "Total_2051", "POP_Full", "Total_Full"]
 
 ## Import grothmodel_table
-if arcpy.Exists(growthmodel_table):
-	print("The following output filename already exists and will now be deleted: %s" % growthmodel_table)
-    	arcpy.Delete_management(growthmodel_table)
-# Convert Growth Model from a .csv into a gdb table
+delete_if_exists(growthmodel_table)
+print("Converting Growth Model from a .csv into a gdb table")
 arcpy.CopyRows_management (growthmodel_csv, growthmodel_table)
 
-add_property_count_to_layer_x_with_name_x(data_layer, "GMZ_counted_prop") # TODO: change the scrips to that GMZ_num_prop is calculated by summing the loc_num_prop values of the intersecting polygons.
+add_property_count_to_layer_x_with_name_x(data_layer, "GMZ_counted_prop")
 
 for item in redistribution_layers:
 	print("STARTING %s" % item)
 	input_layer = "S:\\Infrastructure Planning\\Staff\\Jared\\Southern Suburbs Sewer Planning Report\\SewerData.gdb\\" + item
 	redistribution_layer = workspace + "redistribution_layer"
-	if arcpy.Exists(redistribution_layer):
-		print("The following output filename already exists and will now be deleted: %s" % redistribution_layer)
-		arcpy.Delete_management(redistribution_layer)
+	delete_if_exists(redistribution_layer)
 	arcpy.CopyFeatures_management(input_layer, redistribution_layer)
 
 	create_intersecting_polygons()
 
 	join_growthmodel_table_to_intersecting_polygons()
-	#TODO: delete this commented out code:
-	### Join growthmodel_table to intersecting_polygons
-	#fields_to_be_joined = "" # this list may need to be edited depending on what is required of the tool. To join all fields, set this variable to an empty string (""). To specify a list of fields, use a list, eg, ["POP_2011", "Total_2011", "POP_2016", "Total_2016"]
-	#print("Joining growthmodel to interseting polygons")
-	#arcpy.JoinField_management (intersecting_polygons, "GMZ", growthmodel_table, "GMZ", fields_to_be_joined) #TODO: replace fields_to_be_joined with "" so that all fields are joined by default
-	#print("Output: %s" % intersecting_polygons)
-	### POP_2011 is 127 at this point
 
-	## Add total and local GMZ fields:
-	local_number_of_properties_field = "loc_num_prop"
-	total_properties_field = "tot_num_prop"
-	add_property_count_to_layer_x_with_name_x(intersecting_polygons, local_number_of_properties_field)
-	data_layer_rejoined = workspace + "data_layer_rejoined" # this layer will store the intersecting polygons layer back into GMZs so that the total properties in each GMZ includes any double counting.
-	fieldmappings_data = arcpy.FieldMappings()
-	# total_properties_field:
-	fm_total_properties_rejoined = arcpy.FieldMap()
-	fm_total_properties_rejoined.addInputField(intersecting_polygons, local_number_of_properties_field)
-	#renameFieldMap(fm_total_properties_rejoined, total_properties_field)
-	type_name = fm_total_properties_rejoined.outputField
-	type_name.name = total_properties_field
-	#type_name.type = "String"
-	#type_name.length = 100
-	fm_total_properties_rejoined.outputField = type_name
-	#fm_total_properties_rejoined.mergeRule = "Max"
-	fm_total_properties_rejoined.mergeRule = "Sum"
-	#fm_total_properties_rejoined.joinDelimiter = ", "
-	fieldmappings_data.addFieldMap(fm_total_properties_rejoined)
-	## data_layer ID: # commented out because this may be able t be done with object ID and FID, meaning it could be applied to any layer.
-	#fm_GMZ_number = arcpy.FieldMap()
-	#fm_GMZ_number.addInputField(data_layer, "GMZ")
-	#fieldmappings_data.addFieldMap(fm_GMZ_number)
-	## data_layer ID: 
-	#fm_object_id = arcpy.FieldMap()
-	#fm_object_id.addInputField(data_layer, "OBJECTID")
-	#fm_object_id.outputField.name = "GMZ_OBJECTID"
-	#fieldmappings_data.addFieldMap(fm_object_id)
-	print("    Creating %s layer" % data_layer_rejoined)
-	if arcpy.Exists(data_layer_rejoined):
-		print("    The following file already exists and wil now be deleted: %s" % data_layer_rejoined)
-		arcpy.Delete_management(data_layer_rejoined)
-	print ("    data_layer = %s" % data_layer)
-	print ("    intersecting_polygons = %s" % intersecting_polygons)
-	print ("    data_layer_rejoined = %s" % data_layer_rejoined)
-	#arcpy.SpatialJoin_analysis (data_layer, intersecting_polygns, data_layer_rejoined, "JOIN_ONE_TO_ONE", "KEEP_ALL", fieldmappings_data, "INTERSECT")
-	arcpy.SpatialJoin_analysis (data_layer, intersecting_polygons, data_layer_rejoined, "JOIN_ONE_TO_ONE", "KEEP_COMMON", fieldmappings_data, "INTERSECT", -0.5)
-	print("    %s includes %s field" % (data_layer_rejoined, total_properties_field))
-	arcpy.JoinField_management (data_layer, "OBJECTID", data_layer_rejoined,  "TARGET_FID", total_properties_field)
-	print("    %s field joined to %s" % (total_properties_field, data_layer_rejoined))
+	add_total_and_local_GMZ_fields()
 
 	create_intersecting_polygons() #recreate this layer with total_properties_filed that includes double counted properties.
 
 	join_growthmodel_table_to_intersecting_polygons()
 
+	add_property_count_to_layer_x_with_name_x(intersecting_polygons, local_number_of_properties_field)
+
 	## Recalculate groth model fields
+	total_area_field = "GMZ_TOTAL_AREA"
 	for GM_field in field_list:
-		#TODO: delete if the method works
-		#fields = arcpy.ListFields(intersecting_polygons, GM_field)
-		#if len(fields) == 1: # essentially, if field exist.See: https://epjmorris.wordpress.com/2015/04/22/how-can-i-check-to-see-if-an-attribute-field-exists-using-arcpy/
 		if field_exists_in_feature_class(GM_field, intersecting_polygons):
 			if distribution_method == 1:
-				calculate_field_proportion_based_on_area(GM_field, "GMZ_TOTAL_AREA")
+				calculate_field_proportion_based_on_area(GM_field, total_area_field)
 			elif distribution_method == 2:
 				print("calculating %s field from total GMZ number of properties" % GM_field)
-				calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_field, local_number_of_properties_field) #TODO: check that these parameters are correct
+				calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_field, local_number_of_properties_field)
+			elif distribution_method == 3:
+				if GM_field in  ["POP_2016", "Total_2016"]:
+					calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_field, local_number_of_properties_field)
+				elif GM_field in  ["POP_2036", "Total_2036", "POP_2041", "Total_2041", "POP_2046", "Total_2046", "POP_2051", "Total_2051", "POP_Full", "Total_Full"]:
+					calculate_field_proportion_based_on_area(GM_field, total_area_field)
+				elif GM_field in  ["POP_2021", "Total_2021", "POP_2026", "Total_2026", "POP_2031", "Total_20131"]:
+					calculate_field_proportion_based_on_combination(GM_field, total_properties_field, local_number_of_properties_field, total_area_field)
+	
 
 
 	## POP_2011 is 0 here
@@ -295,8 +287,7 @@ for item in redistribution_layers:
 	#
 	## create FieldMaps for growth model field
 	for GM_field in field_list:
-		fields = arcpy.ListFields(intersecting_polygons, GM_field)
-		if len(fields) == 1: # essentially, if field exist. See: https://epjmorris.wordpress.com/2015/04/22/how-can-i-check-to-see-if-an-attribute-field-exists-using-arcpy/
+		if field_exists_in_feature_class(GM_field, intersecting_polygons):
 			fm_POP_or_Total = arcpy.FieldMap()
 			fm_POP_or_Total.addInputField(intersecting_polygons, GM_field)
 			#fm_POP_or_Total.outputField.name = "PS_" + GM_field
@@ -305,9 +296,7 @@ for item in redistribution_layers:
 			fieldmappings.addFieldMap(fm_POP_or_Total)
 
 	## Spatially Join intersecting_polygons back to redistribution layer
-	if arcpy.Exists(output_filename+"_"+item):
-		print("The following output filename already exists and will now be deleted: %s" % output_filename+"_"+item)
-		arcpy.Delete_management(output_filename+"_"+item)
+	delete_if_exists(output_filename+"_"+item)
 	print("joining intersecting_polygons back to redistribution layer")
 	arcpy.SpatialJoin_analysis (redistribution_layer, intersecting_polygons, output_filename+"_"+item, "JOIN_ONE_TO_ONE", "KEEP_ALL", fieldmappings, "CONTAINS", "#", "#") #output_filename+"_"+item is used here because I am itterating through a list of files. This should be just output_filename if the script is operating on only 1 layer
 	print("Successfully redistributed %s to %s" % (data_layer, redistribution_layer))
