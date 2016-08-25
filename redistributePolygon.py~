@@ -212,7 +212,7 @@ total_properties_including_double_counted_field = "total_double_counted_properti
 total_properties_field = "total_counted_properties"
 intersecting_polygons = workspace + "intersecting_polygons"
 growthmodel_table = workspace + "growthmodel_table"
-field_list = ["POP_2011", "Total_2011", "POP_2016", "Total_2016", "POP_2021", "Total_2021", "POP_2026", "Total_2026", "POP_2031", "Total_20131", "POP_2036", "Total_2036", "POP_2041", "Total_2041", "POP_2046", "Total_2046", "POP_2051", "Total_2051", "POP_Full", "Total_Full"]
+field_list = ["POP_2011", "Total_2011", "POP_2016", "Total_2016", "POP_2021", "Total_2021", "POP_2026", "Total_2026", "POP_2031", "Total_2031", "POP_2036", "Total_2036", "POP_2041", "Total_2041", "POP_2046", "Total_2046", "POP_2051", "Total_2051", "POP_Full", "Total_Full"]
 
 ## Import grothmodel_table
 delete_if_exists(growthmodel_table)

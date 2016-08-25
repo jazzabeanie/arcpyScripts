@@ -200,7 +200,7 @@ if output_filename == '#' or not output_filename:
     print("you have not provided an output_layer. This tool will now delete the default file and rewrite it: %s" % output_filename)
     delete_if_exists(output_filename)
 #
-# this table should be created from the 'Pops and Emps' tab of the growth model outputs provided by Brian. The fields in the table I'm currently using are ["GMZ", "POP 2011", "Total 2011", "POP 2016", "Total 2016", "POP 2021", "Total 2021", "POP 2026", "Total 2026", "POP 2031", "Total 20131", "POP 2036", "Total 2036", "POP 2041", "Total 2041", "POP 2046", "Total 2046", "POP 2051", "Total 2051", "POP Full", "Total Full"]
+# this table should be created from the 'Pops and Emps' tab of the growth model outputs provided by Brian. The fields in the table I'm currently using are ["GMZ", "POP 2011", "Total 2011", "POP 2016", "Total 2016", "POP 2021", "Total 2021", "POP 2026", "Total 2026", "POP 2031", "Total 2031", "POP 2036", "Total 2036", "POP 2041", "Total 2041", "POP 2046", "Total 2046", "POP 2051", "Total 2051", "POP Full", "Total Full"]
 growthmodel_csv = arcpy.GetParameterAsText(4)
 if growthmodel_csv == '#' or not growthmodel_csv:
     growthmodel_csv = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\SouthernSuburbsGrowthModel20160824.csv' # provide a default value if unspecified
@@ -212,7 +212,7 @@ total_properties_including_double_counted_field = "total_double_counted_properti
 total_properties_field = "total_counted_properties"
 intersecting_polygons = workspace + "intersecting_polygons"
 growthmodel_table = workspace + "growthmodel_table"
-field_list = ["POP_2011", "Total_2011", "POP_2016", "Total_2016", "POP_2021", "Total_2021", "POP_2026", "Total_2026", "POP_2031", "Total_20131", "POP_2036", "Total_2036", "POP_2041", "Total_2041", "POP_2046", "Total_2046", "POP_2051", "Total_2051", "POP_Full", "Total_Full"]
+field_list = ["POP_2011", "Total_2011", "POP_2016", "Total_2016", "POP_2021", "Total_2021", "POP_2026", "Total_2026", "POP_2031", "Total_2031", "POP_2036", "Total_2036", "POP_2041", "Total_2041", "POP_2046", "Total_2046", "POP_2051", "Total_2051", "POP_Full", "Total_Full"]
 
 ## Import grothmodel_table
 delete_if_exists(growthmodel_table)
