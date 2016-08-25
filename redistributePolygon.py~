@@ -200,10 +200,10 @@ if output_filename == '#' or not output_filename:
     print("you have not provided an output_layer. This tool will now delete the default file and rewrite it: %s" % output_filename)
     delete_if_exists(output_filename)
 #
-# this table should be created from growth model outputs provided by Brian. The fields in the table I'm currently using are ["GMZ", "POP 2011", "Total 2011", "POP 2016", "Total 2016", "POP 2021", "Total 2021", "POP 2026", "Total 2026", "POP 2031", "Total 20131", "POP 2036", "Total 2036", "POP 2041", "Total 2041", "POP 2046", "Total 2046", "POP 2051", "Total 2051", "POP Full", "Total Full"]
+# this table should be created from the 'Pops and Emps' tab of the growth model outputs provided by Brian. The fields in the table I'm currently using are ["GMZ", "POP 2011", "Total 2011", "POP 2016", "Total 2016", "POP 2021", "Total 2021", "POP 2026", "Total 2026", "POP 2031", "Total 20131", "POP 2036", "Total 2036", "POP 2041", "Total 2041", "POP 2046", "Total 2046", "POP 2051", "Total 2051", "POP Full", "Total Full"]
 growthmodel_csv = arcpy.GetParameterAsText(4)
 if growthmodel_csv == '#' or not growthmodel_csv:
-    growthmodel_csv = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\GrowthModelutputs30June2016.csv' # provide a default value if unspecified
+    growthmodel_csv = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\SouthernSuburbsGrowthModel20160824.csv' # provide a default value if unspecified
     print("you have not provided a growthmodel_csv. Using default: %s" % growthmodel_csv)
 
 ## Local variables:
