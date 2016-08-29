@@ -12,10 +12,10 @@
 #  - output_filename:
 #  - growthmodel_csv: table containing growth model data to be joined
 # 
-# The Manhole number is given by the Upstream Manhole Number field in the GravityMain. This field is passed to the PropertyConnectionPoints layer by selecting any PropertyConnectionPoints that aren't intersecting with a service line. The Manhole Number is then passed to the property by a spatial join.
-#
+# This script can be run either by opening the model builder tool created from the script, or by editing the variables below so that the correct files are referenced and pasting the following command into the python window in Arc Catalogue:
 # execfile(r'S:\Infrastructure Planning\Staff\Jared\GIS\Tools\arcpyScripts\redistributePolygon.py')
 # 
+# Note: the workspace detailed in the variable below may need to be created for the tool to work properly.
 #
 # ---------------------------------------------------------------------------
 
@@ -128,7 +128,7 @@ def create_intersecting_polygons():
 	print("Output: %s" % intersecting_polygons)
 #
 def join_growthmodel_table_to_intersecting_polygons():
-	fields_to_be_joined = "" # this list may need to be edited depending on what is required of the tool. To join all fields, set this variable to an empty string (""). To specify a list of fields, use a list, eg, ["POP_2011", "Total_2011", "POP_2016", "Total_2016"]. Although, this list may be better set in the fields_list variable.
+	fields_to_be_joined = "" # this list may need to be edited depending on what is required of the tool. To join all fields, set this variable to an empty string (""). To specify a list of fields, use a list, eg, ["POP_2011", "Tot_2011", "POP_2016", "Tot_2016"]. Although, this list may be better set in the fields_list variable.
 	print("Joining growthmodel to interseting polygons")
 	arcpy.JoinField_management (intersecting_polygons, "GMZ", growthmodel_table, "GMZ", fields_to_be_joined)
 	print("Output: %s" % intersecting_polygons)
@@ -200,7 +200,7 @@ if output_filename == '#' or not output_filename:
     print("you have not provided an output_layer. This tool will now delete the default file and rewrite it: %s" % output_filename)
     delete_if_exists(output_filename)
 #
-# this table should be created from the 'Pops and Emps' tab of the growth model outputs provided by Brian. The fields in the table I'm currently using are ["GMZ", "POP 2011", "Total 2011", "POP 2016", "Total 2016", "POP 2021", "Total 2021", "POP 2026", "Total 2026", "POP 2031", "Total 20131", "POP 2036", "Total 2036", "POP 2041", "Total 2041", "POP 2046", "Total 2046", "POP 2051", "Total 2051", "POP Full", "Total Full"]
+# this table should be created from the 'Pops and Emps' tab of the growth model outputs provided by Brian. The fields in the table I'm currently using are ["GMZ", "POP_2011", "Tot_2011", "POP_2016", "Tot_2016", "POP_2021", "Tot_2021", "POP_2026", "Tot_2026", "POP_2031", "Tot_2031", "POP_2036", "Tot_2036", "POP_2041", "Tot_2041", "POP_2046", "Tot_2046", "POP_2051", "Tot_2051", "POP_Full", "Tot_Full"]
 growthmodel_csv = arcpy.GetParameterAsText(4)
 if growthmodel_csv == '#' or not growthmodel_csv:
     growthmodel_csv = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\SouthernSuburbsGrowthModel20160824.csv' # provide a default value if unspecified
@@ -212,7 +212,7 @@ total_properties_including_double_counted_field = "total_double_counted_properti
 total_properties_field = "total_counted_properties"
 intersecting_polygons = workspace + "intersecting_polygons"
 growthmodel_table = workspace + "growthmodel_table"
-field_list = ["POP_2011", "Total_2011", "POP_2016", "Total_2016", "POP_2021", "Total_2021", "POP_2026", "Total_2026", "POP_2031", "Total_2031", "POP_2036", "Total_2036", "POP_2041", "Total_2041", "POP_2046", "Total_2046", "POP_2051", "Total_2051", "POP_Full", "Total_Full"]
+field_list = ["POP_2011", "Tot_2011", "POP_2016", "Tot_2016", "POP_2021", "Tot_2021", "POP_2026", "Tot_2026", "POP_2031", "Tot_2031", "POP_2036", "Tot_2036", "POP_2041", "Tot_2041", "POP_2046", "Tot_2046", "POP_2051", "Tot_2051", "POP_Full", "Tot_Full"]
 
 ## Import grothmodel_table
 delete_if_exists(growthmodel_table)
@@ -252,11 +252,11 @@ for item in redistribution_layers:
 				print("calculating %s field from total GMZ number of properties" % GM_field)
 				calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field)
 			elif distribution_method == 3:
-				if GM_field in  ["POP_2016", "Total_2016"]:
+				if GM_field in  ["POP_2016", "Tot_2016"]:
 					calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field)
-				elif GM_field in  ["POP_2036", "Total_2036", "POP_2041", "Total_2041", "POP_2046", "Total_2046", "POP_2051", "Total_2051", "POP_Full", "Total_Full"]:
+				elif GM_field in  ["POP_2036", "Tot_2036", "POP_2041", "Tot_2041", "POP_2046", "Tot_2046", "POP_2051", "Tot_2051", "POP_Full", "Tot_Full"]:
 					calculate_field_proportion_based_on_area(GM_field, total_area_field)
-				elif GM_field in  ["POP_2021", "Total_2021", "POP_2026", "Total_2026", "POP_2031", "Total_20131"]:
+				elif GM_field in  ["POP_2021", "Tot_2021", "POP_2026", "Tot_2026", "POP_2031", "Tot_20131"]:
 					calculate_field_proportion_based_on_combination(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field, total_area_field)
 	
 
@@ -300,8 +300,8 @@ for item in redistribution_layers:
 		if field_exists_in_feature_class(GM_field, intersecting_polygons):
 			fm_POP_or_Total = arcpy.FieldMap()
 			fm_POP_or_Total.addInputField(intersecting_polygons, GM_field)
-			#fm_POP_or_Total.outputField.name = "PS_" + GM_field
-			renameFieldMap(fm_POP_or_Total, "PS_" + GM_field)
+			#fm_POP_or_Total.outputField.name = GM_field
+			renameFieldMap(fm_POP_or_Total, GM_field)
 			fm_POP_or_Total.mergeRule = "Sum"
 			fieldmappings.addFieldMap(fm_POP_or_Total)
 
