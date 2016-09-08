@@ -24,7 +24,7 @@
 ## Preprocessing
 import arcpy
 #
-workspace = "C:\\TempArcGIS\\scratch.gdb\\"
+workspace = "C:\\TempArcGIS\\scratchworkspace.gdb\\"
 arcpy.env.OverwriteOutput = True
 
 ## disabling Z and M bounds as I think this causes a data bounds error
@@ -167,7 +167,7 @@ def max_total_properties_field():
 redistribution_layer_name = arcpy.GetParameterAsText(0)
 if redistribution_layer_name == '#' or not redistribution_layer_name:
     #raise ValueError('You must provide a redistribution_layer_name')
-    redistribution_layer_name = r'SouthernSuburbs_PS_Catchments' # provide a default value if unspecified
+    redistribution_layer_name = r'SouthernSuburbs_Overall_Catchments' # provide a default value if unspecified
     print("you have not provided a redistribution_layer_name. Using default: %s" % redistribution_layer_name)
 ## Switch the commented out section below to execute the tool on multiple layers
 #redistribution_layers = [	'RiversideRidge_PS_catchments',
@@ -205,7 +205,7 @@ if output_filename == '#' or not output_filename:
 # this table should be created from the 'Pops and Emps' tab of the growth model outputs provided by Brian. The fields in the table I'm currently using are ["GMZ", "POP_2011", "Tot_2011", "POP_2016", "Tot_2016", "POP_2021", "Tot_2021", "POP_2026", "Tot_2026", "POP_2031", "Tot_2031", "POP_2036", "Tot_2036", "POP_2041", "Tot_2041", "POP_2046", "Tot_2046", "POP_2051", "Tot_2051", "POP_Full", "Tot_Full"]
 growthmodel_csv = arcpy.GetParameterAsText(4)
 if growthmodel_csv == '#' or not growthmodel_csv:
-    growthmodel_csv = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\SouthernSuburbsGrowthModel20160824.csv' # provide a default value if unspecified
+    growthmodel_csv = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\SouthernSuburbsGrowthModel20160908_mediumGrowth.csv' # provide a default value if unspecified
     print("you have not provided a growthmodel_csv. Using default: %s" % growthmodel_csv)
 
 ## Local variables:
