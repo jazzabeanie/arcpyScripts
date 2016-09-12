@@ -15,7 +15,7 @@
 #  - growthmodel_csv: table containing growth model data to be joined
 # 
 # This script can be run either by opening the model builder tool created from the script, or by editing the variables below so that the correct files are referenced and pasting the following command into the python window in Arc Catalogue:
-# execfile(r'S:\Infrastructure Planning\Staff\Jared\GIS\Tools\arcpyScripts\redistributePolygon.py')
+# execfile(r's:\infrastructure planning\staff\jared\gis\tools\arcpyscripts\redistributepolygon.py')
 # 
 # Note: the workspace detailed in the variable below may need to be created for the tool to work properly.
 #
@@ -182,7 +182,7 @@ for layer in redistribution_layers:
 data_layer = arcpy.GetParameterAsText(1)
 if data_layer == '#' or not data_layer:
     #raise ValueError('You must provide a data_layer')
-    data_layer = r'S:\Infrastructure Planning\Spatial Data\Water_sewer\Sewer_Catchments_2015\Sewer_Catchments_2015.mdb\GMZ_2015' # provide a default value if unspecified
+    data_layer = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\SewerData.gdb\GMZ' # provide a default value if unspecified
 print("data layer: %s" % data_layer)
 delete_if_exists(workspace + "data_layer")
 arcpy.Select_analysis (data_layer, workspace + "data_layer")
@@ -214,6 +214,7 @@ total_properties_including_double_counted_field = "total_double_counted_properti
 total_properties_field = "total_counted_properties"
 intersecting_polygons = workspace + "intersecting_polygons"
 growthmodel_table = workspace + "growthmodel_table"
+# TODO: remove 2011 fields from output
 field_list = ["POP_2011", "Tot_2011", "POP_2016", "Tot_2016", "POP_2021", "Tot_2021", "POP_2026", "Tot_2026", "POP_2031", "Tot_2031", "POP_2036", "Tot_2036", "POP_2041", "Tot_2041", "POP_2046", "Tot_2046", "POP_2051", "Tot_2051", "POP_Full", "Tot_Full"]
 
 ## Import grothmodel_table
@@ -246,6 +247,7 @@ for item in redistribution_layers:
 
 	## Recalculate groth model fields
 	total_area_field = "GMZ_TOTAL_AREA"
+	# TODO: add total_area_field
 	for GM_field in field_list:
 		if field_exists_in_feature_class(GM_field, intersecting_polygons):
 			if distribution_method == 1:
@@ -258,8 +260,11 @@ for item in redistribution_layers:
 					calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field)
 				elif GM_field in  ["POP_2036", "Tot_2036", "POP_2041", "Tot_2041", "POP_2046", "Tot_2046", "POP_2051", "Tot_2051", "POP_Full", "Tot_Full"]:
 					calculate_field_proportion_based_on_area(GM_field, total_area_field)
-				elif GM_field in  ["POP_2021", "Tot_2021", "POP_2026", "Tot_2026", "POP_2031", "Tot_20131"]:
+				elif GM_field in  ["POP_2021", "Tot_2021", "POP_2026", "Tot_2026", "POP_2031", "Tot_2031"]:
 					calculate_field_proportion_based_on_combination(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field, total_area_field)
+				elif GM_field in  ["POP_2011", "Tot_2011"]:
+					arcpy.CalculateField_management (intersecting_polygons, GM_field, "returnNone()", "PYTHON_9.3", """def returnNone():
+	return None""")
 	
 
 

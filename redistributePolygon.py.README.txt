@@ -1,0 +1,15 @@
+Known Issues: 
+
+The intersecting_polygons layer can have growth model data joined to it
+multiple times. for example, you will find POP_2016_2017, and POP_2021_2022
+fields. This doesn't seem to impact on the final results, but this issue
+should be fully understood before and / or fixed before this tool is used on
+other areas.
+
+In the case of Lavarack Barracks, GMZ 375 has a high employment EP, but total
+of only 15 properties. This causes the pump station catchment covering
+Lavarack Barracks is quite under assigned in EPs, also, the adjacent PS
+catchment also partially covering Lavarack Barracks is possibly overestimated.
+This issue will be difficult to address. It is recommended that catchments be
+manually checked if GMZs are only partially covered by the joining layer (PS
+catchments in this case).
