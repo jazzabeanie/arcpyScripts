@@ -163,38 +163,38 @@ def max_total_properties_field():
 
 ## Script Arguments - These are the values that will typically change. They have been built to be used in a model builder with default values proivded if none are received from the model. If run as a python scrip, these arguments will take their values from the variables provided at the top of the script.
 #
-redistribution_layer_name = arcpy.getparameterastext(0)
+redistribution_layer_name = arcpy.GetParameterAsText(0)
 if redistribution_layer_name == '#' or not redistribution_layer_name:
     redistribution_layer_name = redistrubtion_layer_path
-    arcpy.addMessage("you have not provided a redistribution_layer_name. using default: %s" % redistribution_layer_name)
+    arcpy.AddMessage("you have not provided a redistribution_layer_name. using default: %s" % redistribution_layer_name)
 #
-data_layer = arcpy.getparameterastext(1)
+data_layer = arcpy.GetParameterAsText(1)
 if data_layer == '#' or not data_layer:
-    #raise valueerror('you must provide a data_layer')
-    data_layer = r's:\infrastructure planning\staff\jared\southern suburbs sewer planning report\sewerdata.gdb\gmz' # provide a default value if unspecified
+    #raise ValueError('You must provide a data_layer')
+    data_layer = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\SewerData.gdb\GMZ' # provide a default value if unspecified
 print("data layer: %s" % data_layer)
 delete_if_exists(workspace + "data_layer")
-arcpy.select_analysis (data_layer, workspace + "data_layer")
+arcpy.Select_analysis (data_layer, workspace + "data_layer")
 data_layer = workspace + "data_layer"
 print("new data layer: %s" % data_layer)
 #
-distribution_method = arcpy.getparameterastext(2)
+distribution_method = arcpy.GetParameterAsText(2)
 if distribution_method == '#' or not distribution_method:
     distribution_method = 3 # 1 - by area, 2 - by number of properties, 3 - by a combination of the two methods.
     									    # for distribution_method = 3, number of properties method is used for 2016, area method is used for >2036, and 
 									    # the average of the two is used for 2016-2036.
-    arcpy.addmessage("you have not provided a distribution_method. 1 = distribute by area, 2 = distribute my number of properties. using %s by default" % distribution_method)
+    arcpy.AddMessage("you have not provided a distribution_method. 1 = distribute by area, 2 = distribute my number of properties. Using %s by default" % distribution_method)
 #
-output_filename = arcpy.getparameterastext(3)
+output_filename = arcpy.GetParameterAsText(3)
 if output_filename == '#' or not output_filename:
-    output_filename = workspace + "redistributedpolygon" # provide a default value if unspecified
-    print("you have not provided an output_layer. this tool will now delete the default file and rewrite it: %s" % output_filename)
+    output_filename = workspace + "redistributedPolygon" # provide a default value if unspecified
+    print("you have not provided an output_layer. This tool will now delete the default file and rewrite it: %s" % output_filename)
     delete_if_exists(output_filename)
 #
-# this table should be created from the 'pops and emps' tab of the growth model outputs provided by brian. the fields in the table i'm currently using are ["gmz", "pop_2011", "tot_2011", "pop_2016", "tot_2016", "pop_2021", "tot_2021", "pop_2026", "tot_2026", "pop_2031", "tot_2031", "pop_2036", "tot_2036", "pop_2041", "tot_2041", "pop_2046", "tot_2046", "pop_2051", "tot_2051", "pop_full", "tot_full"]
-growthmodel_csv = arcpy.getparameterastext(4)
+# this table should be created from the 'Pops and Emps' tab of the growth model outputs provided by Brian. The fields in the table I'm currently using are ["GMZ", "POP_2011", "Tot_2011", "POP_2016", "Tot_2016", "POP_2021", "Tot_2021", "POP_2026", "Tot_2026", "POP_2031", "Tot_2031", "POP_2036", "Tot_2036", "POP_2041", "Tot_2041", "POP_2046", "Tot_2046", "POP_2051", "Tot_2051", "POP_Full", "Tot_Full"]
+growthmodel_csv = arcpy.GetParameterAsText(4)
 if growthmodel_csv == '#' or not growthmodel_csv:
-    growthmodel_csv = r's:\infrastructure planning\staff\jared\southern suburbs sewer planning report\southernsuburbsgrowthmodel20160908_mediumgrowth.csv' # provide a default value if unspecified
+    growthmodel_csv = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\SouthernSuburbsGrowthModel20160908_mediumGrowth.csv' # provide a default value if unspecified
     print("you have not provided a growthmodel_csv. Using default: %s" % growthmodel_csv)
 
 ## Local variables:
@@ -251,7 +251,7 @@ for GM_field in field_list:
 				calculate_field_proportion_based_on_combination(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field, total_area_field)
 			elif GM_field in  ["POP_2011", "Tot_2011"]:
 				arcpy.CalculateField_management (intersecting_polygons, GM_field, "returnNone()", "PYTHON_9.3", """def returnNone():
-return None""")
+	return None""")
 
 
 

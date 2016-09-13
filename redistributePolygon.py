@@ -6,7 +6,8 @@
 #
 ##### Description: 
 # This tool redistributed the growth model to another polygon. It was developed for the purposed of finding the growth model projections for pump station catchments.
-# Usage: Assign the variables below as required, save the file, then enter the following code into the python window in ArcGIS:
+#
+##### Usage: Assign the variables below as required, save the file, then enter the following code into the python window in ArcCatalog (not ArcMap, due to processing time):
 # execfile(r'PATH_TO_THIS_PYTHON_FILE')
 # where PATH_TO_THIS_PYTHON_FILE is substituted for the full path of this python file. For example: execfile(r's:\infrastructure planning\staff\jared\gis\tools\arcpyscripts\redistributepolygon.py')
 # 
@@ -166,7 +167,7 @@ def max_total_properties_field():
 redistribution_layer_name = arcpy.GetParameterAsText(0)
 if redistribution_layer_name == '#' or not redistribution_layer_name:
     redistribution_layer_name = redistrubtion_layer_path
-    arcpy.addMessage("you have not provided a redistribution_layer_name. using default: %s" % redistribution_layer_name)
+    arcpy.AddMessage("you have not provided a redistribution_layer_name. using default: %s" % redistribution_layer_name)
 #
 data_layer = arcpy.GetParameterAsText(1)
 if data_layer == '#' or not data_layer:
@@ -251,7 +252,7 @@ for GM_field in field_list:
 				calculate_field_proportion_based_on_combination(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field, total_area_field)
 			elif GM_field in  ["POP_2011", "Tot_2011"]:
 				arcpy.CalculateField_management (intersecting_polygons, GM_field, "returnNone()", "PYTHON_9.3", """def returnNone():
-return None""")
+	return None""")
 
 
 
