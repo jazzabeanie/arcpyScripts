@@ -13,9 +13,11 @@
 ##### Variables:
 # The workspace variable:
 # This viable is where all the intermediate files are stored. Either create a geodatabase at the location shown below, or change it to a workspace geodatabase that has already been created.
-workspace = "C:\\TempArcGIS\\scratchworkspace.gdb\\" # note the use of double backslash (\\) instead of single backslash (\)
+workspace = "C:\\TempArcGIS\\scratchworkspace.gdb\\" # note the use of double backslash (\\) instead of single backslash (\). This path must end with a double backslash (\\).
 #
-# The variable:
+# The redistribution_layer_path variable:
+# This variable contains the full path to the layer that the growth model will be redistributed to.
+redistrubtion_layer_path = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\SewerData.gdb\southernsuburbs_overall_catchments'
 #
 # ---------------------------------------------------------------------------
 
@@ -159,22 +161,12 @@ def max_total_properties_field():
 	arcpy.CalculateField_management (intersecting_polygons, total_properties_including_double_counted_field, "max([!"+total_properties_including_double_counted_field+"!, !"+total_properties_field+"!])", "PYTHON_9.3")
 
 
-## Script arguments - There are the values that will typically change. They have been built to be used in a model builder with default values proivded if none are received from the model. Change these defualt to use in a script.
+## Script Arguments - These are the values that will typically change. They have been built to be used in a model builder with default values proivded if none are received from the model. If run as a python scrip, these arguments will take their values from the variables provided at the top of the script.
 #
 redistribution_layer_name = arcpy.GetParameterAsText(0)
 if redistribution_layer_name == '#' or not redistribution_layer_name:
-    #raise ValueError('You must provide a redistribution_layer_name')
-    redistribution_layer_name = r'SouthernSuburbs_Overall_Catchments' # provide a default value if unspecified
-    print("you have not provided a redistribution_layer_name. Using default: %s" % redistribution_layer_name)
-## Switch the commented out section below to execute the tool on multiple layers
-#redistribution_layers = [	'RiversideRidge_PS_catchments',
-#				'RoseneathTruckStop_PS_catchments',
-#				'TheVillage_PS_catchments',
-#				'FairfieldWaters_PS_catchments']
-redistribution_layers = [redistribution_layer_name, ]
-print("redistribution layers:")
-for layer in redistribution_layers:
-	print("    " + layer)
+    redistribution_layer_name = redistrubtion_layer_path
+    arcpy.addMessage("you have not provided a redistribution_layer_name. using default: %s" % redistribution_layer_name)
 #
 data_layer = arcpy.GetParameterAsText(1)
 if data_layer == '#' or not data_layer:
@@ -221,98 +213,95 @@ arcpy.CopyRows_management (growthmodel_csv, growthmodel_table)
 
 add_property_count_to_layer_x_with_name_x(data_layer, total_properties_field)
 
-for item in redistribution_layers:
-	print("STARTING %s" % item)
-	input_layer = "S:\\Infrastructure Planning\\Staff\\Jared\\Southern Suburbs Sewer Planning Report\\SewerData.gdb\\" + item
-	redistribution_layer = workspace + "redistribution_layer"
-	delete_if_exists(redistribution_layer)
-	arcpy.CopyFeatures_management(input_layer, redistribution_layer)
+input_layer = redistribution_layer_name
+redistribution_layer = workspace + "redistribution_layer"
+delete_if_exists(redistribution_layer)
+arcpy.CopyFeatures_management(input_layer, redistribution_layer)
 
-	create_intersecting_polygons()
+create_intersecting_polygons()
 
-	join_growthmodel_table_to_intersecting_polygons()
+join_growthmodel_table_to_intersecting_polygons()
 
-	add_total_and_local_GMZ_fields()
+add_total_and_local_GMZ_fields()
 
-	create_intersecting_polygons() #recreate this layer with total_properties_filed that includes double counted properties.
+create_intersecting_polygons() #recreate this layer with total_properties_filed that includes double counted properties.
 
-	join_growthmodel_table_to_intersecting_polygons()
+join_growthmodel_table_to_intersecting_polygons()
 
-	add_property_count_to_layer_x_with_name_x(intersecting_polygons, local_number_of_properties_field)
+add_property_count_to_layer_x_with_name_x(intersecting_polygons, local_number_of_properties_field)
 
-	max_total_properties_field()
+max_total_properties_field()
 
-	## Recalculate groth model fields
-	total_area_field = "GMZ_TOTAL_AREA"
-	# TODO: add total_area_field
-	for GM_field in field_list:
-		if field_exists_in_feature_class(GM_field, intersecting_polygons):
-			if distribution_method == 1:
-				calculate_field_proportion_based_on_area(GM_field, total_area_field)
-			elif distribution_method == 2:
-				print("calculating %s field from total GMZ number of properties" % GM_field)
+## Recalculate groth model fields
+total_area_field = "GMZ_TOTAL_AREA"
+# TODO: add total_area_field
+for GM_field in field_list:
+	if field_exists_in_feature_class(GM_field, intersecting_polygons):
+		if distribution_method == 1:
+			calculate_field_proportion_based_on_area(GM_field, total_area_field)
+		elif distribution_method == 2:
+			print("calculating %s field from total GMZ number of properties" % GM_field)
+			calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field)
+		elif distribution_method == 3:
+			if GM_field in  ["POP_2016", "Tot_2016"]:
 				calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field)
-			elif distribution_method == 3:
-				if GM_field in  ["POP_2016", "Tot_2016"]:
-					calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field)
-				elif GM_field in  ["POP_2036", "Tot_2036", "POP_2041", "Tot_2041", "POP_2046", "Tot_2046", "POP_2051", "Tot_2051", "POP_Full", "Tot_Full"]:
-					calculate_field_proportion_based_on_area(GM_field, total_area_field)
-				elif GM_field in  ["POP_2021", "Tot_2021", "POP_2026", "Tot_2026", "POP_2031", "Tot_2031"]:
-					calculate_field_proportion_based_on_combination(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field, total_area_field)
-				elif GM_field in  ["POP_2011", "Tot_2011"]:
-					arcpy.CalculateField_management (intersecting_polygons, GM_field, "returnNone()", "PYTHON_9.3", """def returnNone():
-	return None""")
-	
+			elif GM_field in  ["POP_2036", "Tot_2036", "POP_2041", "Tot_2041", "POP_2046", "Tot_2046", "POP_2051", "Tot_2051", "POP_Full", "Tot_Full"]:
+				calculate_field_proportion_based_on_area(GM_field, total_area_field)
+			elif GM_field in  ["POP_2021", "Tot_2021", "POP_2026", "Tot_2026", "POP_2031", "Tot_2031"]:
+				calculate_field_proportion_based_on_combination(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field, total_area_field)
+			elif GM_field in  ["POP_2011", "Tot_2011"]:
+				arcpy.CalculateField_management (intersecting_polygons, GM_field, "returnNone()", "PYTHON_9.3", """def returnNone():
+return None""")
 
 
-	## POP_2011 is 0 here
-	
-	### setup field maps for Spatial Join
-	## create FieldMap and FieldMappins objects
-	fieldmappings = arcpy.FieldMappings()
-	fm_layer = arcpy.FieldMap()
-	fm_REF_NO = arcpy.FieldMap()
-	fm_GMZ = arcpy.FieldMap()
-	#fm_POP_2011 = arcpy.FieldMap()
-	## add the source fields for each FieldMap object, eg, someFieldMap_object.addInputField(source_feature_class, field_name)
-	fm_layer.addInputField(redistribution_layer, "Layer")
-	fm_REF_NO.addInputField(redistribution_layer, "REF_NO")
-	fm_GMZ.addInputField(intersecting_polygons, "GMZ")
-	#fm_POP_2011.addInputField(intersecting_polygons, "POP_2011)
-	## Assign a field name for the output file. NOTE: in exampls this has been done in separete steps, if it doesn't work, change this.
-	print("assigning output field name")
-	renameFieldMap(fm_layer, "PS_name")
-	renameFieldMap(fm_REF_NO, "PS_REF_NO")
-	renameFieldMap(fm_GMZ, "GMZs_contrib")
-	#renameFieldMap(fm_POP_2011, "PS_POP_2011")
-	print("done assigning output field name")
-	## Assign output field type
-	fm_GMZ.outputField.type = "String"
-	fm_GMZ.outputField.length = 100
-	## Set merge rules
-	#fm_POP_2011.mergeRule = "Sum"
-	fm_GMZ.mergeRule = "Join"
-	fm_GMZ.joinDelimiter = ", "
-	## add FieldMap objects to FieldMappings object
-	fieldmappings.addFieldMap(fm_layer)
-	fieldmappings.addFieldMap(fm_REF_NO)
-	#fieldmappings.addFieldMap(fm_GMZ) # when I leave this in Iget "ExecuteError: ERROR 001156: Failed on input OID 1, could not write value '412, 379, 413, 201, 411, 410' to output field GMZ Failed to execute (SpatialJoin)." My hypothesis is that is fails because GMZs are integers and can't be written to a text field. I've looked breifly how to cast the input field to a string, but I can't seem to find out how (this page might give more insight: http://gis.stackexchange.com/questions/158922/change-field-type-using-field-mapping-for-list-of-tables-using-python). All I can think to do is add a new field and copy the values accross converting to string in the process. This field isn't neccesary so I'll ignore it.
-	#fieldmappings.addFieldMap(fm_POP_2011)
-	#
-	## create FieldMaps for growth model field
-	for GM_field in field_list:
-		if field_exists_in_feature_class(GM_field, intersecting_polygons):
-			fm_POP_or_Total = arcpy.FieldMap()
-			fm_POP_or_Total.addInputField(intersecting_polygons, GM_field)
-			#fm_POP_or_Total.outputField.name = GM_field
-			renameFieldMap(fm_POP_or_Total, GM_field)
-			fm_POP_or_Total.mergeRule = "Sum"
-			fieldmappings.addFieldMap(fm_POP_or_Total)
 
-	## Spatially Join intersecting_polygons back to redistribution layer
-	delete_if_exists(output_filename+"_"+item)
-	print("joining intersecting_polygons back to redistribution layer")
-	arcpy.SpatialJoin_analysis (redistribution_layer, intersecting_polygons, output_filename+"_"+item, "JOIN_ONE_TO_ONE", "KEEP_ALL", fieldmappings, "CONTAINS", "#", "#") #output_filename+"_"+item is used here because I am itterating through a list of files. This should be just output_filename if the script is operating on only 1 layer
-	print("Successfully redistributed %s to %s" % (data_layer, redistribution_layer))
-	print("Output file can be found at %s" % output_filename+"_"+item)
-	print("FINISHED %s" % item)
+## POP_2011 is 0 here
+
+### setup field maps for Spatial Join
+## create FieldMap and FieldMappins objects
+fieldmappings = arcpy.FieldMappings()
+fm_layer = arcpy.FieldMap()
+fm_REF_NO = arcpy.FieldMap()
+fm_GMZ = arcpy.FieldMap()
+#fm_POP_2011 = arcpy.FieldMap()
+## add the source fields for each FieldMap object, eg, someFieldMap_object.addInputField(source_feature_class, field_name)
+fm_layer.addInputField(redistribution_layer, "Layer")
+fm_REF_NO.addInputField(redistribution_layer, "REF_NO")
+fm_GMZ.addInputField(intersecting_polygons, "GMZ")
+#fm_POP_2011.addInputField(intersecting_polygons, "POP_2011)
+## Assign a field name for the output file. NOTE: in exampls this has been done in separete steps, if it doesn't work, change this.
+print("assigning output field name")
+renameFieldMap(fm_layer, "PS_name")
+renameFieldMap(fm_REF_NO, "PS_REF_NO")
+renameFieldMap(fm_GMZ, "GMZs_contrib")
+#renameFieldMap(fm_POP_2011, "PS_POP_2011")
+print("done assigning output field name")
+## Assign output field type
+fm_GMZ.outputField.type = "String"
+fm_GMZ.outputField.length = 100
+## Set merge rules
+#fm_POP_2011.mergeRule = "Sum"
+fm_GMZ.mergeRule = "Join"
+fm_GMZ.joinDelimiter = ", "
+## add FieldMap objects to FieldMappings object
+fieldmappings.addFieldMap(fm_layer)
+fieldmappings.addFieldMap(fm_REF_NO)
+#fieldmappings.addFieldMap(fm_GMZ) # when I leave this in Iget "ExecuteError: ERROR 001156: Failed on input OID 1, could not write value '412, 379, 413, 201, 411, 410' to output field GMZ Failed to execute (SpatialJoin)." My hypothesis is that is fails because GMZs are integers and can't be written to a text field. I've looked breifly how to cast the input field to a string, but I can't seem to find out how (this page might give more insight: http://gis.stackexchange.com/questions/158922/change-field-type-using-field-mapping-for-list-of-tables-using-python). All I can think to do is add a new field and copy the values accross converting to string in the process. This field isn't neccesary so I'll ignore it.
+#fieldmappings.addFieldMap(fm_POP_2011)
+#
+## create FieldMaps for growth model field
+for GM_field in field_list:
+	if field_exists_in_feature_class(GM_field, intersecting_polygons):
+		fm_POP_or_Total = arcpy.FieldMap()
+		fm_POP_or_Total.addInputField(intersecting_polygons, GM_field)
+		#fm_POP_or_Total.outputField.name = GM_field
+		renameFieldMap(fm_POP_or_Total, GM_field)
+		fm_POP_or_Total.mergeRule = "Sum"
+		fieldmappings.addFieldMap(fm_POP_or_Total)
+
+## Spatially Join intersecting_polygons back to redistribution layer
+delete_if_exists(output_filename)
+print("joining intersecting_polygons back to redistribution layer")
+arcpy.SpatialJoin_analysis (redistribution_layer, intersecting_polygons, output_filename, "JOIN_ONE_TO_ONE", "KEEP_ALL", fieldmappings, "CONTAINS", "#", "#")
+print("Successfully redistributed %s to %s" % (data_layer, redistribution_layer))
+print("Output file can be found at %s" % output_filename)
