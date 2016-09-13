@@ -1,3 +1,13 @@
+run `git config --global http.proxy http[s]://userName:password@proxyaddress:port`
+
+then git push as usual.
+
+got proxy address and port from here: http://superuser.com/questions/346372/how-do-i-know-what-proxy-server-im-using
+
+
+----------
+original help found here:
+
 Github error:
 http://stackoverflow.com/questions/18356502/github-failed-to-connect-to-github-443-windows-failed-to-connect-to-github
 
