@@ -1,30 +1,25 @@
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------------
-# TODO: create model: http://resources.esri.com/help/9.3/arcgisdesktop/com/gp_toolref/automating_your_work_with_models/branching_colon_implementing_if_then_else_logic.htm
 #
 # redistributePolygon.py
-# Created on: 2016-08-01 13:00:00
+# Finalised: 13/09/2016
 #
-# Usage: redistributePolygon <redistribution_layer> <data_layer> <distribution_method> <output_filename> <growthmodel_csv>
-# Description: 
-# This model splits the data polygon based on intersection with the redistribution polygon. It then joins the split polygon back together based on a common attibute that was carried over from the redistribution polygon. it takes the argument:
-#  - redistribution_layer: the areas that the data layer feature should be rejoined to, eg, Sewer Pump Station Catchments
-#  - data_layer: the layer with the data that need to be redistributed, eg, Growth Model Zones.
-#  - distribution_method: The method by which the values in the data_layer should be distibuted when split. Initally this tool will be built with only distribution by area, but in the future this may include number of properties or percentage of undeveloped land.
-#  - output_filename:
-#  - growthmodel_csv: table containing growth model data to be joined
+##### Description: 
+# This tool redistributed the growth model to another polygon. It was developed for the purposed of finding the growth model projections for pump station catchments.
+# Usage: Assign the variables below as required, save the file, then enter the following code into the python window in ArcGIS:
+# execfile(r'PATH_TO_THIS_PYTHON_FILE')
+# where PATH_TO_THIS_PYTHON_FILE is substituted for the full path of this python file. For example: execfile(r's:\infrastructure planning\staff\jared\gis\tools\arcpyscripts\redistributepolygon.py')
 # 
-# This script can be run either by opening the model builder tool created from the script, or by editing the variables below so that the correct files are referenced and pasting the following command into the python window in Arc Catalogue:
-# execfile(r's:\infrastructure planning\staff\jared\gis\tools\arcpyscripts\redistributepolygon.py')
-# 
-# Note: the workspace detailed in the variable below may need to be created for the tool to work properly.
+##### Variables:
+# The workspace variable:
+# This viable is where all the intermediate files are stored. Either create a geodatabase at the location shown below, or change it to a workspace geodatabase that has already been created.
+workspace = "C:\\TempArcGIS\\scratchworkspace.gdb\\" # note the use of double backslash (\\) instead of single backslash (\)
 #
 # ---------------------------------------------------------------------------
 
 ## Preprocessing
 import arcpy
 #
-workspace = "C:\\TempArcGIS\\scratchworkspace.gdb\\"
 arcpy.env.OverwriteOutput = True
 
 ## disabling Z and M bounds as I think this causes a data bounds error
