@@ -396,7 +396,6 @@ redistribution_layer_field_list = arcpy.ListFields(redistribution_layer_name)
 for field in redistribution_layer_field_list:
 	if field.name not in ['OBJECTID', 'Shape_Length', 'Shape_Area', 'Join_Count', 'Shape']:
 		arcpy.AddMessage("Adding fieldmap for %s" % field.name)
-		print("Adding fieldmap for %s" % field.name)
 		fm = arcpy.FieldMap()
 		fm.addInputField(redistribution_layer_name, field.name)
 		renameFieldMap(fm, field.name)
