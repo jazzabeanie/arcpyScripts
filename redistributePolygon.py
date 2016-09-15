@@ -385,41 +385,21 @@ for GM_field in field_list:
 ### setup field maps for Spatial Join
 ## create FieldMap and FieldMappins objects
 fieldmappings = arcpy.FieldMappings()
-fm_layer = arcpy.FieldMap()
-fm_REF_NO = arcpy.FieldMap()
-fm_GMZ = arcpy.FieldMap()
-#fm_POP_2011 = arcpy.FieldMap()
-## add the source fields for each FieldMap object, eg, someFieldMap_object.addInputField(source_feature_class, field_name)
-fm_layer.addInputField(redistribution_layer, "Layer")
-fm_REF_NO.addInputField(redistribution_layer, "REF_NO")
-fm_GMZ.addInputField(intersecting_polygons, "GMZ")
-#fm_POP_2011.addInputField(intersecting_polygons, "POP_2011)
-## Assign a field name for the output file. NOTE: in exampls this has been done in separete steps, if it doesn't work, change this.
-print("assigning output field name")
-renameFieldMap(fm_layer, "PS_name")
-renameFieldMap(fm_REF_NO, "PS_REF_NO")
-renameFieldMap(fm_GMZ, "GMZs_contrib")
-#renameFieldMap(fm_POP_2011, "PS_POP_2011")
-print("done assigning output field name")
-## Assign output field type
-fm_GMZ.outputField.type = "String"
-fm_GMZ.outputField.length = 100
-## Set merge rules
-#fm_POP_2011.mergeRule = "Sum"
-fm_GMZ.mergeRule = "Join"
-fm_GMZ.joinDelimiter = ", "
-## add FieldMap objects to FieldMappings object
-fieldmappings.addFieldMap(fm_layer)
-fieldmappings.addFieldMap(fm_REF_NO)
-#fieldmappings.addFieldMap(fm_GMZ) # when I leave this in Iget "ExecuteError: ERROR 001156: Failed on input OID 1, could not write value '412, 379, 413, 201, 411, 410' to output field GMZ Failed to execute (SpatialJoin)." My hypothesis is that is fails because GMZs are integers and can't be written to a text field. I've looked breifly how to cast the input field to a string, but I can't seem to find out how (this page might give more insight: http://gis.stackexchange.com/questions/158922/change-field-type-using-field-mapping-for-list-of-tables-using-python). All I can think to do is add a new field and copy the values accross converting to string in the process. This field isn't neccesary so I'll ignore it.
-#fieldmappings.addFieldMap(fm_POP_2011)
-#
-## create FieldMaps for growth model field
+
+redistribution_layer_field_list = arcpy.ListFields(redistribution_layer_name)
+for field in redistribution_layer_field_list:
+	if field.name not in ['OBJECTID', 'Shape_Length', 'Shape_Area', 'Join_Count', 'Shape']:
+		arcpy.AddMessage("Adding fieldmap for %s" % field.name)
+		print("Adding fieldmap for %s" % field.name)
+		fm = arcpy.FieldMap()
+		fm.addInputField(redistribution_layer_name, field.name)
+		renameFieldMap(fm, field.name)
+		fieldmappings.addFieldMap(fm)
+
 for GM_field in field_list:
 	if field_exists_in_feature_class(GM_field, intersecting_polygons):
 		fm_POP_or_Total = arcpy.FieldMap()
 		fm_POP_or_Total.addInputField(intersecting_polygons, GM_field)
-		#fm_POP_or_Total.outputField.name = GM_field
 		renameFieldMap(fm_POP_or_Total, GM_field)
 		fm_POP_or_Total.mergeRule = "Sum"
 		fieldmappings.addFieldMap(fm_POP_or_Total)
