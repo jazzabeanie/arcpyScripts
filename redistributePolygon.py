@@ -7,13 +7,13 @@
 ##### Description: #####
 # This tool redistributes the growth model to another polygon. It was 
 # developed for the purpose of finding the growth model projections for pump 
-# station catchments.
+# station catchments of Southern Suburbs.
 #
 ##### Usage: #####
 # Before using this tool, the Issues section below should be fully understood.
 #
 # To use this tool, assign the variables below as required, save the file, then
-# enter the following code into the python window in ArcCatalog (not ArcMap,
+# enter the following single line of code (without the leading '# ') into a python window in ArcCatalog (not ArcMap,
 # due to processing time): 
 # execfile(r'PATH_TO_THIS_PYTHON_FILE') 
 # where PATH_TO_THIS_PYTHON_FILE is substituted for the full path of this
@@ -21,13 +21,13 @@
 # execfile(r'S:\Infrastructure Planning\Staff\Jared\GIS\Tools\arcpyScripts\redistributePolygon.py')
 #
 ##### Variables: #####
-# The workspace variable:
-# This viable is where all the intermediate files are stored. Either create a
+# The temp_workspace variable:
+# This variable is where all the intermediate files are stored. Either create a
 # geodatabase at the location shown below, or change it to a workspace
 # geodatabase that has already been created. Note the use of double backslash
 # (\\) instead of single backslash (\). This path must end with a double
 # backslash (\\).
-workspace = "C:\\TempArcGIS\\scratchworkspace.gdb\\" 
+temp_workspace = "C:\\TempArcGIS\\scratchworkspace.gdb\\" 
 #
 # The redistribution_layer_path variable:
 # This variable contains the full path to the layer that the growth model will
@@ -281,6 +281,11 @@ def max_total_properties_field():
 
 
 ## Script Arguments - These are the values that will typically change. They have been built to be used in a model builder with default values proivded if none are received from the model. If run as a python scrip, these arguments will take their values from the variables provided at the top of the script.
+#
+workspace = arcpy.GetParameterAsText(5)
+if workspace == '#' or not workspace:
+    workspace = temp_workspace
+    arcpy.AddMessage("you have not provided a workspace. Using default: %s" % workspace)
 #
 redistribution_layer_name = arcpy.GetParameterAsText(0)
 if redistribution_layer_name == '#' or not redistribution_layer_name:
