@@ -26,20 +26,19 @@ sde_properties = ("O:\\Data\\Planning_IP\\Spatial\\"
 
 
 def do_analysis(*argv):
-    """This function make a catchment for each point in a feature class. Takes 2 args:
+    """This function make a catchment for each point in a feature class.
+    Takes 2 args:
         1. file with points so make catchments for
         2. file with polygons to use to make catchments"""
     try:
         points = argv[0]
         catchments = argv[1]
-        cursor = arcpy.SearchCursor(points)
-        for row in cursor:  # for each park point:
-            # print(row.getValue(field))
-        # TODO: Add analysis here
-            # select GMZs whose centroid is within a buffer distance
-            # export selection to a temporary layer
-            # merge all the features in the temporary layer
-            # copy the 1 feature in the temporary layer into the output layer
+        output = argv[2]
+        arcpy.SpatialJoin_analysis (catchments, points, output, {join_operation}, {join_type}, {field_mapping}, {match_option}, {search_radius}, {distance_field_name}) #TODO: finish this spatial join
+        # TODO: Complete analysis
+        # Spatial join points to GMZs base on buffer
+            # join only LGIP_ID of the park
+        # merge GMZs based on common LGIP_ID
         # save output layer
         pass
     except arcpy.ExecuteError:
@@ -57,9 +56,13 @@ def do_analysis(*argv):
 if __name__ == '__main__':
     # Arguments overwrite defaults
     default_points = (r'O:\Data\IC\Spatial Data\LGIP\Database'
-                      '\scratchworkspace.gdb\existing_districtRec_parks_points')
-    argv = [default_points, GMZ]
+                      r'\scratchworkspace.gdb'
+                      r'\existing_districtRec_parks_points')
+    default_output = (r'O:\Data\IC\Spatial Data\LGIP\Database'
+                      r'\scratchworkspace.gdb'
+                      r'\existing_disctrictRec_GMZ_catchments')
+    argv = [default_points, GMZ, default_output]
     if arcpy.GetArgumentCount() != 0:
         argv = tuple(arcpy.GetParameterAsText(i)
-                    for i in range(arcpy.GetArgumentCount()))
+                     for i in range(arcpy.GetArgumentCount()))
     do_analysis(*argv) # see here for help on #argv https://docs.python.org/2.7/tutorial/controlflow.html#unpacking-argument-lists # noqa
