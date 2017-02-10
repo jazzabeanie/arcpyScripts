@@ -1,7 +1,7 @@
 # --------------------------------
 # Name: create_GMZ_catchments
 # Purpose: to create an area for each point that includes all GMZs whose
-# centroid falls within the a buffer distance.
+#          centroid falls within the a buffer distance.
 # Author: Jared Johnston
 # Created:
 # Copyright:   (c) TCC
