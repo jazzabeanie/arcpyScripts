@@ -13,23 +13,17 @@ import os # noqa
 import sys # noqa
 import arcpy
 import logging
+import jj_methods as m
 
 logging.basicConfig(filename='create_GMZ_catchments.log',
                     level=logging.DEBUG,
                     format='%(asctime)s %(message)s')
 
-# Commonly used layers: # TODO: expand this section
+# Commonly used layers:
 GMZ = r'R:\InfrastructureModels\Growth\Database\GrowthModelGMZ.mdb\GMZ'
 sde_properties = ("O:\\Data\\Planning_IP\\Spatial\\"
                   "WindowAuth@Mapsdb01@SDE_Vector.sde\\"
                   "sde_vector.TCC.Cadastral""\\sde_vector.TCC.Properties")
-
-
-def delete_if_exists(layer):
-    """Deleted the passed in layer if it exists. This avoids errors."""
-    if arcpy.Exists(layer):
-        logging.warning("Deleting %s" % layer)
-        arcpy.Delete_management(layer)
 
 
 def do_analysis(*argv):
@@ -45,8 +39,8 @@ def do_analysis(*argv):
         output1 = (r'O:\Data\IC\Spatial Data\LGIP\Database'
                    r'\scratchworkspace.gdb'
                    r'\tmp_output1')
-        delete_if_exists(output)
-        delete_if_exists(output1)
+        m.delete_if_exists(output)
+        m.delete_if_exists(output1)
         GMZ_fieldmap = arcpy.FieldMap()
         GMZ_fieldmap.addInputField(catchments, "GMZ")
         ID_fieldmap = arcpy.FieldMap()
@@ -83,7 +77,6 @@ if __name__ == '__main__':
                       r'\scratchworkspace.gdb'
                       r'\existing_disctrictRec_GMZ_catchments')
     argv = [default_points, GMZ, default_output]
-    if arcpy.GetArgumentCount() != 0:
-        argv = tuple(arcpy.GetParameterAsText(i)
-                     for i in range(arcpy.GetArgumentCount()))
+    if m.arguments_exist:
+        argv = m.return_tuple_of_args()
     do_analysis(*argv) # see here for help on #argv https://docs.python.org/2.7/tutorial/controlflow.html#unpacking-argument-lists # noqa
