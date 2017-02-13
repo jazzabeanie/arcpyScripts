@@ -16,7 +16,8 @@ import arcpy
 def delete_if_exists(layer):
     """Deleted the passed in layer if it exists. This avoids errors."""
     if arcpy.Exists(layer):
-        logging.warning("Deleting %s" % layer) # noqa
+        # logging.warning("Deleting %s" % layer) # TODO: make this write to
+        # logging object in the file that calls it.
         arcpy.Delete_management(layer)
 
 
@@ -31,8 +32,10 @@ def arguments_exist():
 def return_tuple_of_args():
     """Takes all the arguments passed into the script, and puts them into a
     tuple."""
-    return tuple(arcpy.GetParameterAsText(i)
+    args = tuple(arcpy.GetParameterAsText(i)
                  for i in range(arcpy.GetArgumentCount()))
+    print "args = " + str(args)
+    return args
 
 
 # This test allows the script to be used from the operating

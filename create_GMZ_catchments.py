@@ -17,7 +17,9 @@ import jj_methods as m
 
 logging.basicConfig(filename='create_GMZ_catchments.log',
                     level=logging.DEBUG,
-                    format='%(asctime)s %(message)s')
+                    format='%(asctime)s @ %(lineno)d: %(message)s',
+                    datefmt='%Y-%m-%d,%H:%M:%S')
+logging.warning("------")
 
 # Commonly used layers:
 GMZ = r'R:\InfrastructureModels\Growth\Database\GrowthModelGMZ.mdb\GMZ'
@@ -27,40 +29,55 @@ sde_properties = ("O:\\Data\\Planning_IP\\Spatial\\"
 
 
 def do_analysis(*argv):
-    """This function make a catchment for each point in a feature class.
+    """This function makes a catchment for each point in a feature class.
     Takes 2 args:
         1. file with points so make catchments for
         2. file with polygons to use to make catchments
     """
     try:
-        points = argv[0]
-        catchments = argv[1]
-        output = argv[2]
+        existing_park_points = argv[0]
+        future_park_points = argv[1]
+        catchments = argv[2]
+        output = argv[3]
         output1 = (r'O:\Data\IC\Spatial Data\LGIP\Database'
                    r'\scratchworkspace.gdb'
                    r'\tmp_output1')
+        all_park_points = (r'C:\TempArcGIS\scratchworkspace.gdb'
+                           r'\all_park_points')
         m.delete_if_exists(output)
         m.delete_if_exists(output1)
+        m.delete_if_exists(all_park_points)
+        arcpy.CopyFeatures_management(existing_park_points, all_park_points)
+        arcpy.Append_management(future_park_points, all_park_points, "NO_TEST")
+        # Field mapping:
         GMZ_fieldmap = arcpy.FieldMap()
         GMZ_fieldmap.addInputField(catchments, "GMZ")
         ID_fieldmap = arcpy.FieldMap()
-        ID_fieldmap.addInputField(points, "ID")
+        ID_fieldmap.addInputField(all_park_points, "ID")
+        hierarchy_fieldmap = arcpy.FieldMap()
+        hierarchy_fieldmap.addInputField(all_park_points, "Hierarchy")
+        class_fieldmap = arcpy.FieldMap()
+        class_fieldmap.addInputField(all_park_points, "Class")
         field_mapping = arcpy.FieldMappings()
         field_mapping.addFieldMap(GMZ_fieldmap)
         field_mapping.addFieldMap(ID_fieldmap)
-        arcpy.SpatialJoin_analysis(catchments, points, output1,
+        field_mapping.addFieldMap(hierarchy_fieldmap)
+        field_mapping.addFieldMap(class_fieldmap)
+        # ##
+        arcpy.SpatialJoin_analysis(catchments, all_park_points, output1,
                                    "JOIN_ONE_TO_MANY", "KEEP_COMMON",
                                    field_mapping, "HAVE_THEIR_CENTER_IN",
                                    2000)
         arcpy.Dissolve_management(output1, output,
-                                  "ID", "",
+                                  ["ID", "Hierarchy", "Class"], "",
                                   "", "")
+        logging.warning("Analysis complete. See %s" % output)
     except arcpy.ExecuteError:
         print arcpy.GetMessages(2)
-        logging.warning(arcpy.GetMessages(2))
+        logging.exception(arcpy.GetMessages(2))
     except Exception as e:
         print e.args[0]
-        logging.warning(e.args[0])
+        logging.exception(e.args[0])
 # End do_analysis function
 
 
@@ -70,13 +87,16 @@ def do_analysis(*argv):
 # another script
 if __name__ == '__main__':
     # Arguments overwrite defaults
-    default_points = (r'O:\Data\IC\Spatial Data\LGIP\Database'
-                      r'\scratchworkspace.gdb'
-                      r'\existing_districtRec_parks_points')
+    default_existing_parks = (r'C:\TempArcGIS\scratchworkspace.gdb'
+                              r'\LGIP_allExistingParks_points')
+    default_future_parks = (r'O:\Data\IC\Spatial Data\LGIP\Database\LGIP.gdb'
+                            r'\LGIP_Park_Future')
     default_output = (r'O:\Data\IC\Spatial Data\LGIP\Database'
                       r'\scratchworkspace.gdb'
-                      r'\existing_disctrictRec_GMZ_catchments')
-    argv = [default_points, GMZ, default_output]
-    if m.arguments_exist:
-        argv = m.return_tuple_of_args()
+                      r'\all_parks_GMZ_catchments')
+    argv = [default_existing_parks, default_future_parks, GMZ, default_output]
+    arguments_exist = True if (arcpy.GetArgumentCount() != 0) else False
+    if arguments_exist:
+        argv = tuple(arcpy.GetParameterAsText(i)
+                     for i in range(arcpy.GetArgumentCount()))
     do_analysis(*argv) # see here for help on #argv https://docs.python.org/2.7/tutorial/controlflow.html#unpacking-argument-lists # noqa
