@@ -22,9 +22,11 @@ logging.warning("------")
 
 # Commonly used layers: # TODO: expand this section
 GMZ = r'R:\InfrastructureModels\Growth\Database\GrowthModelGMZ.mdb\GMZ'
-sde_properties = ("O:\\Data\\Planning_IP\\Spatial\\"
-                  "WindowAuth@Mapsdb01@SDE_Vector.sde\\"
-                  "sde_vector.TCC.Cadastral""\\sde_vector.TCC.Properties")
+sde = "O:\\Data\\Planning_IP\\Spatial\\WindowAuth@Mapsdb01@SDE_Vector.sde\\"
+sde_properties = "%s\\sde_vector.TCC.Cadastral\\sde_vector.TCC.Properties" % sde
+sde_roadShapes = "%s\\sde_vector.GSS.core\\SDE_Vector.GSS.road_section_polygon" % sde
+sde_roadLines = "%s\\sde_vector.TCC.Cadastral\\SDE_Vector.TCC.roadcent" % sde
+
 
 
 def delete_if_exists(layer):
