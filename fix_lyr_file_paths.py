@@ -15,56 +15,93 @@ import os
 import sys
 import arcpy
 import logging
-#import jj_methods as m
 import re
 
 logging.basicConfig(filename='fix_lyr_file_paths.log',  # TODO: update log filename
                     level=logging.DEBUG,
                     format='%(asctime)s @ %(lineno)d: %(message)s',
                     datefmt='%Y-%m-%d,%H:%M:%S')
-logging.warning("------")
 
 # Layers:
+find_string = "S:\\Infrastructure Planning\\Spatial Data\\StormWater"  # this will not match (see line 91). But gives the right len() on line 85
+find_string_test = r'S:\\Infrastructure Planning\\Spatial Data\\StormWater'  # this will match (see line 91), but gives the rong len() on line 85
+# replace_string = r'O:\Data\Planning_IP\Spatial\Stormwater'
+replace_string = "Blah"
+logging_only = True
+test_lyr = None
 test_lyr = r'C:\TempArcGIS\Major-Catchments.lyr'
 
 
 def do_analysis(*args):
-    """Changes the workspace of the layer file. Currently only works for .lyr files whose working space is the Stormwater\Database folder. Still in testing mode. See test_lyr above"""
-    # TODO: set this up to operate on a bunch of files. os.path.walk may be an option? Or the location of each layer to operate on could be passed in as an argument.
-    for layer in args:
+    """Changes the workspace of the layer file. Currently only works for .lyr
+    files whose working space is the Stormwater\Database folder. Operates on
+    all layer paths provided as arguments if test_lyr is not provided above"""
+    for layer_path in args:
+        print("Processing: %s" % layer_path)
+        # Parses input layer string to get the location and file name:
+        current_working_directory = re.sub(r'\\[^\\]*$', r'', layer_path)
+        file_name = re.sub(r'^.*\\', r'', layer_path)  # removes directory
+        file_name_no_ext = re.sub(r'[.]lyr', r'', file_name)  # removes extention
         try:
-            # TODO: check if layer is a groupd .lyr file and itterate over them all
-            lyr = arcpy.mapping.Layer(layer)
-            # print("\tlyr.workspacePath = %s" % lyr.workspacePath )
-            current_working_directory = re.sub(r'\\[^\\]*$', r'', layer) # Parses input layer string to get the location
-            # print("\tcurrent_working_directory = %s" % current_working_directory)
-            if (lyr.datasetName != lyr.longName):
-                # logging.warning("no, layer is nested: %s" % layer)
-                logging.warning("no, layer: %s" % layer)
-                logging.warning("datasetName =  %s" % lyr.datasetName)
-                logging.warning("longName =  %s" % lyr.longName)
-                # continue
-                # print("This layer appears to be nested. This tool has not been tested for nested layer. Proceed with caution.")
-                # logging.warning("This layer appears to be nested. This tool has not been tested for nested layer. Proceed with caution.")
-                # raw_input("Press ENTER to continue.")
-            # TODO: use the lyr.workspacePath to assign to the oldpath variable, then use regex to substitue r'S:\Infrastructure Planning\Spatial Data\StormWater' for r'O:\Data\Planning_IP\Spatial\Stormwater'
-            # new_workspacePath = r'O:\Data\Planning_IP\Spatial\Stormwater\Database'
-            new_workspacePath = re.sub(r'S:\\Infrastructure Planning\\Spatial Data\\StormWater', r'O:\Data\Planning_IP\Spatial\Stormwater', lyr.workspacePath, count=1)
-            path_string_length = len(lyr.workspacePath)
-            # print("lyr.workspacePath length = %s" % path_string_length)
-            if (lyr.workspacePath[:59] == r'S:\Infrastructure Planning\Spatial Data\StormWater\Database'):
-                logging.warning("yes: %s" % new_workspacePath)
-                lyr.findAndReplaceWorkspacePath(lyr.workspacePath , new_workspacePath)
-                lyr.saveACopy("%s\\fixed_%s" % (current_working_directory, lyr.datasetName))
+            lyr = arcpy.mapping.Layer(layer_path)
+        except ValueError as e:
+            logging.info("Invalid layer: %s" % layer_path)
+            logging.info("\t" + e.args[0])
+        if lyr.isGroupLayer:
+            logging.info("group layer: %s" % layer_path)
+            matches = 0
+            for inner_layer in arcpy.mapping.ListLayers(lyr):
+                try:
+                    if inner_layer.isGroupLayer:
+                        logging.info("group:")
+                    else:
+                        new_workspacePath = re.sub(find_string, replace_string, inner_layer.workspacePath, count=1)
+                        if (inner_layer.workspacePath[:len(find_string)] == find_string):
+                            logging.info("    yes: %s" % inner_layer.name)
+                            inner_layer.findAndReplaceWorkspacePath(inner_layer.workspacePath , new_workspacePath)
+                            matches += 1
+                        else:
+                            logging.info("    no, %s. Wrong workspace: %s" % (inner_layer.name, inner_layer.workspacePath))
+                except arcpy.ExecuteError:
+                    logging.exception(arcpy.GetMessages(2))
+                except ValueError:
+                    logging.info("no, error getting data source")
+                except Exception as e:
+                    logging.warning("no, some other error: %s" % layer_path)
+                    logging.exception("\t" + e.args[0])
+            if matches:
+                if logging_only:
+                    logging.info("yes for group layer: %s" % layer_path)
+                    for inner_layer in arcpy.mapping.ListLayers(lyr):
+                        logging.info("    new workspacePath: %s" % inner_layer.workspacePath)
+                else:
+                    lyr.saveACopy("%s\\potentiallyFixed_%s" % (current_working_directory, file_name_no_ext))
+                    logging.info("potentially fixed: %s" % layer_path)
             else:
-                logging.warning("no, wrong workspace: %s" % lyr.workspacePath)
-        except arcpy.ExecuteError:
-            print arcpy.GetMessages(2)
-            logging.warning(arcpy.GetMessages(2))
-        except Exception as e:
-            logging.warning("no, layer contains multiple files: %s" % layer)
-            print "\t" + e.args[0]
-            logging.warning("\t" + e.args[0])
+                logging.info("no, all layer in group with wrong workspace: %s" % layer_path)
+        else:
+            try:
+                new_workspacePath = re.sub(find_string, replace_string, lyr.workspacePath, count=1)
+                if (lyr.workspacePath[:len(find_string)] == find_string):
+                    if logging_only:
+                        logging.info("yes for single layer: %s" % layer_path)
+                        logging.info("    old workspacePath: %s" % lyr.workspacePath)
+                        logging.info("    new workspacePath: %s" % new_workspacePath)
+                        logging.debug("find_string = %s" % find_string)
+                        logging.info("str(re.match(find_string_test, lyr.workspacePath)) = %s" % str(re.match(find_string_test, lyr.workspacePath)))
+                    else:
+                        lyr.findAndReplaceWorkspacePath(lyr.workspacePath , new_workspacePath)
+                        lyr.saveACopy("%s\\fixed_%s" % (current_working_directory, file_name_no_ext))
+                        logging.info("fixed: %s" % layer_path)
+                else:
+                    logging.info("no, Wrong workspace: %s" % lyr.workspacePath)
+            except arcpy.ExecuteError:
+                logging.exception(arcpy.GetMessages(2))
+            except ValueError:
+                logging.info("no, error getting data source")
+            except Exception as e:
+                logging.warning("no, some other error: %s" % layer_path)
+                logging.exception("\t" + e.args[0])
 # End do_analysis function
 
 
@@ -79,7 +116,6 @@ if __name__ == '__main__':
     elif arguments_exist:
         argv = tuple(arcpy.GetParameterAsText(i)
                      for i in range(arcpy.GetArgumentCount()))
-        print(argv)
         do_analysis(*argv) # see here for help on #argv https://docs.python.org/2.7/tutorial/controlflow.html#unpacking-argument-lists # noqa
     else:
         print("""
