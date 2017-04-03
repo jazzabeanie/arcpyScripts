@@ -23,13 +23,11 @@ logging.basicConfig(filename='fix_lyr_file_paths.log',  # TODO: update log filen
                     datefmt='%Y-%m-%d,%H:%M:%S')
 
 # Layers:
-find_string = "S:\\Infrastructure Planning\\Spatial Data\\StormWater"  # this will not match (see line 91). But gives the right len() on line 85
-find_string_test = r'S:\\Infrastructure Planning\\Spatial Data\\StormWater'  # this will match (see line 91), but gives the rong len() on line 85
-# replace_string = r'O:\Data\Planning_IP\Spatial\Stormwater'
-replace_string = "Blah"
-logging_only = True
+find_string = "S:\\Infrastructure Planning\\Spatial Data\\StormWater"
+replace_string = r'O:\Data\Planning_IP\Spatial\Stormwater'
+logging_only = False
 test_lyr = None
-test_lyr = r'C:\TempArcGIS\Major-Catchments.lyr'
+test_lyr = r'C:\TempArcGIS\New Group Layer.lyr'
 
 
 def do_analysis(*args):
@@ -55,7 +53,7 @@ def do_analysis(*args):
                     if inner_layer.isGroupLayer:
                         logging.info("group:")
                     else:
-                        new_workspacePath = re.sub(find_string, replace_string, inner_layer.workspacePath, count=1)
+                        new_workspacePath = inner_layer.workspacePath.replace(find_string, replace_string, 1)
                         if (inner_layer.workspacePath[:len(find_string)] == find_string):
                             logging.info("    yes: %s" % inner_layer.name)
                             inner_layer.findAndReplaceWorkspacePath(inner_layer.workspacePath , new_workspacePath)
@@ -81,14 +79,12 @@ def do_analysis(*args):
                 logging.info("no, all layer in group with wrong workspace: %s" % layer_path)
         else:
             try:
-                new_workspacePath = re.sub(find_string, replace_string, lyr.workspacePath, count=1)
+                new_workspacePath = lyr.workspacePath.replace(find_string, replace_string, 1)
                 if (lyr.workspacePath[:len(find_string)] == find_string):
                     if logging_only:
                         logging.info("yes for single layer: %s" % layer_path)
                         logging.info("    old workspacePath: %s" % lyr.workspacePath)
                         logging.info("    new workspacePath: %s" % new_workspacePath)
-                        logging.debug("find_string = %s" % find_string)
-                        logging.info("str(re.match(find_string_test, lyr.workspacePath)) = %s" % str(re.match(find_string_test, lyr.workspacePath)))
                     else:
                         lyr.findAndReplaceWorkspacePath(lyr.workspacePath , new_workspacePath)
                         lyr.saveACopy("%s\\fixed_%s" % (current_working_directory, file_name_no_ext))
