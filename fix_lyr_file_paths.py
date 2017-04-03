@@ -119,5 +119,23 @@ if __name__ == '__main__':
         do_analysis(*argv) # see here for help on #argv https://docs.python.org/2.7/tutorial/controlflow.html#unpacking-argument-lists # noqa
     else:
         print("""
-This file takes the path of any number of .lyr files as it's arguments. It changes the workspacePath of from S:\Infrastructure Planning\Spatial Data\StormWater\Database to O:\Data\Planning_IP\Spatial\Stormwater\Database.
+This file takes the path of any number of .lyr files as it's arguments.
+
+Within the code, it has two variables - find_string, and replace_string. These
+contain the partial paths that will be substitued in the .lyr files. If these
+are to be edited, make sure that consistent formatting it used (find_string
+need to have backslashed escaped, replace_string does not).
+
+There is also a logging_only variable which, when set to True, will log the
+results only. No files will be written to. This is useful for checking the
+results before you run the script.
+
+For any .lyr files that the script fixes, it will save a copy of the layer with
+the filename preprended with either;
+- 'fixed_' for single layer .lyr files; or
+- 'potentiallyFixed_' for group .lyr files.
+
+The ./assess_layers.bat file has been used to run this script.
 """)
+        import os
+        os.system('pause')
