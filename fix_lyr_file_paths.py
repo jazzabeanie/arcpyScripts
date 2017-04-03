@@ -36,6 +36,8 @@ def do_analysis(*args):
     all layer paths provided as arguments if test_lyr is not provided above"""
     if logging_only:
         logging.info("LOGGING ONLY. This script will not make any changes in it's current state. To run the script in write mode, change the logging_only variable to False. This log displays no or yes for each .lyr file, and each layer within group .lyr files if they can be fixed by the script.")
+    else:
+        logging.info("The following layers failed to be repaired:")
     for layer_path in args:
         print("Processing: %s" % layer_path)
         current_working_directory = re.sub(r'\\[^\\]*$', r'', layer_path)  # removes filename and extention from path
@@ -47,25 +49,31 @@ def do_analysis(*args):
             logging.info("Invalid layer: %s" % layer_path)
             logging.info("\t" + e.args[0])
         if lyr.isGroupLayer:
-            logging.info("group layer: %s" % layer_path)
+            if logging_only: logging.info("group layer: %s" % layer_path)
             matches = 0
             for inner_layer in arcpy.mapping.ListLayers(lyr):
                 try:
                     if inner_layer.isGroupLayer:
-                        logging.info("    group:")
+                        if logging_only: logging.info("    group:")
                     else:
                         new_workspacePath = inner_layer.workspacePath.replace(find_string, replace_string, 1)
                         if (inner_layer.workspacePath[:len(find_string)] == find_string):
                             inner_layer.findAndReplaceWorkspacePath(inner_layer.workspacePath , new_workspacePath)
-                            logging.info("    yes: %s" % inner_layer.name)
+                            if logging_only: logging.info("    yes: %s" % inner_layer.name)
                             matches += 1
                         else:
-                            logging.info("    no, %s. Wrong workspace: %s" % (inner_layer.name, inner_layer.workspacePath))
+                            if logging_only:
+                                logging.info("    no, %s. Wrong workspace: %s" % (inner_layer.name, inner_layer.workspacePath))
+                            else:
+                                logging.info("    %s in %s" % (inner_layer.name, layer_path))
                 except arcpy.ExecuteError:
                     logging.exception(arcpy.GetMessages(2))
                 except ValueError as e:
-                    logging.info("    no, couldn't get data source: %s" % inner_layer.name)
-                    # logging.exception("    " + e.args[0])
+                    if logging_only:
+                        logging.info("    no, couldn't get data source: %s" % inner_layer.name)
+                        # logging.exception("    " + e.args[0])
+                    else:
+                        logging.info("    %s in %s" % (inner_layer.name, layer_path))
                 except Exception as e:
                     logging.warning("    no, some other error for layer: %s" % layer_path)
                     logging.exception("    " + e.args[0])
@@ -79,7 +87,7 @@ def do_analysis(*args):
                             logging.info("    details of changes:")
                 else:
                     lyr.saveACopy("%s\\potentiallyFixed_%s" % (current_working_directory, file_name_no_ext))
-                    logging.info("potentially fixed: %s" % layer_path)
+                    if logging_only: logging.info("potentially fixed: %s" % layer_path)
             else:
                 logging.info("no, all layer in group with wrong workspace: %s" % layer_path)
         else:
