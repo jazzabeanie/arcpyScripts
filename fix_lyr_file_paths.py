@@ -137,5 +137,4 @@ the filename preprended with either;
 
 The ./assess_layers.bat file has been used to run this script.
 """)
-        import os
         os.system('pause')

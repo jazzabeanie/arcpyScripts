@@ -43,10 +43,10 @@ def do_analysis(*argv):
         pass
     except arcpy.ExecuteError:
         print arcpy.GetMessages(2)
-        logging.warning(arcpy.GetMessages(2))
+        logging.exception(arcpy.GetMessages(2))
     except Exception as e:
         print e.args[0]
-        logging.warning(e.args[0])
+        logging.exception(e.args[0])
 # End do_analysis function
 
 
@@ -63,3 +63,4 @@ if __name__ == '__main__':
         argv = tuple(arcpy.GetParameterAsText(i)
                      for i in range(arcpy.GetArgumentCount()))
     do_analysis(*argv) # see here for help on #argv https://docs.python.org/2.7/tutorial/controlflow.html#unpacking-argument-lists # noqa
+    os.system('pause')
