@@ -25,9 +25,9 @@ logging.basicConfig(filename='fix_lyr_file_paths.log',  # TODO: update log filen
 # Layers:
 find_string = "S:\\Infrastructure Planning\\Spatial Data\\StormWater"
 replace_string = r'O:\Data\Planning_IP\Spatial\Stormwater'
-logging_only = False
+logging_only = True
 test_lyr = None
-test_lyr = r'C:\TempArcGIS\New Group Layer.lyr'
+# test_lyr = r'C:\TempArcGIS\New Group Layer.lyr'
 
 
 def do_analysis(*args):
@@ -71,7 +71,11 @@ def do_analysis(*args):
                 if logging_only:
                     logging.info("yes for group layer: %s" % layer_path)
                     for inner_layer in arcpy.mapping.ListLayers(lyr):
-                        logging.info("    new workspacePath: %s" % inner_layer.workspacePath)
+                        try:
+                            logging.info("    new workspacePath: %s" % inner_layer.workspacePath)
+                        except Exception as e:
+                            logging.warning("    not for: %s" % inner_layer)
+                            logging.exception("    " + e.args[0])
                 else:
                     lyr.saveACopy("%s\\potentiallyFixed_%s" % (current_working_directory, file_name_no_ext))
                     logging.info("potentially fixed: %s" % layer_path)
