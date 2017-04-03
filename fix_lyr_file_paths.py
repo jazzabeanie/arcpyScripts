@@ -1,15 +1,15 @@
 # --------------------------------
-# Name:
-# Purpose:
+# Name: fix_lyr_file_paths.py
+# Purpose: Changing references to layers within .lyr files
 # Author: Jared Johnston
-# Created:
+# Created: 3/04/2017
 # Copyright:   (c) TCC
 # ArcGIS Version:   10.2
 # Python Version:   2.7
-# Source: https://blogs.esri.com/esri/arcgis/2011/08/04/pythontemplate/
-#         http://gis.stackexchange.com/questions/6884/changing-data-source-path-involving-feature-dataset-in-lyr-files-using-arcpy
-#         http://resources.arcgis.com/en/help/main/10.2/index.html#//00s300000008000000
-#         http://resources.arcgis.com/en/help/main/10.2/index.html#//00s30000004p000000
+# Sources: https://blogs.esri.com/esri/arcgis/2011/08/04/pythontemplate/
+#          http://gis.stackexchange.com/questions/6884/changing-data-source-path-involving-feature-dataset-in-lyr-files-using-arcpy
+#          http://resources.arcgis.com/en/help/main/10.2/index.html#//00s300000008000000
+#          http://resources.arcgis.com/en/help/main/10.2/index.html#//00s30000004p000000
 # --------------------------------
 import os
 import sys
@@ -17,7 +17,7 @@ import arcpy
 import logging
 import re
 
-logging.basicConfig(filename='fix_lyr_file_paths.log',  # TODO: update log filename
+logging.basicConfig(filename='fix_lyr_file_paths.log',
                     level=logging.DEBUG,
                     format='%(asctime)s @ %(lineno)d: %(message)s',
                     datefmt='%Y-%m-%d,%H:%M:%S')
@@ -34,10 +34,11 @@ def do_analysis(*args):
     """Changes the workspace of the layer file. Currently only works for .lyr
     files whose working space is the Stormwater\Database folder. Operates on
     all layer paths provided as arguments if test_lyr is not provided above"""
+    if logging_only:
+        logging.info("LOGGING ONLY. This script will not make any changes in it's current state. To run the script in write mode, change the logging_only variable to False. This log displays no or yes for each .lyr file, and each layer within group .lyr files if they can be fixed by the script.")
     for layer_path in args:
         print("Processing: %s" % layer_path)
-        # Parses input layer string to get the location and file name:
-        current_working_directory = re.sub(r'\\[^\\]*$', r'', layer_path)
+        current_working_directory = re.sub(r'\\[^\\]*$', r'', layer_path)  # removes filename and extention from path
         file_name = re.sub(r'^.*\\', r'', layer_path)  # removes directory
         file_name_no_ext = re.sub(r'[.]lyr', r'', file_name)  # removes extention
         try:
@@ -51,22 +52,23 @@ def do_analysis(*args):
             for inner_layer in arcpy.mapping.ListLayers(lyr):
                 try:
                     if inner_layer.isGroupLayer:
-                        logging.info("group:")
+                        logging.info("    group:")
                     else:
                         new_workspacePath = inner_layer.workspacePath.replace(find_string, replace_string, 1)
                         if (inner_layer.workspacePath[:len(find_string)] == find_string):
-                            logging.info("    yes: %s" % inner_layer.name)
                             inner_layer.findAndReplaceWorkspacePath(inner_layer.workspacePath , new_workspacePath)
+                            logging.info("    yes: %s" % inner_layer.name)
                             matches += 1
                         else:
                             logging.info("    no, %s. Wrong workspace: %s" % (inner_layer.name, inner_layer.workspacePath))
                 except arcpy.ExecuteError:
                     logging.exception(arcpy.GetMessages(2))
-                except ValueError:
-                    logging.info("no, error getting data source")
+                except ValueError as e:
+                    logging.info("    no, couldn't get data source: %s" % inner_layer.name)
+                    # logging.exception("    " + e.args[0])
                 except Exception as e:
-                    logging.warning("no, some other error: %s" % layer_path)
-                    logging.exception("\t" + e.args[0])
+                    logging.warning("    no, some other error for layer: %s" % layer_path)
+                    logging.exception("    " + e.args[0])
             if matches:
                 if logging_only:
                     logging.info("yes for group layer: %s" % layer_path)
@@ -74,8 +76,7 @@ def do_analysis(*args):
                         try:
                             logging.info("    new workspacePath: %s" % inner_layer.workspacePath)
                         except Exception as e:
-                            logging.warning("    not for: %s" % inner_layer)
-                            logging.exception("    " + e.args[0])
+                            logging.info("    details of changes:")
                 else:
                     lyr.saveACopy("%s\\potentiallyFixed_%s" % (current_working_directory, file_name_no_ext))
                     logging.info("potentially fixed: %s" % layer_path)
@@ -98,9 +99,9 @@ def do_analysis(*args):
             except arcpy.ExecuteError:
                 logging.exception(arcpy.GetMessages(2))
             except ValueError:
-                logging.info("no, error getting data source")
+                logging.info("no, couldn't get data source")
             except Exception as e:
-                logging.warning("no, some other error: %s" % layer_path)
+                logging.warning("no, some other error for layer: %s" % layer_path)
                 logging.exception("\t" + e.args[0])
 # End do_analysis function
 
