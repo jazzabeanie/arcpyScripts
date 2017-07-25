@@ -13,6 +13,7 @@ import sys # noqa
 import arcpy
 import logging
 import jj_methods as m # noqa
+# m = imp.load_source('jj_methods', 'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\jj_methods.py') # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
 
 logging.basicConfig(filename='arcpyTemplate.log',  # TODO: update log filename
                     level=logging.DEBUG,
