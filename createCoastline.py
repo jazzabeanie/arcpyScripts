@@ -14,11 +14,13 @@ import arcpy
 import logging
 import json
 import jj_methods as m # noqa
+from datetime import datetime
 # m = imp.load_source('jj_methods', 'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\jj_methods.py') # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
 
 arcpy.env.workspace = "in_memory"
 # arcpy.env.workspace = arcpy.env.scratchGDB
 testing = True
+now = r'%s' % datetime.now().strftime("%Y%m%d%H%M")
 
 logging.basicConfig(filename='createCoastline.log',
                     level=logging.DEBUG,
@@ -31,6 +33,7 @@ sde = "O:\\Data\\Planning_IP\\Spatial\\WindowAuth@Mapsdb01@SDE_Vector.sde"
 
 GMZ = r'R:\InfrastructureModels\Growth\Database\GrowthModelGMZ.mdb\GMZ'
 DEM = r'\\corp\erp\Spatial\MISC\02_Data_Offline\02_DEM\DEM_2016.gdb\DEM_2016'
+coastal_DEM = r'\\corp\erp\Spatial\MISC\02_Data_Offline\02_DEM\DEM_2016.gdb\DEM_2016_Coastal'
 DEM_old = r'O:\Data\Planning_IP\Spatial\Base Layers\LIDAR_All_Years_Current_DEM.gdb\LIDAR_All_Years_1m_DEM'
 sde_properties = "%s\\sde_vector.TCC.Cadastral\\sde_vector.TCC.Properties" % sde
 sde_landParcels = "%s\\sde_vector.TCC.Cadastral\\sde_vector.TCC.Land_Parcels" % sde
@@ -51,15 +54,6 @@ with open("O:\\Data\\Planning_IP\\Admin\\Staff\\Jared\\GIS\\Tools\\arcpyScripts\
         infrastructure = json.load(data_file)
 
 
-#class Dem(arcpy.sa.Raster):
-#    def remove_cells_above(self, height_relative_to_AHD):
-#        logging.info("removeing cells of %s above %s" % (self, height_relative_to_AHD))
-#        return arcpy.sa.Con(self < height_relative_to_AHD, self)
-#    def integise(self):
-#        logging.info("Converting %s to integer" % self)
-#        return arcpy.sa.Int(self)
-#
-#
 def delete_if_exists(layer):
     """Deleted the passed in layer if it exists. This avoids errors."""
     if arcpy.Exists(layer):
@@ -70,11 +64,13 @@ def delete_if_exists(layer):
 def createTideLine(height_relative, AHD_relative, name):
     """Creates a shape using a given height relative to some other datum. In the design case, relative to Lowest Astronomical Tide (LAT) given in https://www.msq.qld.gov.au/Tides/Tidal-planes"""
     if testing:
-        clipped_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\testRaster20170829_%s' % name
+        clipped_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\clipped_DEM_%s_%s' % (name, now)
+        # clipped_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\clipped_coastal_DEM_%s_%s' % (name, now)
         out_polygon_features = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % name
         converted_raster = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % "converted_raster"
     else:
         clipped_DEM = "clipped_DEM_%s" % name
+        # clipped_DEM = "clipped_coastal_DEM_%s" % name
         out_polygon_features = name
         converted_raster = r'converted_raster'
     logging.info("generating shape out of DEM where level is below %s relative to LAT" % height_relative)
@@ -83,22 +79,16 @@ def createTideLine(height_relative, AHD_relative, name):
     output_raster = "DEM_under_height"
     delete_if_exists(output_raster)
     input_DEM = arcpy.sa.Raster(DEM)
-    # input_DEM = Dem(DEM)
-    # output_raster = input_DEM \
-    #                 .remove_cells_above(height_relative_to_AHD) \
-    #                 .integise()
-    # trimmed_raster = arcpy.sa.Con(input_DEM < height_relative_to_AHD, input_DEM)
-    # filled_raster = arcpy.sa.Fill(trimmed_raster, 0.5) # TODO: remove this step, and address it with the polygon be removing small features.
-    # output_raster = arcpy.sa.Int(filled_raster)
+    # input_DEM = arcpy.sa.Raster(coastal_DEM)
     output_raster = arcpy.sa.Int(arcpy.sa.Con(input_DEM < height_relative_to_AHD, input_DEM))
     delete_if_exists(clipped_DEM)
-    output_raster.save(clipped_DEM) # temp step to check
+    output_raster.save(clipped_DEM) # temp step incase checking required
     logging.info("clipped_DEM saved to %s" % clipped_DEM)
     delete_if_exists(converted_raster)
     arcpy.RasterToPolygon_conversion(clipped_DEM, converted_raster)
     delete_if_exists(out_polygon_features)
-    arcpy.Dissolve_management(converted_raster, out_polygon_features)
-    logging.info("polygon saved to %s" % out_polygon_features)
+    arcpy.Dissolve_management(converted_raster, out_polygon_features, "#", "#", "SINGLE_PART")
+    logging.info("%s polygon saved to %s" % (name, out_polygon_features))
 
 
 def do_analysis(*argv):
@@ -111,9 +101,11 @@ def do_analysis(*argv):
             raise EnvironmentError('Spatial Analyst not avaiable')
         tsv_MSL_to_LAT = 1.94
         tsv_AHD_to_LAT = 1.856
-        # createTideLine(tsv_MSL_to_LAT, tsv_AHD_to_LAT, "mean_sea_level")
+        createTideLine(tsv_MSL_to_LAT, tsv_AHD_to_LAT, "mean_sea_level")
         tsv_HAT_to_LAT = 4.11
-        createTideLine(tsv_HAT_to_LAT, tsv_AHD_to_LAT, "HAT2")
+        # createTideLine(tsv_HAT_to_LAT, tsv_AHD_to_LAT, "HAT")
+        logging.info("Need to remove inland features that wouldn't be inundated by the tide but are still below the level")
+        logging.info("Then what?? remove any small islands? need to talk with Ashley about this.")
         arcpy.CheckInExtension("Spatial")
     except arcpy.ExecuteError:
         print arcpy.GetMessages(2)
