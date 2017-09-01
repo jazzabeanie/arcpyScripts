@@ -61,35 +61,56 @@ def delete_if_exists(layer):
         arcpy.Delete_management(layer)
 
 
-def createTideLine(height_relative, AHD_relative, name):
-    """Creates a shape using a given height relative to some other datum. In the design case, relative to Lowest Astronomical Tide (LAT) given in https://www.msq.qld.gov.au/Tides/Tidal-planes"""
+def createSeawardPolygon(height_relative, AHD_relative, name):
+    """Creates a shape on the seaward side of a given height relative to some other datum using the DEM. In the design case, relative to Lowest Astronomical Tide (LAT) given in https://www.msq.qld.gov.au/Tides/Tidal-planes"""
     if testing:
-        clipped_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\clipped_DEM_%s_%s' % (name, now)
-        # clipped_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\clipped_coastal_DEM_%s_%s' % (name, now)
+        clipped_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\seawardClipped_DEM_%s_%s' % (name, now)
+        clipped_coastal_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\seawardClipped_coastal_DEM_%s_%s' % (name, now)
         out_polygon_features = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % name
         converted_raster = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % "converted_raster"
+        converted_coastal_raster = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % "converted_coastal_raster"
+        appended_raster = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % "appended_raster"
     else:
         clipped_DEM = "clipped_DEM_%s" % name
-        # clipped_DEM = "clipped_coastal_DEM_%s" % name
+        clipped_coastal_DEM = "clipped_coastal_DEM_%s" % name
         out_polygon_features = name
         converted_raster = r'converted_raster'
+        converted_coastal_raster = r'converted_coastal_raster'
+        appended_raster = r'appended_raster'
     logging.info("generating shape out of DEM where level is below %s relative to LAT" % height_relative)
     height_relative_to_AHD = height_relative - AHD_relative
     logging.info("    or %s relative to AHD" % height_relative_to_AHD)
     output_raster = "DEM_under_height"
     delete_if_exists(output_raster)
     input_DEM = arcpy.sa.Raster(DEM)
-    # input_DEM = arcpy.sa.Raster(coastal_DEM)
+    input_coastal_DEM = arcpy.sa.Raster(coastal_DEM)
     output_raster = arcpy.sa.Int(arcpy.sa.Con(input_DEM < height_relative_to_AHD, input_DEM))
+    output_coastal_raster = arcpy.sa.Int(arcpy.sa.Con(input_coastal_DEM < height_relative_to_AHD, input_coastal_DEM))
     delete_if_exists(clipped_DEM)
+    delete_if_exists(clipped_coastal_DEM)
     output_raster.save(clipped_DEM) # temp step incase checking required
+    output_coastal_raster.save(clipped_coastal_DEM) # temp step incase checking required
     logging.info("clipped_DEM saved to %s" % clipped_DEM)
+    logging.info("clipped_coastla_DEM saved to %s" % clipped_coastal_DEM)
     delete_if_exists(converted_raster)
+    delete_if_exists(converted_coastal_raster)
     arcpy.RasterToPolygon_conversion(clipped_DEM, converted_raster)
+    arcpy.RasterToPolygon_conversion(clipped_coastal_DEM, converted_coastal_raster)
+    delete_if_exists(appended_raster)
+    arcpy.Append_management([clipped_DEM, clipped_coastal_DEM], appended_raster)
     delete_if_exists(out_polygon_features)
-    arcpy.Dissolve_management(converted_raster, out_polygon_features, "#", "#", "SINGLE_PART")
-    logging.info("%s polygon saved to %s" % (name, out_polygon_features))
+    arcpy.Dissolve_management(appended_raster, out_polygon_features, "#", "#", "SINGLE_PART")
+    logging.info("%s combined polygon saved to %s" % (name, out_polygon_features))
 
+def createLandPolygon():
+    """Creates a shape based on the DEM and the coastal_DEM combined."""
+    pass # TODO
+
+def createTideLine(height_relative, AHD_relative, name): # TODO: cut sea from land and convert to polyline.
+    """Creates a shape using a given height relative to some other datum. In the design case, relative to Lowest Astronomical Tide (LAT) given in https://www.msq.qld.gov.au/Tides/Tidal-planes"""
+    pass # TODO
+    # cuts the seaward polygon from the Land polygon
+    # converts the polygone to a line
 
 def do_analysis(*argv):
     """TODO: Add documentation about this function here"""
@@ -99,11 +120,13 @@ def do_analysis(*argv):
             arcpy.CheckOutExtension("Spatial")
         else:
             raise EnvironmentError('Spatial Analyst not avaiable')
+        # heights taken from: https://www.msq.qld.gov.au/Tides/Tidal-planes
         tsv_MSL_to_LAT = 1.94
         tsv_AHD_to_LAT = 1.856
-        createTideLine(tsv_MSL_to_LAT, tsv_AHD_to_LAT, "mean_sea_level")
+        createSeawardPolygon(tsv_MSL_to_LAT, tsv_AHD_to_LAT, "mean_sea_level")
         tsv_HAT_to_LAT = 4.11
-        # createTideLine(tsv_HAT_to_LAT, tsv_AHD_to_LAT, "HAT")
+        # createSeawardPolygon(tsv_HAT_to_LAT, tsv_AHD_to_LAT, "HAT")
+        # TODO: eventually I'll call createTideLine here and that will in turn call createSeawardPolygon.
         logging.info("Need to remove inland features that wouldn't be inundated by the tide but are still below the level")
         logging.info("Then what?? remove any small islands? need to talk with Ashley about this.")
         arcpy.CheckInExtension("Spatial")
