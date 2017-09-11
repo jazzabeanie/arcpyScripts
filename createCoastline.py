@@ -17,9 +17,10 @@ import jj_methods as m # noqa
 from datetime import datetime
 # m = imp.load_source('jj_methods', 'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\jj_methods.py') # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
 
-# arcpy.env.workspace = "in_memory"
-arcpy.env.workspace = arcpy.env.scratchGDB
-testing = True
+arcpy.env.workspace = "in_memory"
+# arcpy.env.workspace = arcpy.env.scratchGDB
+# arcpy.env.workspace = r'"C:\TempArcGIS\scratchworkspace.gdb"'
+testing = False
 now = r'%s' % datetime.now().strftime("%Y%m%d%H%M")
 
 logging.basicConfig(filename='createCoastline.log',
@@ -67,20 +68,21 @@ def delete_if_exists(layer):
 
 def createSeawardPolygon(height_relative, AHD_relative, name):
     """Creates a shape on the seaward side of a given height relative to some other datum using the DEM. In the design case, relative to Lowest Astronomical Tide (LAT) given in https://www.msq.qld.gov.au/Tides/Tidal-planes"""
+    clipped_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\seawardClipped_DEM_%s_%s' % (name, now)
+    clipped_coastal_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\seawardClipped_coastal_DEM_%s_%s' % (name, now)
+    out_polygon_features = r'C:\TempArcGIS\scratchworkspace.gdb\seaward_%s_%s' % (name, now)
+    converted_raster = "converted_raster"
+    converted_coastal_raster = "converted_coastal_raster"
+    appended_raster = "appended_raster"
     if testing:
-        clipped_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\seawardClipped_DEM_%s_%s' % (name, now)
-        clipped_coastal_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\seawardClipped_coastal_DEM_%s_%s' % (name, now)
-        out_polygon_features = r'C:\TempArcGIS\scratchworkspace.gdb\seaward_%s_%s' % (name, now)
-        converted_raster = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % "converted_raster"
-        converted_coastal_raster = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % "converted_coastal_raster"
-        appended_raster = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % "appended_raster"
+        # converted_raster = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % "converted_raster"
+        # converted_coastal_raster = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % "converted_coastal_raster"
+        # appended_raster = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % "appended_raster"
+        pass
     else:
-        clipped_DEM = "clipped_DEM_%s" % name
-        clipped_coastal_DEM = "clipped_coastal_DEM_%s" % name
-        out_polygon_features = r'C:\TempArcGIS\scratchworkspace.gdb\seaward_%s_%s' % (name, now)
-        converted_raster = r'converted_raster'
-        converted_coastal_raster = r'converted_coastal_raster'
-        appended_raster = r'appended_raster'
+        # clipped_DEM = "clipped_DEM_%s" % name
+        # clipped_coastal_DEM = "clipped_coastal_DEM_%s" % name
+        pass
     logging.info("generating shape out of DEM where level is below %s relative to LAT" % height_relative)
     height_relative_to_AHD = height_relative - AHD_relative
     logging.info("    or %s relative to AHD" % height_relative_to_AHD)
@@ -91,17 +93,18 @@ def createSeawardPolygon(height_relative, AHD_relative, name):
     input_coastal_DEM = arcpy.sa.Raster(coastal_DEM)
     logging.info("trimming rasters...")
     # output_raster = arcpy.sa.Int(arcpy.sa.Con(input_DEM < height_relative_to_AHD, input_DEM))
-    # output_raster = arcpy.sa.Con(input_DEM < height_relative_to_AHD, 1)
-    output_raster = arcpy.sa.Int(arcpy.sa.SetNull(input_DEM, input_DEM, "Value > %s" % height_relative_to_AHD))
+    output_raster = arcpy.sa.Con(input_DEM < height_relative_to_AHD, 1)
+    # output_raster = arcpy.sa.Int(arcpy.sa.SetNull(input_DEM, input_DEM, "Value > %s" % height_relative_to_AHD))
     # output_coastal_raster = arcpy.sa.Int(arcpy.sa.Con(input_coastal_DEM < height_relative_to_AHD, input_coastal_DEM))
-    # output_coastal_raster = arcpy.sa.Con(input_coastal_DEM < height_relative_to_AHD, 1)
-    output_coastal_raster = arcpy.sa.Int(arcpy.sa.SetNull(input_coastal_DEM, input_coastal_DEM, "Value > %s" % height_relative_to_AHD))
+    output_coastal_raster = arcpy.sa.Con(input_coastal_DEM < height_relative_to_AHD, 1)
+    # output_coastal_raster = arcpy.sa.Int(arcpy.sa.SetNull(input_coastal_DEM, input_coastal_DEM, "Value > %s" % height_relative_to_AHD))
     delete_if_exists(clipped_DEM)
     delete_if_exists(clipped_coastal_DEM)
-    # output_raster.save(clipped_DEM) # temp step incase checking required
-    # output_coastal_raster.save(clipped_coastal_DEM) # temp step incase checking required
-    logging.info("output_raster saved to %s" % output_raster)
-    logging.info("clipped_coastla_DEM saved to %s" % output_coastal_raster)
+    output_raster.save(clipped_DEM) # temp step incase checking required
+    output_coastal_raster.save(clipped_coastal_DEM) # temp step incase checking required
+    pass
+    logging.debug("output_raster saved to %s" % output_raster)
+    logging.debug("clipped_coastla_DEM saved to %s" % output_coastal_raster)
     # logging.info("clipped_DEM saved to %s" % clipped_DEM)
     # logging.info("clipped_coastla_DEM saved to %s" % clipped_coastal_DEM)
     delete_if_exists(converted_raster)
@@ -122,22 +125,23 @@ def createSeawardPolygon(height_relative, AHD_relative, name):
 
 def createLandwardPolygon(height_relative, AHD_relative, name):
     """Creates a landward shape relative to a give height based on the DEM and the coastal_DEM combined."""
+    clipped_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\landwardClipped_DEM_%s_%s' % (name, now)
+    clipped_coastal_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\landwardClipped_coastal_DEM_%s_%s' % (name, now)
+    out_polygon_features = r'C:\TempArcGIS\scratchworkspace.gdb\landward_%s_%s' % (name, now)
+    converted_raster = "converted_raster"
+    converted_coastal_raster = "converted_coastal_raster"
+    appended_raster = "appended_raster"
     if testing:
-        clipped_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\landwardClipped_DEM_%s_%s' % (name, now)
-        clipped_coastal_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\landwardClipped_coastal_DEM_%s_%s' % (name, now)
-        out_polygon_features = r'C:\TempArcGIS\scratchworkspace.gdb\landward_%s_%s' % (name, now)
-        converted_raster = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % "converted_raster"
-        converted_coastal_raster = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % "converted_coastal_raster"
-        appended_raster = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % "appended_raster"
+        pass
+        # converted_raster = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % "converted_raster"
+        # converted_coastal_raster = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % "converted_coastal_raster"
+        # appended_raster = r'C:\TempArcGIS\scratchworkspace.gdb\%s' % "appended_raster"
     else:
-        clipped_DEM = "clipped_DEM_%s" % name
-        clipped_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\landwardClipped_DEM_%s_%s' % (name, now)
+        # clipped_DEM = "clipped_DEM_%s" % name
+        # clipped_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\landwardClipped_DEM_%s_%s' % (name, now)
         # clipped_coastal_DEM = "clipped_coastal_DEM_%s" % name
-        clipped_coastal_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\landwardClipped_coastal_DEM_%s_%s' % (name, now)
-        out_polygon_features = r'C:\TempArcGIS\scratchworkspace.gdb\landward_%s_%s' % (name, now)
-        converted_raster = r'converted_raster'
-        converted_coastal_raster = r'converted_coastal_raster'
-        appended_raster = r'appended_raster'
+        # clipped_coastal_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\landwardClipped_coastal_DEM_%s_%s' % (name, now)
+        pass
     logging.info("generating shape out of DEM where level is above %s relative to LAT" % height_relative)
     height_relative_to_AHD = height_relative - AHD_relative
     logging.info("    or %s relative to AHD" % height_relative_to_AHD)
@@ -148,17 +152,18 @@ def createLandwardPolygon(height_relative, AHD_relative, name):
     input_coastal_DEM = arcpy.sa.Raster(coastal_DEM)
     logging.info("trimming rasters...")
     # output_raster = arcpy.sa.Int(arcpy.sa.Con(input_DEM > height_relative_to_AHD, input_DEM))
-    # output_raster = arcpy.sa.Con(input_DEM > height_relative_to_AHD, 1)
-    output_raster = arcpy.sa.Int(arcpy.sa.SetNull(input_DEM, input_DEM, "Value < %s" % height_relative_to_AHD))
+    output_raster = arcpy.sa.Con(input_DEM > height_relative_to_AHD, 1)
+    # output_raster = arcpy.sa.Int(arcpy.sa.SetNull(input_DEM, input_DEM, "Value < %s" % height_relative_to_AHD))
     # output_coastal_raster = arcpy.sa.Int(arcpy.sa.Con(input_coastal_DEM > height_relative_to_AHD, input_coastal_DEM))
-    # d: output_coastal_raster = arcpy.sa.Con(input_coastal_DEM > height_relative_to_AHD, 1)
-    output_coastal_raster = arcpy.sa.Int(arcpy.sa.SetNull(input_coastal_DEM, input_coastal_DEM, "Value < %s" % height_relative_to_AHD))
+    output_coastal_raster = arcpy.sa.Con(input_coastal_DEM > height_relative_to_AHD, 1)
+    # output_coastal_raster = arcpy.sa.Int(arcpy.sa.SetNull(input_coastal_DEM, input_coastal_DEM, "Value < %s" % height_relative_to_AHD))
     delete_if_exists(clipped_DEM)
     delete_if_exists(clipped_coastal_DEM)
-    # output_raster.save(clipped_DEM) # temp step incase checking required
-    # output_coastal_raster.save(clipped_coastal_DEM) # temp step incase checking required
-    logging.info("clipped_DEM saved to %s" % output_raster)
-    logging.info("clipped_coastal_DEM saved to %s" % output_coastal_raster)
+    output_raster.save(clipped_DEM) # temp step incase checking required
+    output_coastal_raster.save(clipped_coastal_DEM) # temp step incase checking required
+    pass
+    logging.debug("clipped_DEM saved to %s" % output_raster)
+    logging.debug("clipped_coastal_DEM saved to %s" % output_coastal_raster)
     delete_if_exists(converted_raster)
     delete_if_exists(converted_coastal_raster)
     arcpy.RasterToPolygon_conversion(output_raster, converted_raster)
