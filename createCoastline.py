@@ -119,6 +119,8 @@ def createLandwardPolygon(height_relative, AHD_relative, name):
     """Creates a landward shape relative to a give height based on the DEM and the coastal_DEM combined."""
     clipped_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\landwardClipped_DEM_%s_%s' % (name, now)
     out_polygon_features = r'C:\TempArcGIS\scratchworkspace.gdb\landward_%s_%s' % (name, now)
+    converted_polygon = r'converted_polygon'
+    island_threshold = 1000
     if testing:
         pass
     else:
@@ -137,8 +139,19 @@ def createLandwardPolygon(height_relative, AHD_relative, name):
     output_raster.save(clipped_DEM) # temp step incase checking required
     pass
     logging.debug("clipped_DEM saved to %s" % output_raster)
+    delete_if_exists(converted_polygon)
+    logging.debug("converting to polygon %s..." % converted_polygon)
+    arcpy.RasterToPolygon_conversion(output_raster, converted_polygon)
+    logging.info("fields in %s" % converted_polygon)
+    for layer in arcpy.ListFields(converted_polygon):
+        logging.info("  %s" % layer.name)
     delete_if_exists(out_polygon_features)
-    arcpy.RasterToPolygon_conversion(output_raster, out_polygon_features)
+    arcpy.AddField_management(converted_polygon,"area","Double")
+    expression1 = "{0}".format("!SHAPE.area@SQUAREMETERS!")
+    arcpy.CalculateField_management(converted_polygon, "area", expression1, "PYTHON", )
+    where_clause = r'"area" > 1000' #  % island_threshold
+    arcpy.Select_analysis(converted_polygon, out_polygon_features, where_clause)
+    # arcpy.DeleteFeatures_management(out_polygon_features)
     logging.info("DEM polygon saved to %s" % out_polygon_features)
 
 def createTideLine(height_relative, AHD_relative, name): # TODO: cut sea from land and convert to polyline.
