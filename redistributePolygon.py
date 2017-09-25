@@ -5,8 +5,8 @@
 # Finalised: 13/09/2016
 #
 ##### Description: #####
-# This tool redistributes the growth model to another polygon. It was 
-# developed for the purpose of finding the growth model projections for pump 
+# This tool redistributes the growth model to another polygon. It was
+# developed for the purpose of finding the growth model projections for pump
 # station catchments of Southern Suburbs.
 #
 ##### Usage: #####
@@ -14,10 +14,10 @@
 #
 # To use this tool, assign the variables below as required, save the file, then
 # enter the following single line of code (without the leading '# ') into a python window in ArcCatalog (not ArcMap,
-# due to processing time): 
-# execfile(r'PATH_TO_THIS_PYTHON_FILE') 
+# due to processing time):
+# execfile(r'PATH_TO_THIS_PYTHON_FILE')
 # where PATH_TO_THIS_PYTHON_FILE is substituted for the full path of this
-# python file. For example: 
+# python file. For example:
 # execfile(r'S:\Infrastructure Planning\Staff\Jared\GIS\Tools\arcpyScripts\redistributePolygon.py')
 #
 ##### Variables: #####
@@ -27,19 +27,19 @@
 # geodatabase that has already been created. Note the use of double backslash
 # (\\) instead of single backslash (\). This path must end with a double
 # backslash (\\).
-temp_workspace = "C:\\TempArcGIS\\scratchworkspace.gdb\\" 
+temp_workspace = "C:\\TempArcGIS\\scratchworkspace.gdb\\"
 #
 # The redistribution_layer_path variable:
 # This variable contains the full path to the layer that the growth model will
 # be redistributed to. Note the letter r before the path surrounded in single
 # quotation marks.
-redistrubtion_layer_path = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\SewerData.gdb\southernsuburbs_overall_catchments'
+redistrubtion_layer_path = r'O:\Data\Planning_IP\Admin\Staff\Jared\Sewer Strategy Report Catchments\UpperRoss\Data.gdb\Overall_Catchments_20170720_Upper_Ross' # TODO
 #
 # The growth_model_polygon variable:
 # This variable contains the full path to the growth model feature class that
 # contains the growth model zones as polygons. Note the letter r before the
 # path surrounded in single quotation marks.
-growth_model_polygon = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\SewerData.gdb\GMZ'
+growth_model_polygon = r'R:\InfrastructureModels\Growth\Spatial\Database\GrowthModelGMZ.mdb\GMZ'
 #
 # The method_of_distribution variable:
 # This variable contains an integer that represents the method used to
@@ -54,45 +54,45 @@ method_of_distribution = 3
 #
 # The output variable:
 # This variable contains the full path where the output file will be written.
-output = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\SewerData.gdb\SouthernSuburbs_GrowthModelRedistributedToPSCatchments'
+output = r'O:\Data\Planning_IP\Admin\Staff\Jared\Sewer Strategy Report Catchments\UpperRoss\Data.gdb\UpperRoss_GrowthModelRedistributedToPSCatchments' # TODO
 #
 # The growthmodel_csv_path variable:
 # This variable should contain the full path of the .csv file containing a
 # subset of the growth model data. The .csv file reference by this variable
 # should be created from the 'Pops and Emps' tab of the growth model outputs
 # provided by Brian. The .csv file must contain the following columns only:
-# 	"GMZ", 
-#	"POP_2011", "Tot_2011", 
-#	"POP_2016", "Tot_2016", 
-#	"POP_2021", "Tot_2021", 
-#	"POP_2026", "Tot_2026", 
-#	"POP_2031", "Tot_2031", 
-#	"POP_2036", "Tot_2036", 
-#	"POP_2041", "Tot_2041", 
-#	"POP_2046", "Tot_2046", 
-#	"POP_2051", "Tot_2051", 
-#	"POP_Full", and "Tot_Full". 
+# 	"GMZ",
+#	"POP_2011", "Tot_2011",
+#	"POP_2016", "Tot_2016",
+#	"POP_2021", "Tot_2021",
+#	"POP_2026", "Tot_2026",
+#	"POP_2031", "Tot_2031",
+#	"POP_2036", "Tot_2036",
+#	"POP_2041", "Tot_2041",
+#	"POP_2046", "Tot_2046",
+#	"POP_2051", "Tot_2051",
+#	"POP_Full", and "Tot_Full".
 # It should also contain only the growth data for the individual GMZs. Excel
 # spreadsheet provided by Brian typically contain addition data below this
 # table on the 'Pops and Emps' tab.  This additional data should not be
 # included in the .csv file.
-growthmodel_csv_path = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\SouthernSuburbsGrowthModel20160908_mediumGrowth.csv'
+growthmodel_csv_path = r'O:\Data\Planning_IP\Admin\Staff\Jared\Southern Suburbs Sewer Planning Report\SouthernSuburbsGrowthModel20160908_mediumGrowth.csv' # TODO
 #
 # ---------------------------------------------------------------------------
 # ----- Issues
 # ---------------------------------------------------------------------------
 #
-# This tool used to generate this data has not been fully tested. The sections 
-# below describe the known issues. In addition to these, unknown issues may 
+# This tool used to generate this data has not been fully tested. The sections
+# below describe the known issues. In addition to these, unknown issues may
 # also exist.
-# 
+#
 # ##### Partially covered GMZs. #####
-# The method in which GMZs are distributed to pump station catchments changes 
-# depending on which year is being considered. The method for each year is 
-# summarised below. Number of lots refers to the number of lots in a section 
-# of pump station catchment compared to the total number of lots in the GMZ. 
-# Area refers to the portion of area in a section of pump station catchment 
-# compared to the total area of the GMZ. Combination refers to the mean 
+# The method in which GMZs are distributed to pump station catchments changes
+# depending on which year is being considered. The method for each year is
+# summarised below. Number of lots refers to the number of lots in a section
+# of pump station catchment compared to the total number of lots in the GMZ.
+# Area refers to the portion of area in a section of pump station catchment
+# compared to the total area of the GMZ. Combination refers to the mean
 # average of the two methods.
 #  - 2016 - number of lots
 #  - 2021 - combination
@@ -103,39 +103,39 @@ growthmodel_csv_path = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs
 #  - 2046 - area
 #  - 2051 - area
 #  - Full Developed Scenario - area
-# 
-# The distribution methods described above work well for areas where the GMZs 
-# are fully covered by pump station catchments and where there is an even 
-# distribution of population and employment EPs. For other areas, the 
-# redistribution can be inaccurate. For this reason, pump station catchments 
-# that cross into GMZs that are not fully serviced by pump station catchments 
+#
+# The distribution methods described above work well for areas where the GMZs
+# are fully covered by pump station catchments and where there is an even
+# distribution of population and employment EPs. For other areas, the
+# redistribution can be inaccurate. For this reason, pump station catchments
+# that cross into GMZs that are not fully serviced by pump station catchments
 # have had their value manually adjusted.
-# 
+#
 # ##### Double counting issue. #####
-# There is an issue with properties that cross pump station catchments being 
-# counted twice. This issue seems to affects only the proportion allocated, not 
-# the total population across the catchments. The error is negligible in the 
-# typical catchment where the number of properties is high and the number of 
-# properties crossing the boundaries is low in comparison. It does become an 
-# issue when the inverse is true, especially when the few properties in the 
-# catchments contain a high number of EP (eg, JCU, the Hospital, Lavarack 
+# There is an issue with properties that cross pump station catchments being
+# counted twice. This issue seems to affects only the proportion allocated, not
+# the total population across the catchments. The error is negligible in the
+# typical catchment where the number of properties is high and the number of
+# properties crossing the boundaries is low in comparison. It does become an
+# issue when the inverse is true, especially when the few properties in the
+# catchments contain a high number of EP (eg, JCU, the Hospital, Lavarack
 # Barracks).
-# 
-# ##### High EP concentration over few properties. ##### 
-# The tool assumes that population and employment EPs are evenly distributed 
-# across a catchment. In areas where EPs are concentrated over a few 
-# properties, it can calculate a concentrated population as being spread 
+#
+# ##### High EP concentration over few properties. #####
+# The tool assumes that population and employment EPs are evenly distributed
+# across a catchment. In areas where EPs are concentrated over a few
+# properties, it can calculate a concentrated population as being spread
 # over several pump station catchments.
-# 
+#
 # ##### Intermitent data issue. #####
 # The intersecting_polygons layer can have growth model data joined to it
 # multiple times. for example, you will find POP_2016_2017, and POP_2021_2022
 # fields. This doesn't seem to impact on the final results, but this issue
 # should be fully understood before and / or fixed before this tool is used on
 # other areas.
-# 
+#
 # For the reasons listed above, the data must be checked before being used.
-# 
+#
 # Jared Johnston
 
 
@@ -201,7 +201,7 @@ def add_property_count_to_layer_x_with_name_x(feature_class, field_name):
 	"""
 	Adds a field to the polygons containing the number of properties (from the SDE) in that polygon. Note that one property will get counted multiple time, once for every polygon that part of it is contained in.
 	"""
-	properties = r"S:\\Infrastructure Planning\\Spatial Data\\WindowAuth@Mapsdb01@SDE_Vector.sde\\sde_vector.TCC.Cadastral\\sde_vector.TCC.Properties"
+	properties = r"O:\\Data\\Planning_IP\\Spatial\\WindowAuth@Mapsdb01@SDE_Vector.sde\\sde_vector.TCC.Cadastral\\sde_vector.TCC.Properties"
 	# see: http://gis.stackexchange.com/questions/35468/what-is-the-proper-syntax-and-usage-for-arcgis-in-memory-workspace
 	properties_SpatialJoin = workspace + "properties_SpatialJoin"
 	stats = workspace + "stats"
@@ -305,7 +305,7 @@ arcpy.AddMessage("new data layer: %s" % data_layer)
 distribution_method = arcpy.GetParameter(2)
 if distribution_method == '#' or not distribution_method:
     distribution_method = method_of_distribution # 1 - by area, 2 - by number of properties, 3 - by a combination of the two methods.
-    									    # for distribution_method = 3, number of properties method is used for 2016, area method is used for >2036, and 
+    									    # for distribution_method = 3, number of properties method is used for 2016, area method is used for >2036, and
 									    # the average of the two is used for 2016-2036.
     arcpy.AddMessage("you have not provided a distribution_method. 1 = distribute by area, 2 = distribute my number of properties. Using %s by default" % distribution_method)
 if distribution_method in [1, 2, 3]:
