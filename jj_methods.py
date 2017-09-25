@@ -74,6 +74,11 @@ def calculate_external_field(target_layer, target_field, join_layer, join_field,
             print("    Warning: Cannot delete required field: %s" % f.name)
 
 
+def unique_values(table, field):
+    with arcpy.da.SearchCursor(table, [field]) as cursor:
+        return sorted({row[0] for row in cursor})
+
+
 def test_print():
     """tests that methods in this module can be called."""
     print "method called successfully"

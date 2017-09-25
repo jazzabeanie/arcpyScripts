@@ -14,12 +14,24 @@ import arcpy
 import logging
 import json
 import jj_methods as m # noqa
+from datetime import datetime
 # m = imp.load_source('jj_methods', 'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\jj_methods.py') # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
 
-logging.basicConfig(filename='arcpyTemplate.log',  # TODO: update log filename
-                    level=logging.DEBUG,
-                    format='%(asctime)s @ %(lineno)d: %(message)s',
-                    datefmt='%Y-%m-%d,%H:%M:%S')
+arcpy.env.workspace = "in_memory"
+testing = False
+now = r'%s' % datetime.now().strftime("%Y%m%d%H%M")
+
+if testing:
+    logging.basicConfig(filename='log.log', # TODO
+                        level=logging.DEBUG,
+                        format='%(asctime)s @ %(lineno)d: %(message)s',
+                        datefmt='%Y-%m-%d,%H:%M:%S')
+else:
+    logging.basicConfig(filename='log.log', # TODO
+                        level=logging.INFO,
+                        format='%(asctime)s @ %(lineno)d: %(message)s',
+                        datefmt='%Y-%m-%d,%H:%M:%S')
+
 logging.warning("------")
 
 # Commonly used layers:
@@ -84,5 +96,7 @@ if __name__ == '__main__':
     if arguments_exist:
         argv = tuple(arcpy.GetParameterAsText(i)
                      for i in range(arcpy.GetArgumentCount()))
-    do_analysis(*argv) # see here for help on #argv https://docs.python.org/2.7/tutorial/controlflow.html#unpacking-argument-lists # noqa
+    do_analysis(*argv)
+    # see here for help on #argv https://docs.python.org/2.7/tutorial/controlflow.html#unpacking-argument-lists # noqa
+    # see here for help on reading *argv in new called function: https://docs.python.org/2.7/tutorial/controlflow.html#keyword-arguments
     os.system('pause')
