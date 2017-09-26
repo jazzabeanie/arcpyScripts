@@ -13,16 +13,16 @@ import sys # noqa
 import arcpy
 import re
 import logging
+# see here for logging best practices: https://stackoverflow.com/questions/15727420/using-python-logging-in-multiple-modules
 
 arcpy.env.workspace = r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\TestingDataset.gdb'
-logger = logging.getLogger(__name__)
+logging = logging.getLogger(__name__)
 
 
 def delete_if_exists(layer):
     """Deleted the passed in layer if it exists. This avoids errors."""
     if arcpy.Exists(layer):
-        # logging.warning("Deleting %s" % layer) # TODO: make this write to
-        # logging object in the file that calls it. Try: http://stackoverflow.com/questions/15727420/using-python-logging-in-multiple-modules
+        logging.warning("Deleting %s" % layer)
         arcpy.Delete_management(layer)
 
 
@@ -39,13 +39,13 @@ def return_tuple_of_args():
     tuple."""
     args = tuple(arcpy.GetParameterAsText(i)
                  for i in range(arcpy.GetArgumentCount()))
-    print "args = " + str(args)
+    logging.debug("args = " + str(args))
     return args
 
 
 def calculate_external_field(target_layer, target_field, join_layer, join_field, output):
     """Calculates an target field from an field on another featre based on spatial intersect."""
-    print("Calculating %s.%s from %s.%s" % (target_layer, target_field, join_layer, join_field))
+    logging.debug("Calculating %s.%s from %s.%s" % (target_layer, target_field, join_layer, join_field))
     delete_if_exists(output)
     original_fields = arcpy.ListFields(target_layer)
     original_field_names = [f.name for f in original_fields]
@@ -58,22 +58,22 @@ def calculate_external_field(target_layer, target_field, join_layer, join_field,
         raise IndexError("could not find %s in %s" % (join_field, join_layer))
     if len(arcpy.ListFields(join_layer, join_field)) > 1:
         raise AttributeError("Multiple fields found when searching for the %s in %s" % (join_field, join_layer))
-    print("  Adding and calculating %s = %s" % (tmp_field_name, join_field))
+    logging.debug("  Adding and calculating %s = %s" % (tmp_field_name, join_field))
     arcpy.AddField_management(join_layer_layer, tmp_field_name, join_field_object.type)
     arcpy.CalculateField_management(join_layer_layer, tmp_field_name, "!" + join_field + "!", "PYTHON", "")
-    print("  Spatially joining %s to %s" % (join_layer, target_layer))
+    logging.debug("  Spatially joining %s to %s" % (join_layer, target_layer))
     arcpy.SpatialJoin_analysis(target_layer, join_layer, output)
     output_fields = arcpy.ListFields(output)
     new_fields = [f for f in output_fields if f.name not in original_field_names]
-    print("  Calculating %s = %s" % (target_field, tmp_field_name))
+    logging.debug("  Calculating %s = %s" % (target_field, tmp_field_name))
     arcpy.CalculateField_management(output, target_field, "!" + tmp_field_name + "!", "PYTHON", "") # FIXME: may need to make null values 0.
-    print("  Deleting joined fields:")
+    logging.debug("  Deleting joined fields:")
     for f in new_fields:
         if not f.required:
-            print("    %s" % f.name)
+            logging.debug("    %s" % f.name)
             arcpy.DeleteField_management(output, f.name)
         else:
-            print("    Warning: Cannot delete required field: %s" % f.name)
+            logging.debug("    Warning: Cannot delete required field: %s" % f.name)
 
 
 def unique_values(table, field):
@@ -83,7 +83,8 @@ def unique_values(table, field):
 
 def test_print():
     """tests that methods in this module can be called."""
-    logging.info("success!")
+    logging.info("success")
+    logging.debug("fail")
 
 
 # This test allows the script to be used from the operating
