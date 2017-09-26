@@ -12,8 +12,10 @@ import os # noqa
 import sys # noqa
 import arcpy
 import re
+import logging
 
 arcpy.env.workspace = r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\TestingDataset.gdb'
+logger = logging.getLogger(__name__)
 
 
 def delete_if_exists(layer):
@@ -81,7 +83,7 @@ def unique_values(table, field):
 
 def test_print():
     """tests that methods in this module can be called."""
-    print "method called successfully"
+    logging.info("success!")
 
 
 # This test allows the script to be used from the operating
