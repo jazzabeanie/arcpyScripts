@@ -81,6 +81,17 @@ def unique_values(table, field):
         return sorted({row[0] for row in cursor})
 
 
+def get_file_from_path(path):
+    """Returns the filename from a provided path."""
+    head, tail = os.path.split(path)
+    return tail or os.path.basename(head)
+
+
+def get_directory_from_path(path):
+    """Returns the directory from a provided path."""
+    return os.path.dirname(os.path.abspath(path))
+
+
 def test_print():
     """tests that methods in this module can be called."""
     logging.info("success")
@@ -128,3 +139,19 @@ if __name__ == '__main__':
             regexp = re.compile('two_fields.*')
             assert(regexp.match("%s" % row))
     print "  pass"
+
+    print "Testing get_file_from_path..."
+    some_path = r'C:\TempArcGIS\testing.gdb\foobar'
+    if (get_file_from_path(some_path) == "foobar"):
+        print "  pass"
+    else:
+        print "  fail"
+
+    print "Testing get_directory_from_path..."
+    some_path = r'C:\TempArcGIS\testing.gdb\foobar'
+    if (get_directory_from_path(some_path) == "C:\\TempArcGIS\\testing.gdb"):
+        print "  pass"
+    else:
+        print "  fail"
+
+    os.system('pause')
