@@ -43,6 +43,15 @@ def return_tuple_of_args():
     return args
 
 
+def renameFieldMap(fieldMap, name_text):
+	"""
+	Sets the output fieldname of a FieldMap object. Used when creating FieldMappings.
+	"""
+	type_name = fieldMap.outputField
+	type_name.name = name_text
+	fieldMap.outputField = type_name
+
+
 def calculate_external_field(target_layer, target_field, join_layer, join_field, output):
     """Calculates an target field from an field on another featre based on spatial intersect."""
     logging.debug("Calculating %s.%s from %s.%s" % (target_layer, target_field, join_layer, join_field))
@@ -139,6 +148,7 @@ if __name__ == '__main__':
             regexp = re.compile('two_fields.*')
             assert(regexp.match("%s" % row))
     print "  pass"
+    print "------"
 
     print "Testing get_file_from_path..."
     some_path = r'C:\TempArcGIS\testing.gdb\foobar'
@@ -146,6 +156,7 @@ if __name__ == '__main__':
         print "  pass"
     else:
         print "  fail"
+    print "------"
 
     print "Testing get_directory_from_path..."
     some_path = r'C:\TempArcGIS\testing.gdb\foobar'
@@ -153,5 +164,10 @@ if __name__ == '__main__':
         print "  pass"
     else:
         print "  fail"
+    print "------"
+
+    print "Testing renameFieldMap"
+    print "TODO"
+    print "------"
 
     os.system('pause')
