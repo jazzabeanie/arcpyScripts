@@ -302,9 +302,9 @@ def setup():
 
 # input params
 inputs = {}
-inputs["redistribution_layer_name"] = r'O:\Data\Planning_IP\Admin\Staff\Jared\Sewer Strategy Report Catchments\UpperRoss\Data.gdb\Overall_Catchments_20170720_Upper_Ross'
+inputs["redistribution_layer_name"] = r'O:\Data\Planning_IP\Admin\Staff\Jared\Sewer Strategy Report Catchments\UpperRoss\Data.gdb\Overall_Catchments_20171004_Upper_Ross'
 inputs["growth_model_polygon"] = r'R:\InfrastructureModels\Growth\Spatial\Database\GrowthModelGMZ.mdb\GMZ'
-inputs["output_filename"] = r'O:\Data\Planning_IP\Admin\Staff\Jared\Sewer Strategy Report Catchments\UpperRoss\Data.gdb\UpperRoss_GrowthModelRedistributedToPSCatchments'
+inputs["output_filename"] = r'O:\Data\Planning_IP\Admin\Staff\Jared\Sewer Strategy Report Catchments\UpperRoss\Data.gdb\UpperRoss_GrowthModelRedistributedToPSCatchments_2'
 jj.delete_if_exists(inputs["output_filename"])
 #
 inputs["distribution_method"] = 3
