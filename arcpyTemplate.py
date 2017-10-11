@@ -14,11 +14,12 @@ import arcpy
 import logging
 import json
 import jj_methods as m # noqa
+import imp
 from datetime import datetime
-# m = imp.load_source('jj_methods', 'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\jj_methods.py') # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
+m = imp.load_source('jj_methods', r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\jj_methods.py') # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
 
 arcpy.env.workspace = "in_memory"
-testing = False
+testing = True
 now = r'%s' % datetime.now().strftime("%Y%m%d%H%M")
 
 if testing:

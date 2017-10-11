@@ -23,10 +23,17 @@ arcpy.env.workspace = "in_memory"
 testing = False
 now = r'%s' % datetime.now().strftime("%Y%m%d%H%M")
 
-logging.basicConfig(filename='createCoastline.log',
-                    level=logging.DEBUG,
-                    format='%(asctime)s @ %(lineno)d: %(message)s',
-                    datefmt='%Y-%m-%d,%H:%M:%S')
+if testing:
+    logging.basicConfig(filename='createCoastline.log',
+                        level=logging.DEBUG,
+                        format='%(asctime)s @ %(lineno)d: %(message)s',
+                        datefmt='%Y-%m-%d,%H:%M:%S')
+else:
+    logging.basicConfig(filename='createCoastline.log',
+                        level=logging.DEBUG,
+                        format='%(asctime)s @ %(lineno)d: %(message)s',
+                        datefmt='%Y-%m-%d,%H:%M:%S')
+
 logging.warning("------")
 
 # Commonly used layers:
@@ -41,16 +48,12 @@ sde_properties = "%s\\sde_vector.TCC.Cadastral\\sde_vector.TCC.Properties" % sde
 sde_landParcels = "%s\\sde_vector.TCC.Cadastral\\sde_vector.TCC.Land_Parcels" % sde
 sde_roadShapes = "%s\\sde_vector.GSS.core\\SDE_Vector.GSS.road_section_polygon" % sde
 sde_roadLines = "%s\\sde_vector.TCC.Cadastral\\SDE_Vector.TCC.roadcent" % sde
-
 ## City Plan
 zoning = "%s\\SDE_Vector.TCC.Cityplan_2014_Core\\SDE_Vector.TCC.CP14_G_Zoning" % sde
-
 ## Flooding
 flood_study_areas = "%s\\WindowAuth@Mapsdb01@SDE_Vector.sde\\sde_vector.TCC.Flooding\\sde_vector.TCC.FloodStudyAreas_Current"
-
 ## Waste Water
 overall_catchments = "O:\\Data\\Planning_IP\\Admin\\Spatial Data\\Water_sewer\\Sewer_Catchments_2015\\Sewer_Catchments_2015.mdb\\Overall_Catchments"
-
 ## Infrastructure
 with open("O:\\Data\\Planning_IP\\Admin\\Staff\\Jared\\GIS\\Tools\\arcpyScripts\\infrastructure_layers.json") as data_file:
         infrastructure = json.load(data_file)
@@ -119,8 +122,11 @@ def createLandwardPolygon(height_relative, AHD_relative, name):
     """Creates a landward shape relative to a give height based on the DEM and the coastal_DEM combined."""
     clipped_DEM = r'C:\TempArcGIS\scratchworkspace.gdb\landwardClipped_DEM_%s_%s' % (name, now)
     out_polygon_features = r'C:\TempArcGIS\scratchworkspace.gdb\landward_%s_%s' % (name, now)
+    out_polyline_features = r'C:\TempArcGIS\scratchworkspace.gdb\line_%s_%s' % (name, now)
     converted_polygon = r'converted_polygon'
-    island_threshold = 1000
+    converted_polygon_union = r'converted_polygon_union'
+    converted_polygon_noIsland = r'converted_polygon_noIsland'
+    island_threshold = 5000
     if testing:
         pass
     else:
@@ -140,25 +146,25 @@ def createLandwardPolygon(height_relative, AHD_relative, name):
     pass
     logging.debug("clipped_DEM saved to %s" % output_raster)
     delete_if_exists(converted_polygon)
-    logging.debug("converting to polygon %s..." % converted_polygon)
+    logging.info("converting to polygon %s..." % converted_polygon)
     arcpy.RasterToPolygon_conversion(output_raster, converted_polygon)
-    logging.info("fields in %s" % converted_polygon)
-    for layer in arcpy.ListFields(converted_polygon):
-        logging.info("  %s" % layer.name)
-    delete_if_exists(out_polygon_features)
+    delete_if_exists(converted_polygon_noIsland)
     arcpy.AddField_management(converted_polygon,"area","Double")
     expression1 = "{0}".format("!SHAPE.area@SQUAREMETERS!")
     arcpy.CalculateField_management(converted_polygon, "area", expression1, "PYTHON", )
     where_clause = r'"area" > 1000' #  % island_threshold
-    arcpy.Select_analysis(converted_polygon, out_polygon_features, where_clause)
-    # arcpy.DeleteFeatures_management(out_polygon_features)
+    arcpy.Select_analysis(converted_polygon, converted_polygon_noIsland, where_clause)
+    logging.info("DEM polygon has had islands less than %sm2 removed" % island_threshold)
+    logging.debug("  saved to %s" % converted_polygon_noIsland)
+    delete_if_exists(converted_polygon_union)
+    arcpy.Union_analysis(converted_polygon_noIsland, converted_polygon_union, "ALL", 0, "NO_GAPS")
+    delete_if_exists(out_polygon_features)
+    arcpy.Dissolve_management(converted_polygon_union, out_polygon_features)
     logging.info("DEM polygon saved to %s" % out_polygon_features)
+    delete_if_exists(out_polyline_features)
+    # arcpy.PolygonToLine_management(out_polygon_features, out_polyline_features)
+    logging.info("Coastline saved to %s" % out_polygon_features)
 
-def createTideLine(height_relative, AHD_relative, name): # TODO: cut sea from land and convert to polyline.
-    """Creates a shape using a given height relative to some other datum. In the design case, relative to Lowest Astronomical Tide (LAT) given in https://www.msq.qld.gov.au/Tides/Tidal-planes"""
-    pass # TODO
-    # cuts the seaward polygon from the Land polygon
-    # converts the polygone to a line
 
 def do_analysis(*argv):
     """TODO: Add documentation about this function here"""
@@ -171,13 +177,13 @@ def do_analysis(*argv):
         # heights taken from: https://www.msq.qld.gov.au/Tides/Tidal-planes
         tsv_MSL_to_LAT = 1.94
         tsv_AHD_to_LAT = 1.856
-        createLandwardPolygon(tsv_MSL_to_LAT, tsv_AHD_to_LAT, "mean_sea_level")
-        # createSeawardPolygon(tsv_MSL_to_LAT, tsv_AHD_to_LAT, "mean_sea_level")
+        createLandwardPolygon(tsv_MSL_to_LAT, tsv_AHD_to_LAT, "MSL")
+        createLandwardPolygon(tsv_MSL_to_LAT+0.8, tsv_AHD_to_LAT, "CC_MSL")
         tsv_HAT_to_LAT = 4.11
-        # createSeawardPolygon(tsv_HAT_to_LAT, tsv_AHD_to_LAT, "HAT")
-        # TODO: eventually I'll call createTideLine here and that will in turn call createSeawardPolygon.
-        logging.info("Need to remove inland features that wouldn't be inundated by the tide but are still below the level")
-        logging.info("Then what?? remove any small islands? need to talk with Ashley about this.")
+        # createLandwardPolygon(tsv_HAT_to_LAT, tsv_AHD_to_LAT, "HAT")
+        # createLandwardPolygon(tsv_HAT_to_LAT+0.8, tsv_AHD_to_LAT, "CC_HAT")
+        logging.info("")
+        logging.info("Need to then create 40m buffer")
         arcpy.CheckInExtension("Spatial")
     except arcpy.ExecuteError:
         print arcpy.GetMessages(2)
