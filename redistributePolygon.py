@@ -219,8 +219,8 @@ def return_average_value(total_properties, local_properties, field_to_calculate,
 #
 def add_property_count_to_layer_x_with_name_x(feature_class, field_name):
     """
-    Adds a field to the polygons containing the number of properties (from the SDE) in that polygon. Note that one property will get counted multiple time, once for every polygon that part of it is contained in.
-    """
+    Adds a field to the feature class containing the number of properties (from the SDE) in each polygon.
+    """ # Previously properties would get double counted. This issue has now been fixed.
     logging.info("Executing add_property_count_to_layer_x_with_name_x(%s, %s)" % (feature_class, field_name))
     properties = r"O:\\Data\\Planning_IP\\Spatial\\WindowAuth@Mapsdb01@SDE_Vector.sde\\sde_vector.TCC.Cadastral\\sde_vector.TCC.Properties"
     feature_layer = "add_property_count_to_layer_x_with_name_x_feature_layer"
@@ -255,10 +255,10 @@ def add_property_count_to_layer_x_with_name_x(feature_class, field_name):
     logging.info("    joining back to %s" % feature_class)
     arcpy.JoinField_management (feature_class, "OBJECTID", stats, "JOIN_FID", "FREQUENCY")
     logging.info("    renaming 'FREQUENCY' to '%s'" % field_name)
-    # arcpy.AlterField_management (feature_class, "FREQUENCY", field_name) # TODO: use this method. I should have access now.
-    arcpy.AddField_management (feature_class, field_name, "SHORT", "#", "#", "#", "Number of Properties")
-    arcpy.CalculateField_management (feature_class, field_name, "!FREQUENCY!", "PYTHON_9.3")
-    arcpy.DeleteField_management (feature_class, "FREQUENCY")
+    arcpy.AlterField_management (feature_class, "FREQUENCY", field_name) # TODO: use this method. I should have access now.
+    # arcpy.AddField_management (feature_class, field_name, "SHORT", "#", "#", "#", "Number of Properties")
+    # arcpy.CalculateField_management (feature_class, field_name, "!FREQUENCY!", "PYTHON_9.3")
+    # arcpy.DeleteField_management (feature_class, "FREQUENCY")
 #
 def renameFieldMap(fieldMap, name_text):
     """
@@ -346,7 +346,7 @@ def redistributePolygon(inputs):
     try:
         global local_number_of_properties_field
         local_number_of_properties_field = "local_counted_properties"
-        global total_properties_including_double_counted_field
+        global total_properties_including_double_counted_field # TODO: delete me
         total_properties_including_double_counted_field = "total_double_counted_properties" # the number of properties counted in the intersecting polygons, then joined back together in the GMZs (or data_layer)
         global total_properties_field
         total_properties_field = "total_counted_properties"
@@ -398,15 +398,15 @@ def redistributePolygon(inputs):
 
         # join_growthmodel_table_to_intersecting_polygons(inputs)
 
-        add_total_and_local_GMZ_fields()
+        # add_total_and_local_GMZ_fields() # I think this function was added to deal with double counting
 
-        create_intersecting_polygons() #recreate this layer with total_properties_filed that includes double counted properties.
+        # create_intersecting_polygons() #recreate this layer with total_properties_filed that includes double counted properties.
 
         # join_growthmodel_table_to_intersecting_polygons(inputs)
 
         add_property_count_to_layer_x_with_name_x(intersecting_polygons, local_number_of_properties_field)
 
-        max_total_properties_field()
+        # max_total_properties_field() # chose max between double counted properties.
 
         ## Recalculate groth model fields
         for GM_field in inputs["field_list"]:
@@ -415,14 +415,14 @@ def redistributePolygon(inputs):
                     calculate_field_proportion_based_on_area(GM_field, total_area_field)
                 elif inputs["distribution_method"] == 2:
                     logging.info("calculating %s field from total GMZ number of properties" % GM_field)
-                    calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field)
+                    calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_field, local_number_of_properties_field)
                 elif inputs["distribution_method"] == 3:
                     if GM_field in  ["POP_2016", "Tot_2016"]:
-                        calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field)
+                        calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_field, local_number_of_properties_field)
                     elif GM_field in  ["POP_2036", "Tot_2036", "POP_2041", "Tot_2041", "POP_2046", "Tot_2046", "POP_2051", "Tot_2051", "POP_Full", "Tot_Full"]:
                         calculate_field_proportion_based_on_area(GM_field, total_area_field)
                     elif GM_field in  ["POP_2021", "Tot_2021", "POP_2026", "Tot_2026", "POP_2031", "Tot_2031"]:
-                        calculate_field_proportion_based_on_combination(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field, total_area_field)
+                        calculate_field_proportion_based_on_combination(GM_field, total_properties_field, local_number_of_properties_field, total_area_field)
                     elif GM_field in  ["POP_2011", "Tot_2011"]:
                         arcpy.CalculateField_management (intersecting_polygons, GM_field, "returnNone()", "PYTHON_9.3", """def returnNone():
             return None""")
