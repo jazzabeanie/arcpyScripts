@@ -12,7 +12,6 @@ import os # noqa
 import sys # noqa
 import arcpy
 import logging
-import json
 import jj_methods as jj # noqa
 import __main__
 from datetime import datetime
@@ -32,6 +31,12 @@ def redistributePolygon(inputs):
         distribution_method
         field_list"""
     try:
+        if inputs["distribution_method"] in [1, 2, 3]:
+            logging.info("distribution method %s is valid" % inputs["distribution_method"])
+        else:
+            logging.info("distribution method = %s" % inputs["distribution_method"])
+            logging.info("distribution method type = %s" % inputs["distribution_method"].type)
+            raise valueerror('distribution method must be either 1, 2 or 3')
         if __main__.testing:
             testing = __main__.testing
         if __main__.now:

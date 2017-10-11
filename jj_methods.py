@@ -13,10 +13,13 @@ import sys # noqa
 import arcpy
 import re
 import logging
+import __main__
+from datetime import datetime
 # see here for logging best practices: https://stackoverflow.com/questions/15727420/using-python-logging-in-multiple-modules
 
 arcpy.env.workspace = r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\TestingDataset.gdb'
 logging = logging.getLogger(__name__)
+testing = True
 
 
 # TODO: create a bunch of functions that create test data sets. For example: add the function below, but let the list of verticies be passed in as an argument.
@@ -24,11 +27,11 @@ logging = logging.getLogger(__name__)
 #     """
 #     returns an array of points used to create a polygon that will be used to create the test case.
 #     """
-#     print "directory = " + jj.get_directory_from_path(output)
-#     print "name = " + jj.get_file_from_path(output)
+#     print "directory = " + get_directory_from_path(output)
+#     print "name = " + get_file_from_path(output)
 #     arcpy.CreateFeatureclass_management(
-#             jj.get_directory_from_path(output), # out_path
-#             jj.get_file_from_path(output), # out_name
+#             get_directory_from_path(output), # out_path
+#             get_file_from_path(output), # out_name
 #             "POLYGON") # geometry_type
 #             # "#", # template
 #             # "DISABLED", # has_m
@@ -259,91 +262,200 @@ def test_print():
     logging.debug("fail")
 
 
-# This test allows the script to be used from the operating
-# system command prompt (stand-alone), in a Python IDE,
-# as a geoprocessing script tool, or as a module imported in
-# another script
-if __name__ == '__main__':
-    # TODO: set up logging so that I don't see 'No handlers could be found for logger "__main__"'
-    print "Running test"
-    print ""
+def redistributePolygon(inputs):
+    """This function redistributes a feature class to another feature class based on different methods of distribution:
+    1: By proportion of area
+    2: By proportion of number of lots
+    3: By the average of 1 and 2
 
-    print "Testing delete_if_exists..."
-    arcpy.CopyFeatures_management
-    (r'R:\InfrastructureModels\Growth\Database\GrowthModelGMZ.mdb\GMZ',
-     r'C:\TempArcGIS\scratchworkspace.gdb\testing_delete_if_exists')
-    delete_if_exists
-    (r'C:\TempArcGIS\scratchworkspace.gdb\testing_delete_if_exists')
-    if arcpy.Exists(r'C:\TempArcGIS\scratchworkspace.gdb'
-                    r'\testing_delete_if_exists'):
-        print "  delete_if_exists failed. Layer not deleted."
-    else:
-        print "  pass"
-    print "------"
+    It take a dictionary called 'inputs' as an argument, which contains the following keys:
+        redistribution_layer_name
+        growth_model_polygon
+        output_filename
+        distribution_method
+        field_list"""
+    try:
+        if inputs["distribution_method"] in [1, 2, 3]:
+            logging.info("distribution method %s is valid" % inputs["distribution_method"])
+        else:
+            logging.info("distribution method = %s" % inputs["distribution_method"])
+            raise AttributeError('distribution method must be either 1, 2 or 3')
+        if hasattr(__main__, 'testing'):
+            testing = __main__.testing
+        if hasattr(__main__, 'now'):
+            now = __main__.now
+        else:
+            now = r'%s' % datetime.now().strftime("%Y%m%d%H%M")
+        logging.info("For redistributePolygon tool, now (which is sometimes used in filenames) = %s" % now)
+        logging.info("For redistributePolygon tool, testing = %s" % testing)
+        if testing:
+            # inputs["distribution_method"] = 3  # TODO: incorporate this into the unit tests when this is moved into jj_methods
+            keep_method = "KEEP_COMMON"
+        else:
+            keep_method = "KEEP_ALL"
 
-    print "Testing arguments_exist..."
-    if arguments_exist():
-        print "  This file was called with arguments"
-    else:
-        print "  This file was not called with arguments"
-    print "------"
+        def calculate_field_proportion_based_on_area(field_to_calculate, total_area_field):
+            """
+            Calculates the field_to_calculate for each polygon based on its percentage of the total area of the polygon to calculate from
+            Arguments should be the names of the fields as strings
+            """
+            logging.info("Executing calculate_field_proportion_based_on_area(%s, %s)" % (field_to_calculate, total_area_field))
+            logging.info("    Calculating %s field based on the proportion of the polygon area to the %s field" % (field_to_calculate, total_area_field))
+            arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_area_proportion_of_total(!"+total_area_field+"!, !Shape_Area!, !" + field_to_calculate + "!)", "PYTHON_9.3", """def return_area_proportion_of_total(total_area_field, Shape_Area, field_to_calculate):
+            return Shape_Area/total_area_field * int(field_to_calculate)""")
+        #
+        def calculate_field_proportion_based_on_number_of_lots(field_to_calculate, larger_properties_field, local_number_of_properties_field):
+            """
+            Calculates the field_to_calculate for each polygon based on the number of lots in that polygon, compared to total number of lots on the larger polygon form which the data should be interpolated.
+            Arguments should be the names of the fields as strings
+            """
+            logging.info("Executing calculate_field_proportion_based_on_number_of_lots(%s, %s, %s)" % (field_to_calculate, larger_properties_field, local_number_of_properties_field))
+            logging.info("    Calculating %s field based on the proportion of the total properties value in the %s field using %s" % (field_to_calculate, larger_properties_field, local_number_of_properties_field))
+            arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_number_proportion_of_total(!"+larger_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!)", "PYTHON_9.3", """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate):
+            new_value =  (float(local_properties)/total_properties) * int(field_to_calculate)
+            return int(new_value)""")
+        #
+        def calculate_field_proportion_based_on_combination(field_to_calculate, larger_properties_field, local_number_of_properties_field, total_area_field):
+            """
+            Calculates the the field based on area, and by number of lots, and assigned the average between the two as the value.
+            """
+            logging.info("Executing calculate_field_proportion_based_on_combination(%s, %s, %s, %s)" % (field_to_calculate, larger_properties_field, local_number_of_properties_field, total_area_field))
+            logging.info("    Calculating %s field as the average value between area and number of lots method" % field_to_calculate)
+            arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_average_value(!"+larger_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!, !" + total_area_field + "!, !Shape_Area!)", "PYTHON_9.3", """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate):
+            new_value =  (float(local_properties)/total_properties) * int(field_to_calculate)
+            return int(new_value)
+        def return_area_proportion_of_total(GMZ_total_area, Shape_Area, field_to_calculate):
+            return Shape_Area/GMZ_total_area * int(field_to_calculate)
+        def return_average_value(total_properties, local_properties, field_to_calculate, GMZ_total_area, Shape_Area):
+            properties = return_number_proportion_of_total(total_properties, local_properties, field_to_calculate)
+            area = return_area_proportion_of_total(GMZ_total_area, Shape_Area, field_to_calculate)
+            average = (area + properties) / 2
+            return average""")
+        #
+        def add_property_count_to_layer_x_with_name_x(feature_class, field_name):
+            """
+            Adds a field to the feature class containing the number of properties (from the SDE) in each polygon.
+            """ # Previously properties would get double counted. This issue has now been fixed.
+            logging.info("Executing add_property_count_to_layer_x_with_name_x(%s, %s)" % (feature_class, field_name))
+            properties = r"O:\\Data\\Planning_IP\\Spatial\\WindowAuth@Mapsdb01@SDE_Vector.sde\\sde_vector.TCC.Cadastral\\sde_vector.TCC.Properties"
+            feature_layer = "add_property_count_to_layer_x_with_name_x_feature_layer"
+            delete_if_exists(feature_layer)
+            logging.info("    making feature layer from feature class %s" % feature_class)
+            arcpy.MakeFeatureLayer_management(
+                    feature_class, # in_features
+                    feature_layer, # out_layer
+                    "#", # where_clause
+                    "#", # workspace
+                    "#") # field_info
+            if (field_in_feature_class("TARGET_FID", feature_layer)):
+                logging.info("    deleteing TARGET_FID field from feature_layer")
+                arcpy.DeleteField_management(feature_layer, "TARGET_FID")
+            properties_SpatialJoin = "properties_SpatialJoin"
+            delete_if_exists(properties_SpatialJoin)
+            stats = "stats"
+            delete_if_exists(stats)
+            logging.info("    joining properties to "+ feature_layer +" and outputing to %s" % properties_SpatialJoin)
+            arcpy.SpatialJoin_analysis(
+                    properties, # target_features
+                    feature_layer, # join_features
+                    properties_SpatialJoin, # out_feature_class
+                    "JOIN_ONE_TO_MANY", # join_operation
+                    "KEEP_COMMON", # join_type
+                    "#", # field_mapping
+                     "HAVE_THEIR_CENTER_IN", # match_option
+                    "#", # search_radius
+                    "#")# distance_field_name
+            logging.info("    Calculating statistics table at stats")
+            arcpy.Statistics_analysis(properties_SpatialJoin, stats, "Join_Count SUM","JOIN_FID")
+            logging.info("    joining back to %s" % feature_class)
+            arcpy.JoinField_management (feature_class, "OBJECTID", stats, "JOIN_FID", "FREQUENCY")
+            logging.info("    renaming 'FREQUENCY' to '%s'" % field_name)
+            arcpy.AlterField_management (feature_class, "FREQUENCY", field_name)
+        #
+        def create_intersecting_polygons():
+            """
+            Creates intersecting_polygons layer by intersecting redistribution_layer (PS_Catchments) and data_layer (GMZ).
+            """
+            logging.info("Executing create_intersecting_polygons")
+            delete_if_exists(intersecting_polygons)
+            logging.info("    Computing the polygons that intersect both features")
+            arcpy.Intersect_analysis ([redistribution_layer, data_layer], intersecting_polygons, "ALL", "", "INPUT")
+            logging.info("    Output: %s" % intersecting_polygons)
+        #
 
-    print "Testing field_in_feature_class finds an existing field..."
-    test_feature_class = "testing_field_in_feature_class"
-    delete_if_exists(test_feature_class)
-    arcpy.CreateFeatureclass_management(
-            arcpy.env.workspace, # out_path
-            test_feature_class, # out_name
-            "POLYGON") # geometry_type
-    arcpy.AddField_management(test_feature_class, "this_field_exists", "TEXT")
-    if field_in_feature_class("this_field_exists", test_feature_class):
-        print "  Pass"
-    else:
-        print "  Fail, %s field exists in %s, but tool returns False" % ("this_field_exists", test_feature_class)
-    print "Testing field_in_feature_class doesn't find a missing field..."
-    if field_in_feature_class("some_nonexistent_field", test_feature_class):
-        print "  Fail, %s field is not in %s, but tool returns True" % ("some_nonexistent_field", test_feature_class)
-        print "  Fields that exist:"
-        for field in arcpy.ListFields(test_feature_class):
-            print "    %s" % field.name
-    else:
-        print "  Pass"
-    delete_if_exists(test_feature_class)
-    print "------"
+        global local_number_of_properties_field
+        local_number_of_properties_field = "local_counted_properties"
+        global total_properties_field
+        total_properties_field = "total_counted_properties"
+        global intersecting_polygons
+        intersecting_polygons = "intersecting_polygons"
+        global growthmodel_table
+        growthmodel_table = "growthmodel_table"
+        global redistribution_layer
+        redistribution_layer = "redistribution_layer"
+        delete_if_exists(redistribution_layer)
+        global total_area_field
+        total_area_field = "GMZ_TOTAL_AREA"
+        global data_layer
+        data_layer = "data_layer"
+        delete_if_exists("data_layer")
+        arcpy.CopyFeatures_management(inputs["growth_model_polygon"], data_layer)
+        arcpy.AddField_management(data_layer, total_area_field, "FLOAT")
+        arcpy.CalculateField_management(data_layer, total_area_field, "!Shape_Area!", "PYTHON_9.3")
 
-    print "Testing return_tuple_of_args..."
-    print "  Here are the passed in args: " + str(return_tuple_of_args())
-    print "------"
+        add_property_count_to_layer_x_with_name_x(data_layer, total_properties_field)
 
-    print "Testing calculate_external_field..."
-    output = "testing_calculate_external_field"
-    calculate_external_field("one_field", "first", "two_fields", "first", output)
-    with arcpy.da.SearchCursor(output, "first") as cursor:
-        print("cursor %s" % cursor)
-        for row in cursor:
-            regexp = re.compile('two_fields.*')
-            assert(regexp.match("%s" % row))
-    print "  pass"
-    print "------"
+        arcpy.CopyFeatures_management(inputs["redistribution_layer_name"], redistribution_layer)
 
-    print "Testing get_file_from_path..."
-    some_path = r'C:\TempArcGIS\testing.gdb\foobar'
-    if (get_file_from_path(some_path) == "foobar"):
-        print "  pass"
-    else:
-        print "  fail"
-    print "------"
+        create_intersecting_polygons()
 
-    print "Testing get_directory_from_path..."
-    some_path = r'C:\TempArcGIS\testing.gdb\foobar'
-    if (get_directory_from_path(some_path) == "C:\\TempArcGIS\\testing.gdb"):
-        print "  pass"
-    else:
-        print "  fail"
-    print "------"
+        add_property_count_to_layer_x_with_name_x(intersecting_polygons, local_number_of_properties_field)
 
-    print "Testing renameFieldMap"
-    print "TODO"
-    print "------"
+        ## Recalculate groth model fields
+        for GM_field in inputs["field_list"]:
+            if field_in_feature_class(GM_field, intersecting_polygons):
+                if inputs["distribution_method"] == 1:
+                    calculate_field_proportion_based_on_area(GM_field, total_area_field)
+                elif inputs["distribution_method"] == 2:
+                    logging.info("calculating %s field from total GMZ number of properties" % GM_field)
+                    calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_field, local_number_of_properties_field)
+                elif inputs["distribution_method"] == 3:
+                    if GM_field in  ["POP_2016", "Tot_2016"]:
+                        calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_field, local_number_of_properties_field)
+                    elif GM_field in  ["POP_2036", "Tot_2036", "POP_2041", "Tot_2041", "POP_2046", "Tot_2046", "POP_2051", "Tot_2051", "POP_Full", "Tot_Full"]:
+                        calculate_field_proportion_based_on_area(GM_field, total_area_field)
+                    elif GM_field in  ["POP_2021", "Tot_2021", "POP_2026", "Tot_2026", "POP_2031", "Tot_2031"]:
+                        calculate_field_proportion_based_on_combination(GM_field, total_properties_field, local_number_of_properties_field, total_area_field)
+                    elif GM_field in  ["POP_2011", "Tot_2011"]:
+                        arcpy.CalculateField_management (intersecting_polygons, GM_field, "returnNone()", "PYTHON_9.3", """def returnNone():
+            return None""")
 
-    os.system('pause')
+
+        ## Spatially Join intersecting_polygons back to redistribution layer
+        fieldmappings = arcpy.FieldMappings()
+        for field in arcpy.ListFields(inputs["redistribution_layer_name"]):
+            if field.name not in ['OBJECTID', 'Shape_Length', 'Shape_Area', 'Join_Count', 'Shape']:
+                logging.info("Adding fieldmap for %s" % field.name)
+                fm = arcpy.FieldMap()
+                fm.addInputField(inputs["redistribution_layer_name"], field.name)
+                renameFieldMap(fm, field.name)
+                fieldmappings.addFieldMap(fm)
+        for GM_field in inputs["field_list"]:
+            if field_in_feature_class(GM_field, intersecting_polygons):
+                fm_POP_or_Total = arcpy.FieldMap()
+                fm_POP_or_Total.addInputField(intersecting_polygons, GM_field)
+                renameFieldMap(fm_POP_or_Total, GM_field)
+                fm_POP_or_Total.mergeRule = "Sum"
+                fieldmappings.addFieldMap(fm_POP_or_Total)
+        delete_if_exists(inputs["output_filename"])
+        logging.info("joining intersecting_polygons back to redistribution layer")
+        arcpy.SpatialJoin_analysis (redistribution_layer, intersecting_polygons, inputs["output_filename"], "JOIN_ONE_TO_ONE", keep_method, fieldmappings, "CONTAINS", "#", "#")
+        logging.info("Successfully redistributed %s to %s" % (data_layer, redistribution_layer))
+        logging.info("Output file can be found at %s" % inputs["output_filename"])
+    except arcpy.ExecuteError:
+        print arcpy.GetMessages(2)
+        logging.exception(arcpy.GetMessages(2))
+    except Exception as e:
+        print e.args[0]
+        logging.exception(e.args[0])
+        raise e

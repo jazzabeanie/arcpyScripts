@@ -1,0 +1,159 @@
+# --------------------------------
+# Name: jj_tests.py
+# Purpose: To test commonly used methods.
+# Author: Jared Johnston
+# Created: 11/10/2017
+# Copyright:   (c) TCC
+# ArcGIS Version:   10.5
+# Python Version:   2.7
+# Template Source: https://blogs.esri.com/esri/arcgis/2011/08/04/pythontemplate/
+# --------------------------------
+import os # noqa
+import arcpy
+import re
+import logging
+import jj_methods as jj
+
+arcpy.env.workspace = r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\TestingDataset.gdb'
+testing = True
+
+
+def test_delete_if_exists():
+    print "Testing delete_if_exists..."
+    arcpy.CopyFeatures_management
+    (r'R:\InfrastructureModels\Growth\Database\GrowthModelGMZ.mdb\GMZ',
+     r'C:\TempArcGIS\scratchworkspace.gdb\testing_delete_if_exists')
+    jj.delete_if_exists
+    (r'C:\TempArcGIS\scratchworkspace.gdb\testing_delete_if_exists')
+    if arcpy.Exists(r'C:\TempArcGIS\scratchworkspace.gdb'
+                    r'\testing_delete_if_exists'):
+        print "  delete_if_exists failed. Layer not deleted."
+    else:
+        print "  pass"
+    print "------"
+
+def test_field_in_feature_class():
+    print "Testing field_in_feature_class finds an existing field..."
+    test_feature_class = "testing_field_in_feature_class"
+    jj.delete_if_exists(test_feature_class)
+    arcpy.CreateFeatureclass_management(
+            arcpy.env.workspace, # out_path
+            test_feature_class, # out_name
+            "POLYGON") # geometry_type
+    arcpy.AddField_management(test_feature_class, "this_field_exists", "TEXT")
+    if jj.field_in_feature_class("this_field_exists", test_feature_class):
+        print "  Pass"
+    else:
+        print "  Fail, %s field exists in %s, but tool returns False" % ("this_field_exists", test_feature_class)
+    print "Testing field_in_feature_class doesn't find a missing field..."
+    if jj.field_in_feature_class("some_nonexistent_field", test_feature_class):
+        print "  Fail, %s field is not in %s, but tool returns True" % ("some_nonexistent_field", test_feature_class)
+        print "  Fields that exist:"
+        for field in arcpy.ListFields(test_feature_class):
+            print "    %s" % field.name
+    else:
+        print "  Pass"
+    jj.delete_if_exists(test_feature_class)
+    print "------"
+
+
+def test_arguments_exist():
+    print "Testing arguments_exist..."
+    if jj.arguments_exist():
+        print "  This file was called with arguments"
+    else:
+        print "  This file was not called with arguments"
+    print "------"
+
+def test_return_tuple_of_args():
+    print "Testing return_tuple_of_args..."
+    print "  Here are the passed in args: " + str(jj.return_tuple_of_args())
+    print "------"
+
+def test_calculate_external_field():
+    print "Testing calculate_external_field..."
+    output = "testing_calculate_external_field"
+    jj.calculate_external_field("one_field", "first", "two_fields", "first", output)
+    with arcpy.da.SearchCursor(output, "first") as cursor:
+        print("cursor %s" % cursor)
+        for row in cursor:
+            regexp = re.compile('two_fields.*')
+            assert(regexp.match("%s" % row))
+    print "  pass"
+    print "------"
+
+
+def test_get_file_from_path():
+    print "Testing get_file_from_path..."
+    some_path = r'C:\TempArcGIS\testing.gdb\foobar'
+    if (jj.get_file_from_path(some_path) == "foobar"):
+        print "  pass"
+    else:
+        print "  fail"
+    print "------"
+
+
+def test_get_directory_from_path():
+    print "Testing get_directory_from_path..."
+    some_path = r'C:\TempArcGIS\testing.gdb\foobar'
+    if (jj.get_directory_from_path(some_path) == "C:\\TempArcGIS\\testing.gdb"):
+        print "  pass"
+    else:
+        print "  fail"
+    print "------"
+
+
+def test_renameFieldMap():
+    print "Testing renameFieldMap"
+    print "TODO"
+    print "------"
+
+
+def test_redistributePolygon():
+    print "Testing redistributePolygon..."
+    redistributePolygonInputs = {}
+    redistributePolygonInputs["redistribution_layer_name"] = "mesh_intersect"
+    redistributePolygonInputs["growth_model_polygon"] = "MB_2015_TSV"
+    redistributePolygonInputs["output_filename"] = "redistributed"
+    redistributePolygonInputs["intersect_join_field"] = "MB_CODE16"
+    redistributePolygonInputs["growth_join_field"] = "MB_CODE16"
+    redistributePolygonInputs["field_list"] = ["Dwelling_1"]
+    print "  Testing invalid distribution method is caught"
+    for method in [0, "blah", 6.5]:
+        redistributePolygonInputs["distribution_method"] = method
+        try:
+            jj.redistributePolygon(redistributePolygonInputs)
+        except AttributeError as e:
+            if e.args[0] == 'distribution method must be either 1, 2 or 3':
+                print "    Pass"
+            else:
+                print "    Fail"
+        except Exception as e:
+            print "    Fail:"
+            print "      " + e.args[0]
+    print "  Testing number of properties method:"
+    redistributePolygonInputs["distribution_method"] = 2
+    jj.redistributePolygon(redistributePolygonInputs)
+    print "TODO: check for success"
+    # if ():
+    #     print "  pass"
+    # else:
+    #     print "  fail"
+    print "------"
+
+
+if __name__ == '__main__':
+    # TODO: set up logging so that I don't see 'No handlers could be found for logger "__main__"'
+    print "Running tests"
+    print ""
+    # test_delete_if_exists()
+    # test_arguments_exist()
+    # test_field_in_feature_class()
+    # test_return_tuple_of_args()
+    # test_calculate_external_field()
+    # test_get_file_from_path()
+    # test_get_directory_from_path()
+    # test_renameFieldMap()
+    test_redistributePolygon()
+
+    os.system('pause')
