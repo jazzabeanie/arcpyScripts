@@ -1,3 +1,7 @@
+view git config: `vim ~/.gitconfig`
+
+------
+
 run `git config --global http.proxy http[s]://userName:password@proxyaddress:port`
 
 then git push as usual.
