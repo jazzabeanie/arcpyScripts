@@ -1,417 +1,511 @@
-# -*- coding: utf-8 -*-
-# ---------------------------------------------------------------------------
-#
-# redistributePolygon.py
-# Finalised: 13/09/2016
-#
-##### Description: #####
-# This tool redistributes the growth model to another polygon. It was 
-# developed for the purpose of finding the growth model projections for pump 
-# station catchments of Southern Suburbs.
-#
-##### Usage: #####
-# Before using this tool, the Issues section below should be fully understood.
-#
-# To use this tool, assign the variables below as required, save the file, then
-# enter the following single line of code (without the leading '# ') into a python window in ArcCatalog (not ArcMap,
-# due to processing time): 
-# execfile(r'PATH_TO_THIS_PYTHON_FILE') 
-# where PATH_TO_THIS_PYTHON_FILE is substituted for the full path of this
-# python file. For example: 
-# execfile(r'S:\Infrastructure Planning\Staff\Jared\GIS\Tools\arcpyScripts\redistributePolygon.py')
-#
-##### Variables: #####
-# The temp_workspace variable:
-# This variable is where all the intermediate files are stored. Either create a
-# geodatabase at the location shown below, or change it to a workspace
-# geodatabase that has already been created. Note the use of double backslash
-# (\\) instead of single backslash (\). This path must end with a double
-# backslash (\\).
-temp_workspace = "C:\\TempArcGIS\\scratchworkspace.gdb\\" 
-#
-# The redistribution_layer_path variable:
-# This variable contains the full path to the layer that the growth model will
-# be redistributed to. Note the letter r before the path surrounded in single
-# quotation marks.
-redistrubtion_layer_path = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\SewerData.gdb\southernsuburbs_overall_catchments'
-#
-# The growth_model_polygon variable:
-# This variable contains the full path to the growth model feature class that
-# contains the growth model zones as polygons. Note the letter r before the
-# path surrounded in single quotation marks.
-growth_model_polygon = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\SewerData.gdb\GMZ'
-#
-# The method_of_distribution variable:
-# This variable contains an integer that represents the method used to
-# redistribute the GMZ. The options are as follows:
-#  - 1 - redistribution by area
-#  - 2 - redistribution by number of properties
-#  - 3 - redistribution by a combination of the above two methods (default). If
-#  	 this method is selected, the number of properties method is used for
-#  	 2016, area method is used for years >2036, and the average of the two
-#  	 is used for 2016-2036. This was choosen based on advice from Brian.
-method_of_distribution = 3
-#
-# The output variable:
-# This variable contains the full path where the output file will be written.
-output = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\SewerData.gdb\SouthernSuburbs_GrowthModelRedistributedToPSCatchments'
-#
-# The growthmodel_csv_path variable:
-# This variable should contain the full path of the .csv file containing a
-# subset of the growth model data. The .csv file reference by this variable
-# should be created from the 'Pops and Emps' tab of the growth model outputs
-# provided by Brian. The .csv file must contain the following columns only:
-# 	"GMZ", 
-#	"POP_2011", "Tot_2011", 
-#	"POP_2016", "Tot_2016", 
-#	"POP_2021", "Tot_2021", 
-#	"POP_2026", "Tot_2026", 
-#	"POP_2031", "Tot_2031", 
-#	"POP_2036", "Tot_2036", 
-#	"POP_2041", "Tot_2041", 
-#	"POP_2046", "Tot_2046", 
-#	"POP_2051", "Tot_2051", 
-#	"POP_Full", and "Tot_Full". 
-# It should also contain only the growth data for the individual GMZs. Excel
-# spreadsheet provided by Brian typically contain addition data below this
-# table on the 'Pops and Emps' tab.  This additional data should not be
-# included in the .csv file.
-growthmodel_csv_path = r'S:\Infrastructure Planning\Staff\Jared\Southern Suburbs Sewer Planning Report\SouthernSuburbsGrowthModel20160908_mediumGrowth.csv'
-#
-# ---------------------------------------------------------------------------
-# ----- Issues
-# ---------------------------------------------------------------------------
-#
-# This tool used to generate this data has not been fully tested. The sections 
-# below describe the known issues. In addition to these, unknown issues may 
-# also exist.
-# 
-# ##### Partially covered GMZs. #####
-# The method in which GMZs are distributed to pump station catchments changes 
-# depending on which year is being considered. The method for each year is 
-# summarised below. Number of lots refers to the number of lots in a section 
-# of pump station catchment compared to the total number of lots in the GMZ. 
-# Area refers to the portion of area in a section of pump station catchment 
-# compared to the total area of the GMZ. Combination refers to the mean 
-# average of the two methods.
-#  - 2016 - number of lots
-#  - 2021 - combination
-#  - 2026 - combination
-#  - 2031 - combination
-#  - 2036 - area
-#  - 2041 - area
-#  - 2046 - area
-#  - 2051 - area
-#  - Full Developed Scenario - area
-# 
-# The distribution methods described above work well for areas where the GMZs 
-# are fully covered by pump station catchments and where there is an even 
-# distribution of population and employment EPs. For other areas, the 
-# redistribution can be inaccurate. For this reason, pump station catchments 
-# that cross into GMZs that are not fully serviced by pump station catchments 
-# have had their value manually adjusted.
-# 
-# ##### Double counting issue. #####
-# There is an issue with properties that cross pump station catchments being 
-# counted twice. This issue seems to affects only the proportion allocated, not 
-# the total population across the catchments. The error is negligible in the 
-# typical catchment where the number of properties is high and the number of 
-# properties crossing the boundaries is low in comparison. It does become an 
-# issue when the inverse is true, especially when the few properties in the 
-# catchments contain a high number of EP (eg, JCU, the Hospital, Lavarack 
-# Barracks).
-# 
-# ##### High EP concentration over few properties. ##### 
-# The tool assumes that population and employment EPs are evenly distributed 
-# across a catchment. In areas where EPs are concentrated over a few 
-# properties, it can calculate a concentrated population as being spread 
-# over several pump station catchments.
-# 
-# ##### Intermitent data issue. #####
-# The intersecting_polygons layer can have growth model data joined to it
-# multiple times. for example, you will find POP_2016_2017, and POP_2021_2022
-# fields. This doesn't seem to impact on the final results, but this issue
-# should be fully understood before and / or fixed before this tool is used on
-# other areas.
-# 
-# For the reasons listed above, the data must be checked before being used.
-# 
-# Jared Johnston
-
-
-
-## Preprocessing
+# --------------------------------
+# Name: redistributePolygon.py
+# Purpose: To redistribute a growth model output to another shape
+# Author: Jared Johnston
+# Refactored: 20170926
+# Copyright:   (c) TCC
+# ArcGIS Version:   10.2
+# Python Version:   2.7
+# Source: https://blogs.esri.com/esri/arcgis/2011/08/04/pythontemplate/
+# --------------------------------
+import os # noqa
+import sys # noqa
 import arcpy
-#
-arcpy.env.OverwriteOutput = True
+import logging
+import json
+import jj_methods as jj # noqa
+from datetime import datetime
+# m = imp.load_source('jj_methods', 'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\jj_methods.py') # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
 
-## disabling Z and M bounds as I think this causes a data bounds error
-# https://geonet.esri.com/thread/79969
-print('Z: ' + arcpy.env.outputZFlag)
-arcpy.env.outputZFlag = "Disabled"
-print('Z: ' + arcpy.env.outputZFlag)
-#
-print('M: ' + arcpy.env.outputMFlag)
-arcpy.env.outputMFlag = "Disabled"
-print('M: ' + arcpy.env.outputMFlag)
+logging = logging.getLogger(__name__)
 
-## defining functions
-#TODO: move these functions into a module and import that in the preprocessing stage
-def delete_if_exists(feature):
-	if arcpy.Exists(feature):
-		arcpy.AddMessage("The following output filename already exists and will now be deleted: %s" % feature)
-		arcpy.Delete_management(feature)
+testing = False
+now = r'%s' % datetime.now().strftime("%Y%m%d%H%M")
+
+if testing:
+    keep_method = "KEEP_COMMON"
+    arcpy.env.workspace = r'C:\TempArcGIS\scratchworkspace.gdb'
+    # logging.basicConfig(filename='redistributePolygon.log',
+    #                     level=logging.DEBUG,
+    #                     format='%(asctime)s @ %(lineno)d: %(message)s',
+    #                     datefmt='%Y-%m-%d,%H:%M:%S')
+    logging.info("testing = True")
+else:
+    keep_method = "KEEP_ALL"
+    arcpy.env.workspace = r'C:\TempArcGIS\scratchworkspace.gdb'
+    # arcpy.env.workspace = "in_memory"
+    # logging.basicConfig(filename='redistributePolygon.log',
+    #                     level=logging.INFO,
+    #                     format='%(asctime)s @ %(lineno)d: %(message)s',
+    #                     datefmt='%Y-%m-%d,%H:%M:%S')
+    logging.info("testing = False")
+
+logging.warning("------")
+
+def create_test_area_polygon(output):
+    """
+    returns an array of points used to create a polygon that will be used to create the test case.
+    """
+    print "directory = " + jj.get_directory_from_path(output)
+    print "name = " + jj.get_file_from_path(output)
+    arcpy.CreateFeatureclass_management(
+            jj.get_directory_from_path(output), # out_path
+            jj.get_file_from_path(output), # out_name
+            "POLYGON") # geometry_type
+            # "#", # template
+            # "DISABLED", # has_m
+            # "DISABLED", # has_z
+            # inputs["growth_model_polygon"]) # spatial_reference
+    array = arcpy.Array([arcpy.Point(471966.2812500,7858694.5000000),
+                         arcpy.Point(471895.5000000,7858701.0000000),
+                         arcpy.Point(471865.5000000,7858703.5000000),
+                         arcpy.Point(471844.0312500,7858706.0000000),
+                         arcpy.Point(471622.6875000,7858726.0000000),
+                         arcpy.Point(471389.3750000,7858747.5000000),
+                         arcpy.Point(469967.9687500,7858874.5000000),
+                         arcpy.Point(469973.7812500,7858974.5000000),
+                         arcpy.Point(469972.3125000,7858999.0000000),
+                         arcpy.Point(469971.6875000,7859029.0000000),
+                         arcpy.Point(469975.3125000,7859051.0000000),
+                         arcpy.Point(469980.9062500,7859076.0000000),
+                         arcpy.Point(469976.3125000,7859121.5000000),
+                         arcpy.Point(469971.6875000,7859153.0000000),
+                         arcpy.Point(469970.0625000,7859174.0000000),
+                         arcpy.Point(469974.3437500,7859201.5000000),
+                         arcpy.Point(469998.0312500,7859241.0000000),
+                         arcpy.Point(470036.7812500,7859313.0000000),
+                         arcpy.Point(470047.4062500,7859344.0000000),
+                         arcpy.Point(470069.3750000,7859444.0000000),
+                         arcpy.Point(470073.0937500,7859478.0000000),
+                         arcpy.Point(470075.0625000,7859514.5000000),
+                         arcpy.Point(470074.8125000,7859556.0000000),
+                         arcpy.Point(470073.5625000,7859620.0000000),
+                         arcpy.Point(470067.9062500,7859716.0000000),
+                         arcpy.Point(470046.4062500,7859801.5000000),
+                         arcpy.Point(470010.3750000,7859843.5000000),
+                         arcpy.Point(469898.5312500,7859872.5000000),
+                         arcpy.Point(469845.2187500,7859882.0000000),
+                         arcpy.Point(469831.9062500,7859899.0000000),
+                         arcpy.Point(469831.1562500,7859915.0000000),
+                         arcpy.Point(469830.7500000,7859925.0000000),
+                         arcpy.Point(469847.1875000,7859991.0000000),
+                         arcpy.Point(469849.1875000,7860075.0000000),
+                         arcpy.Point(469851.6562500,7860109.0000000),
+                         arcpy.Point(469847.4375000,7860172.0000000),
+                         arcpy.Point(469838.5625000,7860231.0000000),
+                         arcpy.Point(469840.0312500,7860251.5000000),
+                         arcpy.Point(469818.8125000,7860315.0000000),
+                         arcpy.Point(469801.7812500,7860347.0000000),
+                         arcpy.Point(469815.8437500,7860404.0000000),
+                         arcpy.Point(469832.2187500,7860506.5000000),
+                         arcpy.Point(469837.5000000,7860506.0000000),
+                         arcpy.Point(470369.8750000,7860453.5000000),
+                         arcpy.Point(470400.2812500,7860773.0000000),
+                         arcpy.Point(470480.0937500,7860765.5000000),
+                         arcpy.Point(470515.1250000,7860762.0000000),
+                         arcpy.Point(470538.5312500,7860760.0000000),
+                         arcpy.Point(470558.4375000,7860758.0000000),
+                         arcpy.Point(470578.3437500,7860756.0000000),
+                         arcpy.Point(470598.2500000,7860754.5000000),
+                         arcpy.Point(470618.1562500,7860752.5000000),
+                         arcpy.Point(470638.0625000,7860750.5000000),
+                         arcpy.Point(470657.9687500,7860748.5000000),
+                         arcpy.Point(470677.8750000,7860747.0000000),
+                         arcpy.Point(470697.7812500,7860745.0000000),
+                         arcpy.Point(470717.6875000,7860743.0000000),
+                         arcpy.Point(470737.5937500,7860741.0000000),
+                         arcpy.Point(470757.5000000,7860739.5000000),
+                         arcpy.Point(470777.4062500,7860737.5000000),
+                         arcpy.Point(470797.3125000,7860735.5000000),
+                         arcpy.Point(470795.4375000,7860715.5000000),
+                         arcpy.Point(470794.0312500,7860700.5000000),
+                         arcpy.Point(470793.3125000,7860693.0000000),
+                         arcpy.Point(470792.8750000,7860688.5000000),
+                         arcpy.Point(470792.0937500,7860680.0000000),
+                         arcpy.Point(470790.9375000,7860668.0000000),
+                         arcpy.Point(470789.0625000,7860648.0000000),
+                         arcpy.Point(470828.8750000,7860644.0000000),
+                         arcpy.Point(470848.7812500,7860642.5000000),
+                         arcpy.Point(470868.6875000,7860640.5000000),
+                         arcpy.Point(470888.5937500,7860638.5000000),
+                         arcpy.Point(470908.4687500,7860636.5000000),
+                         arcpy.Point(470928.3750000,7860635.0000000),
+                         arcpy.Point(470948.2812500,7860633.0000000),
+                         arcpy.Point(470973.3125000,7860630.5000000),
+                         arcpy.Point(470975.9375000,7860658.5000000),
+                         arcpy.Point(470976.1875000,7860661.0000000),
+                         arcpy.Point(470987.2812500,7860672.5000000),
+                         arcpy.Point(470995.2187500,7860757.5000000),
+                         arcpy.Point(471005.2500000,7860756.5000000),
+                         arcpy.Point(471035.1875000,7860753.5000000),
+                         arcpy.Point(471067.5312500,7860750.5000000),
+                         arcpy.Point(471077.6562500,7860749.5000000),
+                         arcpy.Point(471086.9687500,7860845.0000000),
+                         arcpy.Point(471162.7812500,7860838.0000000),
+                         arcpy.Point(471251.1250000,7860842.0000000),
+                         arcpy.Point(471258.9687500,7860704.0000000),
+                         arcpy.Point(471344.4062500,7860709.0000000),
+                         arcpy.Point(471351.2187500,7860594.5000000),
+                         arcpy.Point(471357.3437500,7860560.5000000),
+                         arcpy.Point(471362.5000000,7860542.0000000),
+                         arcpy.Point(471371.6875000,7860518.0000000),
+                         arcpy.Point(471385.0625000,7860487.0000000),
+                         arcpy.Point(471400.4062500,7860457.5000000),
+                         arcpy.Point(471411.0937500,7860441.5000000),
+                         arcpy.Point(471420.4375000,7860429.5000000),
+                         arcpy.Point(471431.9375000,7860417.0000000),
+                         arcpy.Point(471448.7500000,7860403.5000000),
+                         arcpy.Point(471465.8437500,7860392.5000000),
+                         arcpy.Point(471492.5625000,7860381.0000000),
+                         arcpy.Point(471534.2187500,7860371.5000000),
+                         arcpy.Point(471561.5000000,7860370.5000000),
+                         arcpy.Point(471590.6250000,7860372.0000000),
+                         arcpy.Point(471619.5625000,7860379.5000000),
+                         arcpy.Point(471642.4375000,7860389.5000000),
+                         arcpy.Point(471872.5312500,7860509.5000000),
+                         arcpy.Point(471989.6875000,7860139.0000000),
+                         arcpy.Point(472010.8125000,7860053.0000000),
+                         arcpy.Point(472027.3125000,7859953.5000000),
+                         arcpy.Point(472037.2812500,7859795.5000000),
+                         arcpy.Point(472004.7500000,7859272.5000000),
+                         arcpy.Point(471964.3437500,7858942.5000000),
+                         arcpy.Point(471959.8750000,7858871.5000000),
+                         arcpy.Point(471959.3125000,7858801.0000000),
+                         arcpy.Point(471962.7812500,7858728.0000000),
+                         arcpy.Point(471966.2812500,7858694.5000000)])
+    polygon = arcpy.Polygon(array)
+    # Open an InsertCursor and insert the new geometry
+    cursor = arcpy.da.InsertCursor(output, ['SHAPE@'])
+    cursor.insertRow([polygon])
+    del cursor
 #
 def calculate_field_proportion_based_on_area(field_to_calculate, total_area_field):
-	"""
-	Calculates the field_to_calculate for each polygon based on its percentage of the total area of the polygon to calculate from
-	Arguments should be the names of the fields as strings
-	"""
-	arcpy.AddMessage("    Calculating %s field based on the proportion of the polygon area to the %s field" % (field_to_calculate, total_area_field))
-	arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_area_proportion_of_total(!"+total_area_field+"!, !Shape_Area!, !" + field_to_calculate + "!)", "PYTHON_9.3", """def return_area_proportion_of_total(GMZ_total_area, Shape_Area, field_to_calculate):
-	return Shape_Area/GMZ_total_area * field_to_calculate""")
+    """
+    Calculates the field_to_calculate for each polygon based on its percentage of the total area of the polygon to calculate from
+    Arguments should be the names of the fields as strings
+    """
+    logging.info("Executing calculate_field_proportion_based_on_area(%s, %s)" % (field_to_calculate, total_area_field))
+    logging.info("    Calculating %s field based on the proportion of the polygon area to the %s field" % (field_to_calculate, total_area_field))
+    arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_area_proportion_of_total(!"+total_area_field+"!, !Shape_Area!, !" + field_to_calculate + "!)", "PYTHON_9.3", """def return_area_proportion_of_total(GMZ_total_area, Shape_Area, field_to_calculate):
+    return Shape_Area/GMZ_total_area * int(field_to_calculate)""")
 #
 def calculate_field_proportion_based_on_number_of_lots(field_to_calculate, larger_properties_field, local_number_of_properties_field):
-	"""
-	Calculates the field_to_calculate for each polygon based on the number of lots in that polygon, compared to total number of lots on the larger polygon form which the data should be interpolated.
-	Arguments should be the names of the fields as strings
-	"""
-	arcpy.AddMessage("    Calculating %s field based on the proportion of the total properties value in the %s field" % (field_to_calculate, larger_properties_field))
-	arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_number_proportion_of_total(!"+larger_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!)", "PYTHON_9.3", """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate):
-	new_value =  (float(local_properties)/total_properties) * field_to_calculate
-	return int(new_value)""")
+    """
+    Calculates the field_to_calculate for each polygon based on the number of lots in that polygon, compared to total number of lots on the larger polygon form which the data should be interpolated.
+    Arguments should be the names of the fields as strings
+    """
+    logging.info("Executing calculate_field_proportion_based_on_number_of_lots(%s, %s, %s)" % (field_to_calculate, larger_properties_field, local_number_of_properties_field))
+    logging.info("    Calculating %s field based on the proportion of the total properties value in the %s field using %s" % (field_to_calculate, larger_properties_field, local_number_of_properties_field))
+    arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_number_proportion_of_total(!"+larger_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!)", "PYTHON_9.3", """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate):
+    new_value =  (float(local_properties)/total_properties) * int(field_to_calculate)
+    return int(new_value)""")
 #
 def calculate_field_proportion_based_on_combination(field_to_calculate, larger_properties_field, local_number_of_properties_field, total_area_field):
-	"""
-	Calculates the the field based on area, and by number of lots, and assigned the average between the two as the value.
-	"""
-	arcpy.AddMessage("    Calculating %s field as the average value between area and number of lots method")
-	arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_average_value(!"+larger_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!, !" + total_area_field + "!, !Shape_Area!)", "PYTHON_9.3", """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate):
-	new_value =  (float(local_properties)/total_properties) * field_to_calculate
-	return int(new_value)
+    """
+    Calculates the the field based on area, and by number of lots, and assigned the average between the two as the value.
+    """
+    logging.info("Executing calculate_field_proportion_based_on_combination(%s, %s, %s, %s)" % (field_to_calculate, larger_properties_field, local_number_of_properties_field, total_area_field))
+    logging.info("    Calculating %s field as the average value between area and number of lots method" % field_to_calculate)
+    arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_average_value(!"+larger_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!, !" + total_area_field + "!, !Shape_Area!)", "PYTHON_9.3", """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate):
+    new_value =  (float(local_properties)/total_properties) * int(field_to_calculate)
+    return int(new_value)
 def return_area_proportion_of_total(GMZ_total_area, Shape_Area, field_to_calculate):
-	return Shape_Area/GMZ_total_area * field_to_calculate
+    return Shape_Area/GMZ_total_area * int(field_to_calculate)
 def return_average_value(total_properties, local_properties, field_to_calculate, GMZ_total_area, Shape_Area):
-	properties = return_number_proportion_of_total(total_properties, local_properties, field_to_calculate)
-	area = return_area_proportion_of_total(GMZ_total_area, Shape_Area, field_to_calculate)
-	average = (area + properties) / 2
-	return average""")
+    properties = return_number_proportion_of_total(total_properties, local_properties, field_to_calculate)
+    area = return_area_proportion_of_total(GMZ_total_area, Shape_Area, field_to_calculate)
+    average = (area + properties) / 2
+    return average""")
 #
 def add_property_count_to_layer_x_with_name_x(feature_class, field_name):
-	"""
-	Adds a field to the polygons containing the number of properties (from the SDE) in that polygon. Note that one property will get counted multiple time, once for every polygon that part of it is contained in.
-	"""
-	properties = r"S:\\Infrastructure Planning\\Spatial Data\\WindowAuth@Mapsdb01@SDE_Vector.sde\\sde_vector.TCC.Cadastral\\sde_vector.TCC.Properties"
-	# see: http://gis.stackexchange.com/questions/35468/what-is-the-proper-syntax-and-usage-for-arcgis-in-memory-workspace
-	properties_SpatialJoin = workspace + "properties_SpatialJoin"
-	stats = workspace + "stats"
-	delete_if_exists(properties_SpatialJoin)
-	delete_if_exists(stats)
-	arcpy.AddMessage("    joining properties to "+ feature_class +" and outputing to %s" % properties_SpatialJoin)
-	arcpy.SpatialJoin_analysis(feature_class, properties, properties_SpatialJoin, "JOIN_ONE_TO_MANY", "KEEP_ALL", "", "INTERSECT")
-	arcpy.AddMessage("    Calculating statistics table at stats")
-	arcpy.Statistics_analysis(properties_SpatialJoin, stats, "Join_Count SUM","TARGET_FID")
-	arcpy.AddMessage("    joining back to intersecting_polygons")
-	arcpy.JoinField_management (feature_class, "OBJECTID", stats, "TARGET_FID", "FREQUENCY")
-	arcpy.AddMessage("    renaming 'FREQUENCY' to '%s'" % field_name)
-	#arcpy.AlterField_management (feature_class, "FREQUENCY", field_name) # this tool doesn't work, waiting on a reply form Spatial Services.
-	arcpy.AddField_management (feature_class, field_name, "SHORT", "#", "#", "#", "Number of Properties")
-	arcpy.CalculateField_management (feature_class, field_name, "!FREQUENCY!", "PYTHON_9.3")
-	arcpy.DeleteField_management (feature_class, "FREQUENCY")
+    """
+    Adds a field to the feature class containing the number of properties (from the SDE) in each polygon.
+    """ # Previously properties would get double counted. This issue has now been fixed.
+    logging.info("Executing add_property_count_to_layer_x_with_name_x(%s, %s)" % (feature_class, field_name))
+    properties = r"O:\\Data\\Planning_IP\\Spatial\\WindowAuth@Mapsdb01@SDE_Vector.sde\\sde_vector.TCC.Cadastral\\sde_vector.TCC.Properties"
+    feature_layer = "add_property_count_to_layer_x_with_name_x_feature_layer"
+    jj.delete_if_exists(feature_layer)
+    logging.info("    making feature layer from feature class %s" % feature_class)
+    arcpy.MakeFeatureLayer_management(
+            feature_class, # in_features
+            feature_layer, # out_layer
+            "#", # where_clause
+            "#", # workspace
+            "#") # field_info
+    if ("TARGET_FID" in [field.name for field in arcpy.ListFields(feature_layer)]):
+        logging.info("    deleteing TARGET_FID field from feature_layer")
+        arcpy.DeleteField_management(feature_layer, "TARGET_FID")
+    properties_SpatialJoin = "properties_SpatialJoin"
+    jj.delete_if_exists(properties_SpatialJoin)
+    stats = "stats"
+    jj.delete_if_exists(stats)
+    logging.info("    joining properties to "+ feature_layer +" and outputing to %s" % properties_SpatialJoin)
+    arcpy.SpatialJoin_analysis(
+            properties, # target_features
+            feature_layer, # join_features
+            properties_SpatialJoin, # out_feature_class
+            "JOIN_ONE_TO_MANY", # join_operation
+            "KEEP_COMMON", # join_type
+            "#", # field_mapping
+             "HAVE_THEIR_CENTER_IN", # match_option
+            "#", # search_radius
+            "#")# distance_field_name
+    logging.info("    Calculating statistics table at stats")
+    arcpy.Statistics_analysis(properties_SpatialJoin, stats, "Join_Count SUM","JOIN_FID")
+    logging.info("    joining back to %s" % feature_class)
+    arcpy.JoinField_management (feature_class, "OBJECTID", stats, "JOIN_FID", "FREQUENCY")
+    logging.info("    renaming 'FREQUENCY' to '%s'" % field_name)
+    arcpy.AlterField_management (feature_class, "FREQUENCY", field_name) # TODO: use this method. I should have access now.
+    # arcpy.AddField_management (feature_class, field_name, "SHORT", "#", "#", "#", "Number of Properties")
+    # arcpy.CalculateField_management (feature_class, field_name, "!FREQUENCY!", "PYTHON_9.3")
+    # arcpy.DeleteField_management (feature_class, "FREQUENCY")
 #
 def renameFieldMap(fieldMap, name_text):
-	"""
-	Sets the output fieldname of a FieldMap object. Used when creating FieldMappings.
-	"""
-	type_name = fieldMap.outputField
-	type_name.name = name_text
-	fieldMap.outputField = type_name
+    """
+    Sets the output fieldname of a FieldMap object. Used when creating FieldMappings.
+    """
+    type_name = fieldMap.outputField
+    type_name.name = name_text
+    fieldMap.outputField = type_name
 #
 def field_exists_in_feature_class(field_name, feature_class):
-	"""
-	returns true if field (parameter 1), exists in feature class (parameter 2). returns false if not.
-	See: https://epjmorris.wordpress.com/2015/04/22/how-can-i-check-to-see-if-an-attribute-field-exists-using-arcpy/
-	"""
-	fields = arcpy.ListFields(feature_class, field_name)
-	if len(fields) == 1:
-		return True
-	else:
-		return False
+    """
+    returns true if field (parameter 1), exists in feature class (parameter 2). returns false if not.
+    See: https://epjmorris.wordpress.com/2015/04/22/how-can-i-check-to-see-if-an-attribute-field-exists-using-arcpy/
+    """
+    fields = arcpy.ListFields(feature_class, field_name)
+    if len(fields) == 1:
+        return True
+    else:
+        return False
 #
 def create_intersecting_polygons():
-	"""
-	Creates intersecting_polygons layer by intersecting redistribution_layer (PS_Catchments) and data_layer (GMZ).
-	"""
-	delete_if_exists(intersecting_polygons)
-	arcpy.AddMessage("Computing the polygons that intersect both features")
-	arcpy.Intersect_analysis ([redistribution_layer, data_layer], intersecting_polygons, "ALL", "", "INPUT")
-	arcpy.AddMessage("Output: %s" % intersecting_polygons)
+    """
+    Creates intersecting_polygons layer by intersecting redistribution_layer (PS_Catchments) and data_layer (GMZ).
+    """
+    logging.info("Executing create_intersecting_polygons")
+    jj.delete_if_exists(intersecting_polygons)
+    logging.info("    Computing the polygons that intersect both features")
+    arcpy.Intersect_analysis ([redistribution_layer, data_layer], intersecting_polygons, "ALL", "", "INPUT")
+    logging.info("    Output: %s" % intersecting_polygons)
 #
-def join_growthmodel_table_to_intersecting_polygons():
-	fields_to_be_joined = "" # this list may need to be edited depending on what is required of the tool. To join all fields, set this variable to an empty string (""). To specify a list of fields, use a list, eg, ["POP_2011", "Tot_2011", "POP_2016", "Tot_2016"]. Although, this list may be better set in the fields_list variable.
-	arcpy.AddMessage("Joining growthmodel to interseting polygons")
-	arcpy.JoinField_management (intersecting_polygons, "GMZ", growthmodel_table, "GMZ", fields_to_be_joined)
-	arcpy.AddMessage("Output: %s" % intersecting_polygons)
+def join_growthmodel_table_to_intersecting_polygons(inputs):
+    fields_to_be_joined = "" # this list may need to be edited depending on what is required of the tool. To join all fields, set this variable to an empty string (""). To specify a list of fields, use a list, eg, ["POP_2011", "Tot_2011", "POP_2016", "Tot_2016"]. Although, this list may be better set in the fields_list variable.
+    logging.info("Joining growthmodel to interseting polygons")
+    arcpy.JoinField_management(intersecting_polygons, inputs["intersect_join_field"], growthmodel_table, inputs["growth_join_field"], fields_to_be_joined)
+    logging.info("Output: %s" % intersecting_polygons)
 #
 def add_total_and_local_GMZ_fields():
-	add_property_count_to_layer_x_with_name_x(intersecting_polygons, local_number_of_properties_field)
-	data_layer_rejoined = workspace + "data_layer_rejoined" # this layer will store the intersecting polygons layer back into GMZs so that the total properties in each GMZ includes any double counting.
-	fieldmappings_data = arcpy.FieldMappings()
-	# map total_properties_including_double_counted_field:
-	fm_total_properties_rejoined = arcpy.FieldMap()
-	fm_total_properties_rejoined.addInputField(intersecting_polygons, local_number_of_properties_field)
-	renameFieldMap(fm_total_properties_rejoined, total_properties_including_double_counted_field)
-	fm_total_properties_rejoined.mergeRule = "Sum"
-	fieldmappings_data.addFieldMap(fm_total_properties_rejoined)
-	arcpy.AddMessage("    Creating %s layer" % data_layer_rejoined)
-	delete_if_exists(data_layer_rejoined)
-	arcpy.AddMessage ("    data_layer = %s" % data_layer)
-	arcpy.AddMessage ("    intersecting_polygons = %s" % intersecting_polygons)
-	arcpy.AddMessage ("    data_layer_rejoined = %s" % data_layer_rejoined)
-	arcpy.SpatialJoin_analysis (data_layer, intersecting_polygons, data_layer_rejoined, "JOIN_ONE_TO_ONE", "KEEP_COMMON", fieldmappings_data, "INTERSECT", -0.5)
-	arcpy.AddMessage("    %s includes %s field" % (data_layer_rejoined, total_properties_including_double_counted_field))
-	arcpy.JoinField_management (data_layer, "OBJECTID", data_layer_rejoined,  "TARGET_FID", total_properties_including_double_counted_field)
-	arcpy.AddMessage("    %s field joined to %s" % (total_properties_including_double_counted_field, data_layer_rejoined))
+    logging.info("Executing add_total_and_local_GMZ_fields")
+    add_property_count_to_layer_x_with_name_x(intersecting_polygons, local_number_of_properties_field)
+    data_layer_rejoined = "data_layer_rejoined" # this layer will store the intersecting polygons layer back into GMZs so that the total properties in each GMZ includes any double counting.
+    fieldmappings_data = arcpy.FieldMappings()
+    # map total_properties_including_double_counted_field:
+    fm_total_properties_rejoined = arcpy.FieldMap()
+    fm_total_properties_rejoined.addInputField(intersecting_polygons, local_number_of_properties_field)
+    renameFieldMap(fm_total_properties_rejoined, total_properties_including_double_counted_field)
+    fm_total_properties_rejoined.mergeRule = "Sum"
+    fieldmappings_data.addFieldMap(fm_total_properties_rejoined)
+    logging.info("    Creating %s layer" % data_layer_rejoined)
+    jj.delete_if_exists(data_layer_rejoined)
+    logging.info ("    data_layer = %s" % data_layer)
+    logging.info ("    intersecting_polygons = %s" % intersecting_polygons)
+    logging.info ("    data_layer_rejoined = %s" % data_layer_rejoined)
+    # arcpy.SpatialJoin_analysis(data_layer, intersecting_polygons, data_layer_rejoined, "JOIN_ONE_TO_ONE", "KEEP_COMMON", fieldmappings_data, "INTERSECT", -0.5)
+    arcpy.SpatialJoin_analysis(data_layer, intersecting_polygons, data_layer_rejoined, "JOIN_ONE_TO_ONE", "KEEP_COMMON", fieldmappings_data, "HAVE_THEIR_CENTER_IN")
+    logging.info("    %s includes %s field" % (data_layer_rejoined, total_properties_including_double_counted_field))
+    arcpy.JoinField_management (data_layer, "OBJECTID", data_layer_rejoined,  "TARGET_FID", total_properties_including_double_counted_field)
+    logging.info("    %s field joined to %s" % (total_properties_including_double_counted_field, data_layer_rejoined))
 #
 def max_total_properties_field():
-	"""
-	Calculates the total_properties_including_double_counted_field to be the max of itself or the total_properties_field.
-	"""
-	arcpy.CalculateField_management (intersecting_polygons, total_properties_including_double_counted_field, "max([!"+total_properties_including_double_counted_field+"!, !"+total_properties_field+"!])", "PYTHON_9.3")
+    """
+    Calculates the total_properties_including_double_counted_field to be the max of itself or the total_properties_field.
+    """
+    logging.info("Executing max_total_properties_field")
+    arcpy.CalculateField_management (intersecting_polygons, total_properties_including_double_counted_field, "max([!"+total_properties_including_double_counted_field+"!, !"+total_properties_field+"!])", "PYTHON_9.3")
+
+def setup():
+    """
+    Declares global variables
+    """
+    # TODO: should I do this?
 
 
-## Script Arguments - These are the values that will typically change. They have been built to be used in a model builder with default values proivded if none are received from the model. If run as a python scrip, these arguments will take their values from the variables provided at the top of the script.
-#
-workspace = arcpy.GetParameterAsText(5)
-if workspace == '#' or not workspace:
-    workspace = temp_workspace
-    arcpy.AddMessage("you have not provided a workspace. Using default: %s" % workspace)
-#
-redistribution_layer_name = arcpy.GetParameterAsText(0)
-if redistribution_layer_name == '#' or not redistribution_layer_name:
-    redistribution_layer_name = redistrubtion_layer_path
-    arcpy.AddMessage("you have not provided a redistribution_layer_name. using default: %s" % redistribution_layer_name)
-#
-data_layer = arcpy.GetParameterAsText(1)
-if data_layer == '#' or not data_layer:
-    #raise ValueError('You must provide a data_layer')
-    data_layer = growth_model_polygon
-arcpy.AddMessage("data layer: %s" % data_layer)
-delete_if_exists(workspace + "data_layer")
-arcpy.Select_analysis (data_layer, workspace + "data_layer")
-data_layer = workspace + "data_layer"
-arcpy.AddMessage("new data layer: %s" % data_layer)
-#
-distribution_method = arcpy.GetParameter(2)
-if distribution_method == '#' or not distribution_method:
-    distribution_method = method_of_distribution # 1 - by area, 2 - by number of properties, 3 - by a combination of the two methods.
-    									    # for distribution_method = 3, number of properties method is used for 2016, area method is used for >2036, and 
-									    # the average of the two is used for 2016-2036.
-    arcpy.AddMessage("you have not provided a distribution_method. 1 = distribute by area, 2 = distribute my number of properties. Using %s by default" % distribution_method)
-if distribution_method in [1, 2, 3]:
-	arcpy.AddMessage("distribution method %s is valid" % distribution_method)
-else:
-	arcpy.AddMessage("distribution method = %s" % distribution_method)
-	arcpy.AddMessage("distribution method type = %s" % distribution_method.type)
-	raise ValueError('Distribution method must be either 1, 2 or 3')
-#
-output_filename = arcpy.GetParameterAsText(3)
-if output_filename == '#' or not output_filename:
-    #output_filename = workspace + "redistributedPolygon" # provide a default value if unspecified # this should be the default if running from a python model tool.
-    output_filename = output
-    arcpy.AddMessage("you have not provided an output_layer. This tool will now delete the default file and rewrite it: %s" % output_filename)
-    delete_if_exists(output_filename)
-#
-# this table should be created from the 'Pops and Emps' tab of the growth model outputs provided by Brian. The fields in the table I'm currently using are ["GMZ", "POP_2011", "Tot_2011", "POP_2016", "Tot_2016", "POP_2021", "Tot_2021", "POP_2026", "Tot_2026", "POP_2031", "Tot_2031", "POP_2036", "Tot_2036", "POP_2041", "Tot_2041", "POP_2046", "Tot_2046", "POP_2051", "Tot_2051", "POP_Full", "Tot_Full"]
-growthmodel_csv = arcpy.GetParameterAsText(4)
-if growthmodel_csv == '#' or not growthmodel_csv:
-    growthmodel_csv = growthmodel_csv_path
-    arcpy.AddMessage("you have not provided a growthmodel_csv. Using default: %s" % growthmodel_csv)
+def redistributePolygon(inputs):
+    """This function redistributes a feature class to another feature class based on different methods of distribution:
+    1: By proportion of area
+    2: By proportion of number of lots
+    3: By a combination of 1 and 2 (this only really applies to the Growth Model becaues it has been set to choose a method based on which year it is calculating.)
 
-## Local variables:
-local_number_of_properties_field = "local_counted_properties"
-total_properties_including_double_counted_field = "total_double_counted_properties" # the number of properties counted in the intersecting polygons, then joined back together in the GMZs (or data_layer)
-total_properties_field = "total_counted_properties"
-intersecting_polygons = workspace + "intersecting_polygons"
-growthmodel_table = workspace + "growthmodel_table"
-# TODO: remove 2011 fields from output
-field_list = ["POP_2011", "Tot_2011", "POP_2016", "Tot_2016", "POP_2021", "Tot_2021", "POP_2026", "Tot_2026", "POP_2031", "Tot_2031", "POP_2036", "Tot_2036", "POP_2041", "Tot_2041", "POP_2046", "Tot_2046", "POP_2051", "Tot_2051", "POP_Full", "Tot_Full"]
+    It take a dictionary called 'inputs' as an argument, which contains the following keys:
+        redistribution_layer_name
+        growth_model_polygon
+        output_filename
+        distribution_method
+        field_list"""
+    try:
+        global local_number_of_properties_field
+        local_number_of_properties_field = "local_counted_properties"
+        global total_properties_including_double_counted_field # TODO: delete me
+        total_properties_including_double_counted_field = "total_double_counted_properties" # the number of properties counted in the intersecting polygons, then joined back together in the GMZs (or data_layer)
+        global total_properties_field
+        total_properties_field = "total_counted_properties"
+        global intersecting_polygons
+        intersecting_polygons = "intersecting_polygons"
+        global growthmodel_table
+        growthmodel_table = "growthmodel_table"
+        global redistribution_layer
+        redistribution_layer = "redistribution_layer"
+        jj.delete_if_exists(redistribution_layer)
+        global total_area_field
+        total_area_field = "GMZ_TOTAL_AREA"
+        global data_layer
+        data_layer = "data_layer"
+        jj.delete_if_exists("data_layer")
+        # arcpy.MakeFeatureLayer_management(inputs["growth_model_polygon"], data_layer)
+        arcpy.CopyFeatures_management(inputs["growth_model_polygon"], data_layer)
+        arcpy.AddField_management(data_layer, total_area_field, "FLOAT")
+        arcpy.CalculateField_management(data_layer, total_area_field, "!Shape_Area!", "PYTHON_9.3")
 
-## Import grothmodel_table
-delete_if_exists(growthmodel_table)
-arcpy.AddMessage("Converting Growth Model from a .csv into a gdb table")
-arcpy.CopyRows_management (growthmodel_csv, growthmodel_table)
+        if testing:
+            inputs["distribution_method"] = 3  # because distribution_method 3 is a combination of 1 and 2
+            inputs["output_filename"] = r'C:\TempArcGIS\scratchworkspace.gdb\redistributePolygons_testOutput'
+            jj.delete_if_exists(inputs["output_filename"])
+            #
+            test_area_polygon = r'C:\TempArcGIS\testing.gdb\redistributePolygon_testArea'
+            jj.delete_if_exists(test_area_polygon)
+            create_test_area_polygon(test_area_polygon)
+            #
+            for layer, path in inputs.items():
+                if layer not in ["distribution_method", "output_filename"]:
+                    out_feature_class = r'C:\TempArcGIS\testing.gdb\test_%s' % jj.get_file_from_path(path)
+                    jj.delete_if_exists(out_feature_class)
+                    arcpy.Clip_analysis(path, test_area_polygon, out_feature_class)
+                    inputs[layer] = out_feature_class
+                    logging.info("%s has been trimmed and is now in %s" % (layer, inputs[layer]))
 
-add_property_count_to_layer_x_with_name_x(data_layer, total_properties_field)
+        arcpy.env.outputZFlag = "Disabled" ## disabling Z and M bounds as I think this causes a data bounds error
+        arcpy.env.outputMFlag = "Disabled" # https://geonet.esri.com/thread/79969
 
-input_layer = redistribution_layer_name
-redistribution_layer = workspace + "redistribution_layer"
-delete_if_exists(redistribution_layer)
-arcpy.CopyFeatures_management(input_layer, redistribution_layer)
+        jj.delete_if_exists(inputs["output_filename"])
 
-create_intersecting_polygons()
+        add_property_count_to_layer_x_with_name_x(data_layer, total_properties_field)
+        # TODO: Keep going over this, method by method, and see if the double counting issue still exists.
 
-join_growthmodel_table_to_intersecting_polygons()
+        arcpy.CopyFeatures_management(inputs["redistribution_layer_name"], redistribution_layer)
 
-add_total_and_local_GMZ_fields()
+        create_intersecting_polygons()
 
-create_intersecting_polygons() #recreate this layer with total_properties_filed that includes double counted properties.
+        # join_growthmodel_table_to_intersecting_polygons(inputs)
 
-join_growthmodel_table_to_intersecting_polygons()
+        # add_total_and_local_GMZ_fields() # I think this function was added to deal with double counting
 
-add_property_count_to_layer_x_with_name_x(intersecting_polygons, local_number_of_properties_field)
+        # create_intersecting_polygons() #recreate this layer with total_properties_filed that includes double counted properties.
 
-max_total_properties_field()
+        # join_growthmodel_table_to_intersecting_polygons(inputs)
 
-## Recalculate groth model fields
-total_area_field = "GMZ_TOTAL_AREA"
-# TODO: add total_area_field
-for GM_field in field_list:
-	if field_exists_in_feature_class(GM_field, intersecting_polygons):
-		if distribution_method == 1:
-			calculate_field_proportion_based_on_area(GM_field, total_area_field)
-		elif distribution_method == 2:
-			arcpy.AddMessage("calculating %s field from total GMZ number of properties" % GM_field)
-			calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field)
-		elif distribution_method == 3:
-			if GM_field in  ["POP_2016", "Tot_2016"]:
-				calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field)
-			elif GM_field in  ["POP_2036", "Tot_2036", "POP_2041", "Tot_2041", "POP_2046", "Tot_2046", "POP_2051", "Tot_2051", "POP_Full", "Tot_Full"]:
-				calculate_field_proportion_based_on_area(GM_field, total_area_field)
-			elif GM_field in  ["POP_2021", "Tot_2021", "POP_2026", "Tot_2026", "POP_2031", "Tot_2031"]:
-				calculate_field_proportion_based_on_combination(GM_field, total_properties_including_double_counted_field, local_number_of_properties_field, total_area_field)
-			elif GM_field in  ["POP_2011", "Tot_2011"]:
-				arcpy.CalculateField_management (intersecting_polygons, GM_field, "returnNone()", "PYTHON_9.3", """def returnNone():
-	return None""")
+        add_property_count_to_layer_x_with_name_x(intersecting_polygons, local_number_of_properties_field)
+
+        # max_total_properties_field() # chose max between double counted properties.
+
+        ## Recalculate groth model fields
+        for GM_field in inputs["field_list"]:
+            if field_exists_in_feature_class(GM_field, intersecting_polygons):
+                if inputs["distribution_method"] == 1:
+                    calculate_field_proportion_based_on_area(GM_field, total_area_field)
+                elif inputs["distribution_method"] == 2:
+                    logging.info("calculating %s field from total GMZ number of properties" % GM_field)
+                    calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_field, local_number_of_properties_field)
+                elif inputs["distribution_method"] == 3:
+                    if GM_field in  ["POP_2016", "Tot_2016"]:
+                        calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_field, local_number_of_properties_field)
+                    elif GM_field in  ["POP_2036", "Tot_2036", "POP_2041", "Tot_2041", "POP_2046", "Tot_2046", "POP_2051", "Tot_2051", "POP_Full", "Tot_Full"]:
+                        calculate_field_proportion_based_on_area(GM_field, total_area_field)
+                    elif GM_field in  ["POP_2021", "Tot_2021", "POP_2026", "Tot_2026", "POP_2031", "Tot_2031"]:
+                        calculate_field_proportion_based_on_combination(GM_field, total_properties_field, local_number_of_properties_field, total_area_field)
+                    elif GM_field in  ["POP_2011", "Tot_2011"]:
+                        arcpy.CalculateField_management (intersecting_polygons, GM_field, "returnNone()", "PYTHON_9.3", """def returnNone():
+            return None""")
 
 
 
-## POP_2011 is 0 here
+        ## POP_2011 is 0 here
 
-### setup field maps for Spatial Join
-## create FieldMap and FieldMappins objects
-fieldmappings = arcpy.FieldMappings()
+        ### setup field maps for Spatial Join
+        ## create FieldMap and FieldMappins objects
+        fieldmappings = arcpy.FieldMappings()
 
-redistribution_layer_field_list = arcpy.ListFields(redistribution_layer_name)
-for field in redistribution_layer_field_list:
-	if field.name not in ['OBJECTID', 'Shape_Length', 'Shape_Area', 'Join_Count', 'Shape']:
-		arcpy.AddMessage("Adding fieldmap for %s" % field.name)
-		fm = arcpy.FieldMap()
-		fm.addInputField(redistribution_layer_name, field.name)
-		renameFieldMap(fm, field.name)
-		fieldmappings.addFieldMap(fm)
+        redistribution_layer_field_list = arcpy.ListFields(inputs["redistribution_layer_name"])
+        for field in redistribution_layer_field_list:
+            if field.name not in ['OBJECTID', 'Shape_Length', 'Shape_Area', 'Join_Count', 'Shape']:
+                logging.info("Adding fieldmap for %s" % field.name)
+                fm = arcpy.FieldMap()
+                fm.addInputField(inputs["redistribution_layer_name"], field.name)
+                renameFieldMap(fm, field.name)
+                fieldmappings.addFieldMap(fm)
 
-for GM_field in field_list:
-	if field_exists_in_feature_class(GM_field, intersecting_polygons):
-		fm_POP_or_Total = arcpy.FieldMap()
-		fm_POP_or_Total.addInputField(intersecting_polygons, GM_field)
-		renameFieldMap(fm_POP_or_Total, GM_field)
-		fm_POP_or_Total.mergeRule = "Sum"
-		fieldmappings.addFieldMap(fm_POP_or_Total)
+        for GM_field in inputs["field_list"]:
+            if field_exists_in_feature_class(GM_field, intersecting_polygons):
+                fm_POP_or_Total = arcpy.FieldMap()
+                fm_POP_or_Total.addInputField(intersecting_polygons, GM_field)
+                renameFieldMap(fm_POP_or_Total, GM_field)
+                fm_POP_or_Total.mergeRule = "Sum"
+                fieldmappings.addFieldMap(fm_POP_or_Total)
 
-## Spatially Join intersecting_polygons back to redistribution layer
-delete_if_exists(output_filename)
-arcpy.AddMessage("joining intersecting_polygons back to redistribution layer")
-arcpy.SpatialJoin_analysis (redistribution_layer, intersecting_polygons, output_filename, "JOIN_ONE_TO_ONE", "KEEP_ALL", fieldmappings, "CONTAINS", "#", "#")
-arcpy.AddMessage("Successfully redistributed %s to %s" % (data_layer, redistribution_layer))
-arcpy.AddMessage("Output file can be found at %s" % output_filename)
+        ## Spatially Join intersecting_polygons back to redistribution layer
+        jj.delete_if_exists(inputs["output_filename"])
+        logging.info("joining intersecting_polygons back to redistribution layer")
+        arcpy.SpatialJoin_analysis (redistribution_layer, intersecting_polygons, inputs["output_filename"], "JOIN_ONE_TO_ONE", keep_method, fieldmappings, "CONTAINS", "#", "#")
+        logging.info("Successfully redistributed %s to %s" % (data_layer, redistribution_layer))
+        logging.info("Output file can be found at %s" % inputs["output_filename"])
+    except arcpy.ExecuteError:
+        print arcpy.GetMessages(2)
+        logging.exception(arcpy.GetMessages(2))
+    except Exception as e:
+        print e.args[0]
+        logging.exception(e.args[0])
+        # logger.error('Some weird error:', exc_info=True)  # logging info: https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
+# End redistributePolygon function
+
+
+# This test allows the script to be used from the operating
+# system command prompt (stand-alone), in a Python IDE,
+# as a geoprocessing script tool, or as a module imported in
+# another script
+if __name__ == '__main__':
+    print("""
+This script will take the Growth Model results and reportion them to a different shape.
+""")
+    os.system('pause')
+    # default input params
+    inputs = {}
+    inputs["redistribution_layer_name"] = r'o:\data\planning_ip\admin\staff\jared\sewer strategy report catchments\upperross\data.gdb\overall_catchments_20171004_upper_ross'
+    inputs["growth_model_polygon"] = r'r:\infrastructuremodels\growth\spatial\database\growthmodelgmz.mdb\gmz'
+    inputs["output_filename"] = r'o:\data\planning_ip\admin\staff\jared\sewer strategy report catchments\upperross\data.gdb\upperross_growthmodelredistributedtopscatchments_2'
+    jj.delete_if_exists(inputs["output_filename"])
+    #
+    inputs["intersect_join_field"] = "GMZ"
+    inputs["growth_join_field"] = "GMZ"
+    inputs["distribution_method"] = 3
+    if inputs["distribution_method"] in [1, 2, 3]:
+        logging.info("distribution method %s is valid" % inputs["distribution_method"])
+    else:
+        logging.info("distribution method = %s" % inputs["distribution_method"])
+        logging.info("distribution method type = %s" % inputs["distribution_method"].type)
+        raise valueerror('distribution method must be either 1, 2 or 3')
+    # todo: remove 2011 fields from output
+    inputs["field_list"] = ["pop_2011", "tot_2011", "pop_2016", "tot_2016", "pop_2021", "tot_2021", "pop_2026", "tot_2026", "pop_2031", "tot_2031", "pop_2036", "tot_2036", "pop_2041", "tot_2041", "pop_2051", "tot_2051", "pop_full", "tot_full"] # lgip moderated gm results have no 2046
+    # inputs["field_list"] = ["pop_2011", "tot_2011", "pop_2016", "tot_2016", "pop_2021", "tot_2021", "pop_2026", "tot_2026", "pop_2031", "tot_2031", "pop_2036", "tot_2036", "pop_2041", "tot_2041", "pop_2046", "tot_2046", "pop_2051", "tot_2051", "pop_full", "tot_full"]
+    #
+    # # Arguments overwrite defaults
+    # default_output = (r'')
+    # argv = [default_output]
+    # arguments_exist = True if (arcpy.GetArgumentCount() != 0) else False
+    # if arguments_exist:
+    #     argv = tuple(arcpy.GetParameterAsText(i)
+    #                  for i in range(arcpy.GetArgumentCount()))
+    # redistributePolygon(*argv)
+    redistributePolygon(inputs)
+    # see here for help on #argv https://docs.python.org/2.7/tutorial/controlflow.html#unpacking-argument-lists # noqa
+    # see here for help on reading *argv in new called function: https://docs.python.org/2.7/tutorial/controlflow.html#keyword-arguments
+    os.system('pause')
