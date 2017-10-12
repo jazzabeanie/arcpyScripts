@@ -92,7 +92,7 @@ def renameFieldMap(fieldMap, name_text):
 
 
 def calculate_external_field(target_layer, target_field, join_layer, join_field, output):
-    """Calculates an target field from an field on another featre based on spatial intersect."""
+    """Calculates a target field from a field on another featre based on spatial intersect."""
     logging.debug("Calculating %s.%s from %s.%s" % (target_layer, target_field, join_layer, join_field))
     delete_if_exists(output)
     original_fields = arcpy.ListFields(target_layer)
