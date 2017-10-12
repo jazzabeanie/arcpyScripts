@@ -110,13 +110,24 @@ def test_renameFieldMap():
 
 
 def test_redistributePolygon():
+    # TODO: improve the tests for this method. All input data should be created on the fly, more tests should be added, more polygons should be added, etc.
     print "Testing redistributePolygon..."
+    left_x = 479582.11
+    right_x = 479649.579
+    lower_y = 7871595.813
+    upper_y = 7871628.886
+    array = [(left_x,lower_y),
+         (left_x,upper_y),
+         (right_x,upper_y),
+         (right_x,lower_y),
+         (left_x,lower_y)]
+    redistribution_test = arcpy.env.workspace + "\\redistribution_test_layer"
+    jj.delete_if_exists(redistribution_test)
+    jj.create_polygon(redistribution_test, array)
     redistributePolygonInputs = {}
-    redistributePolygonInputs["redistribution_layer_name"] = "mesh_intersect"
-    redistributePolygonInputs["growth_model_polygon"] = "MB_2015_TSV"
+    redistributePolygonInputs["redistribution_layer_name"] = redistribution_test
+    redistributePolygonInputs["growth_model_polygon"] = arcpy.env.workspace + "\\growth_model_polygon_test"
     redistributePolygonInputs["output_filename"] = "redistributed"
-    redistributePolygonInputs["intersect_join_field"] = "MB_CODE16"
-    redistributePolygonInputs["growth_join_field"] = "MB_CODE16"
     redistributePolygonInputs["field_list"] = ["Dwelling_1"]
     print "  Testing invalid distribution method is caught"
     for method in [0, "blah", 6.5]:
@@ -134,11 +145,20 @@ def test_redistributePolygon():
     print "  Testing number of properties method:"
     redistributePolygonInputs["distribution_method"] = 2
     jj.redistributePolygon(redistributePolygonInputs)
-    print "TODO: check for success"
-    # if ():
-    #     print "  pass"
-    # else:
-    #     print "  fail"
+    with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['Dwelling_1']) as cursor:
+        for row in cursor:
+            if row[0] == 10:
+                print "    Pass"
+            else:
+                print "    Fail: Dwelling_1 should be 10"
+    print "  Testing area method:"
+    redistributePolygonInputs["distribution_method"] = 1
+    jj.redistributePolygon(redistributePolygonInputs)
+    for row in arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['Dwelling_1']):
+        if row[0] == 4:
+            print "    Pass"
+        else:
+            print "    Fail: Dwelling_1 should be 4"
     print "------"
 
 def test_create_polygon():
@@ -196,7 +216,7 @@ if __name__ == '__main__':
     # test_get_file_from_path()
     # test_get_directory_from_path()
     # test_renameFieldMap()
-    # test_redistributePolygon()
-    test_create_polygon()
+    test_redistributePolygon()
+    # test_create_polygon()
 
     os.system('pause')
