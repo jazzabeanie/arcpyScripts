@@ -15,8 +15,6 @@ if testing:
 Parse csv files to make sure they as expected. Check the class of fields to
 see that they are as expected.
 
-### Put all variable declarations into some sort of setup function
-
 ### lint the code
 
 ### Create a log() method 

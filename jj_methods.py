@@ -25,14 +25,14 @@ testing = True
 # TODO: create a bunch of functions that create test data sets. For example: add the function below, but let the list of verticies be passed in as an argument.
 def create_polygon(output, *shapes_lists):
     """
-    Creates a polygon at the output from the list of points provided.
+    Creates a polygon at the output from the list of points provided. Multiple points list can be provided.
     """
     print "directory = " + get_directory_from_path(output)
     print "name = " + get_file_from_path(output)
     arcpy.CreateFeatureclass_management(
-            get_directory_from_path(output), # out_path
-            get_file_from_path(output), # out_name
-            "POLYGON") # geometry_type
+        get_directory_from_path(output), # out_path
+        get_file_from_path(output), # out_name
+        "POLYGON") # geometry_type
     for shape_list in shapes_lists:
         point_array = []
         for vertex in shape_list:
@@ -343,3 +343,21 @@ def redistributePolygon(inputs):
         print e.args[0]
         logging.exception(e.args[0])
         raise e
+
+def for_each_feature(feature_class, cb):
+    """
+    Itterates over each feature in a feature class, and calls a function with the feature selected.
+    """
+    # TODO: get workspace from __main__
+    # https://gis.stackexchange.com/questions/79619/what-is-python-equivalent-of-modelbuilders-iterate-feature-selection
+    # https://www.protechtraining.com/content/python_fundamentals_tutorial-functional_programming
+    feature_layer='feature_layer'
+    with arcpy.da.SearchCursor(feature_class, "OBJECTID") as cursor:
+        for row in cursor:
+            arcpy.MakeFeatureLayer_management(
+                    in_features=feature_class,
+                    out_layer=feature_layer,
+                    where_clause="OBJECTID = %s" % row[0])
+            cb(feature_layer)
+            arcpy.Delete_management(feature_layer)
+

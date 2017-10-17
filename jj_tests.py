@@ -161,14 +161,15 @@ def test_redistributePolygon():
             print "    Fail: Dwelling_1 should be 4"
     print "------"
 
+
 def test_create_polygon():
     print "Testing create_polygon..."
     print "  Testing create a polygon that intersects a point ..."
     array = [(479509.625,7871431.255),
-             (479509.625,7871508.742),
-             (479563.712,7871508.742),
-             (479563.712,7871431.255),
-             (479509.625,7871431.255)]
+         (479509.625,7871508.742),
+         (479563.712,7871508.742),
+         (479563.712,7871431.255),
+         (479509.625,7871431.255)]
     output = arcpy.env.workspace + "\\test_create_polygon"
     jj.delete_if_exists(output)
     jj.create_polygon(output, array)
@@ -183,10 +184,10 @@ def test_create_polygon():
         print "    Fail: tool doesn't create shape in expected location or doens't create shape at all (%s)" % output
     print "  Testing create a polygon that doesn't intersects a point ..."
     array = [(479579.725,7871431.255),
-             (479579.725,7871508.742),
-             (479593.812,7871508.742),
-             (479593.812,7871431.255),
-             (479579.725,7871431.255)]
+         (479579.725,7871508.742),
+         (479593.812,7871508.742),
+         (479593.812,7871431.255),
+         (479579.725,7871431.255)]
     output = arcpy.env.workspace + "\\test_create_polygon"
     jj.delete_if_exists(output)
     jj.create_polygon(output, array)
@@ -203,6 +204,47 @@ def test_create_polygon():
     print "------"
 
 
+def test_for_each_feature():
+    print "Testing test_for_each_features..."
+    def increase(feature_layer):
+        global count
+        count+=1
+    def check_only_1_feature(feature_layer):
+        feature_count = arcpy.GetCount_management(feature_layer)
+        if feature_count.getOutput(0) == u'1':
+            print "    Pass"
+        else:
+            print "    Fail: multiple objects selected in %s" % feature_layer
+    shape1 = [(479509.625,7871431.255),
+         (479509.625,7871508.742),
+         (479563.712,7871508.742),
+         (479563.712,7871431.255),
+         (479509.625,7871431.255)]
+    shape2 = [(479609.625,7871431.255),
+         (479609.625,7871508.742),
+         (479663.712,7871508.742),
+         (479663.712,7871431.255),
+         (479609.625,7871431.255)]
+    shape3 = [(479709.625,7871431.255),
+         (479709.625,7871508.742),
+         (479763.712,7871508.742),
+         (479763.712,7871431.255),
+         (479709.625,7871431.255)]
+    for_each_test_feature_class = r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\TestingDataset.gdb\for_each_test_feature_class'
+    jj.delete_if_exists(for_each_test_feature_class)
+    jj.create_polygon(for_each_test_feature_class, shape1, shape2, shape3)
+    print "  Only 1 object seleted..."
+    jj.for_each_feature(for_each_test_feature_class, check_only_1_feature)
+    print "  Every feature is itterated over..."
+    global count
+    count = 0
+    jj.for_each_feature(for_each_test_feature_class, increase)
+    if count == 3:
+        print "    Pass"
+    else:
+        print "    Fail, count = %s (supposed to be 3)" % count
+    print "------"
+
 
 if __name__ == '__main__':
     # TODO: set up logging so that I don't see 'No handlers could be found for logger "__main__"'
@@ -216,7 +258,8 @@ if __name__ == '__main__':
     # test_get_file_from_path()
     # test_get_directory_from_path()
     # test_renameFieldMap()
-    test_redistributePolygon()
-    # test_create_polygon()
+    # test_redistributePolygon()
+    # test_for_each_featuretest_create_polygon()
+    test_for_each_feature()
 
     os.system('pause')
