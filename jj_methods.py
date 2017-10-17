@@ -17,7 +17,6 @@ import __main__
 from datetime import datetime
 # see here for logging best practices: https://stackoverflow.com/questions/15727420/using-python-logging-in-multiple-modules
 
-arcpy.env.workspace = r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\TestingDataset.gdb'
 logging = logging.getLogger(__name__)
 testing = True
 
@@ -344,13 +343,11 @@ def redistributePolygon(inputs):
         logging.exception(e.args[0])
         raise e
 
+
 def for_each_feature(feature_class, cb):
     """
     Itterates over each feature in a feature class, and calls a function with the feature selected.
     """
-    # TODO: get workspace from __main__
-    # https://gis.stackexchange.com/questions/79619/what-is-python-equivalent-of-modelbuilders-iterate-feature-selection
-    # https://www.protechtraining.com/content/python_fundamentals_tutorial-functional_programming
     feature_layer='feature_layer'
     with arcpy.da.SearchCursor(feature_class, "OBJECTID") as cursor:
         for row in cursor:
@@ -360,4 +357,5 @@ def for_each_feature(feature_class, cb):
                     where_clause="OBJECTID = %s" % row[0])
             cb(feature_layer)
             arcpy.Delete_management(feature_layer)
+
 
