@@ -1,10 +1,10 @@
 # --------------------------------
-# Name: # TODO
-# Purpose: # TODO
+# Name: TODO
+# Purpose: TODO
 # Author: Jared Johnston
-# Created: # TODO
+# Created: TODO
 # Copyright:   (c) TCC
-# ArcGIS Version:   10.2
+# ArcGIS Version:   10.5
 # Python Version:   2.7
 # Source: https://blogs.esri.com/esri/arcgis/2011/08/04/pythontemplate/
 # --------------------------------
