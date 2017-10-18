@@ -13,10 +13,10 @@ import sys # noqa
 import arcpy
 import logging
 import json
-import jj_methods as m # noqa
+import jj_methods as m # noqa # deleteme?
 import imp
 from datetime import datetime
-m = imp.load_source('jj_methods', r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\jj_methods.py') # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
+jj = imp.load_source('jj_methods', r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\jj_methods.py') # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
 
 arcpy.env.workspace = "in_memory"
 testing = True
@@ -38,7 +38,7 @@ logging.warning("------")
 # Commonly used layers:
 sde = "O:\\Data\\Planning_IP\\Spatial\\WindowAuth@Mapsdb01@SDE_Vector.sde"
 
-GMZ = r'R:\InfrastructureModels\Growth\Database\GrowthModelGMZ.mdb\GMZ'
+GMZ = r'R:\InfrastructureModels\Growth\Spatial\Database\GrowthModelGMZ.mdb\GMZ'
 sde_properties = "%s\\sde_vector.TCC.Cadastral\\sde_vector.TCC.Properties" % sde
 sde_landParcels = "%s\\sde_vector.TCC.Cadastral\\sde_vector.TCC.Land_Parcels" % sde
 sde_roadShapes = "%s\\sde_vector.GSS.core\\SDE_Vector.GSS.road_section_polygon" % sde
@@ -59,6 +59,7 @@ with open("O:\\Data\\Planning_IP\\Admin\\Staff\\Jared\\GIS\\Tools\\arcpyScripts\
 
 
 
+# delete this and use jj.delete_if_exists
 def delete_if_exists(layer):
     """Deleted the passed in layer if it exists. This avoids errors."""
     if arcpy.Exists(layer):
@@ -87,7 +88,7 @@ def do_analysis(*argv):
 # another script
 if __name__ == '__main__':
     print("""
-# TODO: write instructions here
+# TODO: print docstring of do_analysis: do_analysis.__doc__
 """)
     os.system('pause')
     # Arguments overwrite defaults

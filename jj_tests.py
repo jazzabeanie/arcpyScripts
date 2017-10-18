@@ -258,8 +258,8 @@ if __name__ == '__main__':
     # test_get_file_from_path()
     # test_get_directory_from_path()
     # test_renameFieldMap()
-    # test_redistributePolygon()
+    test_redistributePolygon()
     # test_for_each_featuretest_create_polygon()
-    test_for_each_feature()
+    # test_for_each_feature()
 
     os.system('pause')

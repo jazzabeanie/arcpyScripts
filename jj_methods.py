@@ -17,7 +17,7 @@ import __main__
 from datetime import datetime
 # see here for logging best practices: https://stackoverflow.com/questions/15727420/using-python-logging-in-multiple-modules
 
-logging = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 testing = True
 
 
@@ -26,8 +26,8 @@ def create_polygon(output, *shapes_lists):
     """
     Creates a polygon at the output from the list of points provided. Multiple points list can be provided.
     """
-    print "directory = " + get_directory_from_path(output)
-    print "name = " + get_file_from_path(output)
+    logger.debug("directory = " + get_directory_from_path(output))
+    logger.debug("name = " + get_file_from_path(output))
     arcpy.CreateFeatureclass_management(
         get_directory_from_path(output), # out_path
         get_file_from_path(output), # out_name
@@ -47,7 +47,7 @@ def create_polygon(output, *shapes_lists):
 def delete_if_exists(layer):
     """Deleted the passed in layer if it exists. This avoids errors."""
     if arcpy.Exists(layer):
-        logging.warning("Deleting %s" % layer)
+        logger.debug("Deleting %s" % layer)
         arcpy.Delete_management(layer)
 
 
@@ -77,7 +77,7 @@ def return_tuple_of_args():
     tuple."""
     args = tuple(arcpy.GetParameterAsText(i)
                  for i in range(arcpy.GetArgumentCount()))
-    logging.debug("args = " + str(args))
+    logger.debug("args = " + str(args))
     return args
 
 
@@ -92,7 +92,7 @@ def renameFieldMap(fieldMap, name_text):
 
 def calculate_external_field(target_layer, target_field, join_layer, join_field, output):
     """Calculates a target field from a field on another featre based on spatial intersect."""
-    logging.debug("Calculating %s.%s from %s.%s" % (target_layer, target_field, join_layer, join_field))
+    logger.debug("Calculating %s.%s from %s.%s" % (target_layer, target_field, join_layer, join_field))
     delete_if_exists(output)
     original_fields = arcpy.ListFields(target_layer)
     original_field_names = [f.name for f in original_fields]
@@ -105,22 +105,22 @@ def calculate_external_field(target_layer, target_field, join_layer, join_field,
         raise IndexError("could not find %s in %s" % (join_field, join_layer))
     if len(arcpy.ListFields(join_layer, join_field)) > 1:
         raise AttributeError("Multiple fields found when searching for the %s in %s" % (join_field, join_layer))
-    logging.debug("  Adding and calculating %s = %s" % (tmp_field_name, join_field))
+    logger.debug("  Adding and calculating %s = %s" % (tmp_field_name, join_field))
     arcpy.AddField_management(join_layer_layer, tmp_field_name, join_field_object.type)
     arcpy.CalculateField_management(join_layer_layer, tmp_field_name, "!" + join_field + "!", "PYTHON", "")
-    logging.debug("  Spatially joining %s to %s" % (join_layer, target_layer))
+    logger.debug("  Spatially joining %s to %s" % (join_layer, target_layer))
     arcpy.SpatialJoin_analysis(target_layer, join_layer, output)
     output_fields = arcpy.ListFields(output)
     new_fields = [f for f in output_fields if f.name not in original_field_names]
-    logging.debug("  Calculating %s = %s" % (target_field, tmp_field_name))
+    logger.debug("  Calculating %s = %s" % (target_field, tmp_field_name))
     arcpy.CalculateField_management(output, target_field, "!" + tmp_field_name + "!", "PYTHON", "") # FIXME: may need to make null values 0.
-    logging.debug("  Deleting joined fields:")
+    logger.debug("  Deleting joined fields:")
     for f in new_fields:
         if not f.required:
-            logging.debug("    %s" % f.name)
+            logger.debug("    %s" % f.name)
             arcpy.DeleteField_management(output, f.name)
         else:
-            logging.debug("    Warning: Cannot delete required field: %s" % f.name)
+            logger.warning("    Warning: Cannot delete required field: %s" % f.name)
 
 
 def unique_values(table, field):
@@ -141,8 +141,8 @@ def get_directory_from_path(path):
 
 def test_print():
     """tests that methods in this module can be called."""
-    logging.info("success")
-    logging.debug("fail")
+    logger.info("success")
+    logger.debug("fail")
 
 
 def redistributePolygon(inputs):
@@ -159,18 +159,17 @@ def redistributePolygon(inputs):
         field_list"""
     try:
         if inputs["distribution_method"] in [1, 2, 3]:
-            logging.info("distribution method %s is valid" % inputs["distribution_method"])
+            logger.info("distribution method %s is valid" % inputs["distribution_method"])
         else:
-            logging.info("distribution method = %s" % inputs["distribution_method"])
-            raise AttributeError('distribution method must be either 1, 2 or 3')
+            raise AttributeError('distribution method must be either 1, 2 or 3. Specified value = %s' % inputs["distribution_method"])
         if hasattr(__main__, 'testing'):
             testing = __main__.testing
         if hasattr(__main__, 'now'):
             now = __main__.now
         else:
             now = r'%s' % datetime.now().strftime("%Y%m%d%H%M")
-        logging.info("For redistributePolygon tool, now (which is sometimes used in filenames) = %s" % now)
-        logging.info("For redistributePolygon tool, testing = %s" % testing)
+        logger.info("For redistributePolygon tool, now (which is sometimes used in filenames) = %s" % now)
+        logger.info("For redistributePolygon tool, testing = %s" % testing)
         if testing:
             # inputs["distribution_method"] = 3  # TODO: incorporate this into the unit tests when this is moved into jj_methods
             keep_method = "KEEP_COMMON"
@@ -182,8 +181,8 @@ def redistributePolygon(inputs):
             Calculates the field_to_calculate for each polygon based on its percentage of the total area of the polygon to calculate from
             Arguments should be the names of the fields as strings
             """
-            logging.info("Executing calculate_field_proportion_based_on_area(%s, %s)" % (field_to_calculate, total_area_field))
-            logging.info("    Calculating %s field based on the proportion of the polygon area to the %s field" % (field_to_calculate, total_area_field))
+            logger.info("Executing calculate_field_proportion_based_on_area(%s, %s)" % (field_to_calculate, total_area_field))
+            logger.info("    Calculating %s field based on the proportion of the polygon area to the %s field" % (field_to_calculate, total_area_field))
             arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_area_proportion_of_total(!"+total_area_field+"!, !Shape_Area!, !" + field_to_calculate + "!)", "PYTHON_9.3", """def return_area_proportion_of_total(total_area_field, Shape_Area, field_to_calculate):
             return Shape_Area/total_area_field * int(field_to_calculate)""")
         #
@@ -192,8 +191,8 @@ def redistributePolygon(inputs):
             Calculates the field_to_calculate for each polygon based on the number of lots in that polygon, compared to total number of lots on the larger polygon form which the data should be interpolated.
             Arguments should be the names of the fields as strings
             """
-            logging.info("Executing calculate_field_proportion_based_on_number_of_lots(%s, %s, %s)" % (field_to_calculate, larger_properties_field, local_number_of_properties_field))
-            logging.info("    Calculating %s field based on the proportion of the total properties value in the %s field using %s" % (field_to_calculate, larger_properties_field, local_number_of_properties_field))
+            logger.info("Executing calculate_field_proportion_based_on_number_of_lots(%s, %s, %s)" % (field_to_calculate, larger_properties_field, local_number_of_properties_field))
+            logger.info("    Calculating %s field based on the proportion of the total properties value in the %s field using %s" % (field_to_calculate, larger_properties_field, local_number_of_properties_field))
             arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_number_proportion_of_total(!"+larger_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!)", "PYTHON_9.3", """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate):
             new_value =  (float(local_properties)/total_properties) * int(field_to_calculate)
             return int(new_value)""")
@@ -202,8 +201,8 @@ def redistributePolygon(inputs):
             """
             Calculates the the field based on area, and by number of lots, and assigned the average between the two as the value.
             """
-            logging.info("Executing calculate_field_proportion_based_on_combination(%s, %s, %s, %s)" % (field_to_calculate, larger_properties_field, local_number_of_properties_field, total_area_field))
-            logging.info("    Calculating %s field as the average value between area and number of lots method" % field_to_calculate)
+            logger.info("Executing calculate_field_proportion_based_on_combination(%s, %s, %s, %s)" % (field_to_calculate, larger_properties_field, local_number_of_properties_field, total_area_field))
+            logger.info("    Calculating %s field as the average value between area and number of lots method" % field_to_calculate)
             arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_average_value(!"+larger_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!, !" + total_area_field + "!, !Shape_Area!)", "PYTHON_9.3", """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate):
             new_value =  (float(local_properties)/total_properties) * int(field_to_calculate)
             return int(new_value)
@@ -219,11 +218,11 @@ def redistributePolygon(inputs):
             """
             Adds a field to the feature class containing the number of properties (from the SDE) in each polygon.
             """ # Previously properties would get double counted. This issue has now been fixed.
-            logging.info("Executing add_property_count_to_layer_x_with_name_x(%s, %s)" % (feature_class, field_name))
+            logger.info("Executing add_property_count_to_layer_x_with_name_x(%s, %s)" % (feature_class, field_name))
             properties = r"O:\\Data\\Planning_IP\\Spatial\\WindowAuth@Mapsdb01@SDE_Vector.sde\\sde_vector.TCC.Cadastral\\sde_vector.TCC.Properties"
             feature_layer = "add_property_count_to_layer_x_with_name_x_feature_layer"
             delete_if_exists(feature_layer)
-            logging.info("    making feature layer from feature class %s" % feature_class)
+            logger.info("    making feature layer from feature class %s" % feature_class)
             arcpy.MakeFeatureLayer_management(
                     feature_class, # in_features
                     feature_layer, # out_layer
@@ -231,13 +230,13 @@ def redistributePolygon(inputs):
                     "#", # workspace
                     "#") # field_info
             if (field_in_feature_class("TARGET_FID", feature_layer)):
-                logging.info("    deleteing TARGET_FID field from feature_layer")
+                logger.info("    deleteing TARGET_FID field from feature_layer")
                 arcpy.DeleteField_management(feature_layer, "TARGET_FID")
             properties_SpatialJoin = "properties_SpatialJoin"
             delete_if_exists(properties_SpatialJoin)
             stats = "stats"
             delete_if_exists(stats)
-            logging.info("    joining properties to "+ feature_layer +" and outputing to %s" % properties_SpatialJoin)
+            logger.info("    joining properties to "+ feature_layer +" and outputing to %s" % properties_SpatialJoin)
             arcpy.SpatialJoin_analysis(
                     properties, # target_features
                     feature_layer, # join_features
@@ -248,22 +247,22 @@ def redistributePolygon(inputs):
                      "HAVE_THEIR_CENTER_IN", # match_option
                     "#", # search_radius
                     "#")# distance_field_name
-            logging.info("    Calculating statistics table at stats")
+            logger.info("    Calculating statistics table at stats")
             arcpy.Statistics_analysis(properties_SpatialJoin, stats, "Join_Count SUM","JOIN_FID")
-            logging.info("    joining back to %s" % feature_class)
+            logger.info("    joining back to %s" % feature_class)
             arcpy.JoinField_management (feature_class, "OBJECTID", stats, "JOIN_FID", "FREQUENCY")
-            logging.info("    renaming 'FREQUENCY' to '%s'" % field_name)
+            logger.info("    renaming 'FREQUENCY' to '%s'" % field_name)
             arcpy.AlterField_management (feature_class, "FREQUENCY", field_name)
         #
         def create_intersecting_polygons():
             """
             Creates intersecting_polygons layer by intersecting redistribution_layer (PS_Catchments) and data_layer (GMZ).
             """
-            logging.info("Executing create_intersecting_polygons")
+            logger.info("Executing create_intersecting_polygons")
             delete_if_exists(intersecting_polygons)
-            logging.info("    Computing the polygons that intersect both features")
+            logger.info("    Computing the polygons that intersect both features")
             arcpy.Intersect_analysis ([redistribution_layer, data_layer], intersecting_polygons, "ALL", "", "INPUT")
-            logging.info("    Output: %s" % intersecting_polygons)
+            logger.info("    Output: %s" % intersecting_polygons)
         #
 
         global local_number_of_properties_field
@@ -300,7 +299,7 @@ def redistributePolygon(inputs):
                 if inputs["distribution_method"] == 1:
                     calculate_field_proportion_based_on_area(GM_field, total_area_field)
                 elif inputs["distribution_method"] == 2:
-                    logging.info("calculating %s field from total GMZ number of properties" % GM_field)
+                    logger.info("calculating %s field from total GMZ number of properties" % GM_field)
                     calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_field, local_number_of_properties_field)
                 elif inputs["distribution_method"] == 3:
                     if GM_field in  ["POP_2016", "Tot_2016"]:
@@ -318,7 +317,7 @@ def redistributePolygon(inputs):
         fieldmappings = arcpy.FieldMappings()
         for field in arcpy.ListFields(inputs["redistribution_layer_name"]):
             if field.name not in ['OBJECTID', 'Shape_Length', 'Shape_Area', 'Join_Count', 'Shape']:
-                logging.info("Adding fieldmap for %s" % field.name)
+                logger.info("Adding fieldmap for %s" % field.name)
                 fm = arcpy.FieldMap()
                 fm.addInputField(inputs["redistribution_layer_name"], field.name)
                 renameFieldMap(fm, field.name)
@@ -331,16 +330,16 @@ def redistributePolygon(inputs):
                 fm_POP_or_Total.mergeRule = "Sum"
                 fieldmappings.addFieldMap(fm_POP_or_Total)
         delete_if_exists(inputs["output_filename"])
-        logging.info("joining intersecting_polygons back to redistribution layer")
+        logger.info("joining intersecting_polygons back to redistribution layer")
         arcpy.SpatialJoin_analysis (redistribution_layer, intersecting_polygons, inputs["output_filename"], "JOIN_ONE_TO_ONE", keep_method, fieldmappings, "CONTAINS", "#", "#")
-        logging.info("Successfully redistributed %s to %s" % (data_layer, redistribution_layer))
-        logging.info("Output file can be found at %s" % inputs["output_filename"])
+        logger.info("Successfully redistributed %s to %s" % (data_layer, redistribution_layer))
+        logger.info("Output file can be found at %s" % inputs["output_filename"])
     except arcpy.ExecuteError:
         print arcpy.GetMessages(2)
-        logging.exception(arcpy.GetMessages(2))
+        logger.exception(arcpy.GetMessages(2))
     except Exception as e:
         print e.args[0]
-        logging.exception(e.args[0])
+        logger.exception(e.args[0])
         raise e
 
 
@@ -348,14 +347,23 @@ def for_each_feature(feature_class, cb):
     """
     Itterates over each feature in a feature class, and calls a function with the feature selected.
     """
+    if "\\" not in feature_class:
+        logger.warning("WARNING: looping likes to receive the feature_class as the full path to the file, not just the name. A backslash (\\) was not found in %s" % feature_class)
     feature_layer='feature_layer'
+    logger.debug("Itterating over %s..." % feature_class)
     with arcpy.da.SearchCursor(feature_class, "OBJECTID") as cursor:
         for row in cursor:
             arcpy.MakeFeatureLayer_management(
-                    in_features=feature_class,
-                    out_layer=feature_layer,
-                    where_clause="OBJECTID = %s" % row[0])
+                in_features=feature_class,
+                out_layer=feature_layer,
+                where_clause="OBJECTID = %s" % row[0])
             cb(feature_layer)
             arcpy.Delete_management(feature_layer)
+
+def log(text):
+    print(text)
+    logger.info(text)
+    # TODO: if arcpy has attribute:
+    #     arcpy.AddMessages(text)
 
 
