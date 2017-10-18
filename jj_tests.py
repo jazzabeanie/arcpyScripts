@@ -135,7 +135,7 @@ def test_redistributePolygon():
         try:
             jj.redistributePolygon(redistributePolygonInputs)
         except AttributeError as e:
-            if e.args[0] == 'distribution method must be either 1, 2 or 3':
+            if e.args[0] == 'distribution method must be either 1, 2 or 3': # FIXME
                 print "    Pass"
             else:
                 print "    Fail"
