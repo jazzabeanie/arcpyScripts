@@ -18,6 +18,18 @@ arcpy.env.workspace = r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScr
 testing = True
 
 
+def create_basic_polygon():
+    array = [(479579.725,7871431.255),
+         (479579.725,7871508.742),
+         (479593.812,7871508.742),
+         (479593.812,7871431.255),
+         (479579.725,7871431.255)]
+    output = arcpy.env.workspace + "\\basic_polygon_for_testing"
+    jj.delete_if_exists(output)
+    jj.create_polygon(output, array)
+    return output
+
+
 def test_delete_if_exists():
     print "Testing delete_if_exists..."
     arcpy.CopyFeatures_management
@@ -165,6 +177,7 @@ def test_redistributePolygon():
 def test_create_polygon():
     print "Testing create_polygon..."
     print "  Testing create a polygon that intersects a point ..."
+    # TODO: refactor to use create_basic_polygon()
     array = [(479509.625,7871431.255),
          (479509.625,7871508.742),
          (479563.712,7871508.742),
@@ -246,6 +259,37 @@ def test_for_each_feature():
     print "------"
 
 
+def test_join_csv():
+    print "Testing join_csv..."
+    csv_file = open(".\\test.csv", "w+")
+    csv_file.write("character,species\njake,dog\nfinn,human")
+    csv_file.close()
+    polygon = create_basic_polygon()
+    arcpy.AddField_management(
+        in_table=polygon,
+        field_name="character",
+        field_type="TEXT")
+    arcpy.CalculateField_management(
+        in_table=polygon,
+        field="character",
+        expression='"finn"',
+        expression_type="PYTHON_9.3",
+        code_block="")
+    jj.join_csv(
+        in_data=polygon,
+        in_field="character",
+        csv=".\\test.csv",
+        csv_field="character")
+    if jj.field_in_feature_class("species", polygon):
+        print "  Pass"
+    else:
+        print "  Fail: %s field not found in %s" % ("species", polygon)
+        print "  The following fields were found: "
+        for f in arcpy.ListFields(polygon):
+            print "    %s" % f.name
+    print "------"
+
+
 if __name__ == '__main__':
     # TODO: set up logging so that I don't see 'No handlers could be found for logger "__main__"'
     print "Running tests"
@@ -258,8 +302,9 @@ if __name__ == '__main__':
     # test_get_file_from_path()
     # test_get_directory_from_path()
     # test_renameFieldMap()
-    test_redistributePolygon()
+    # test_redistributePolygon()
     # test_for_each_featuretest_create_polygon()
     # test_for_each_feature()
+    test_join_csv()
 
     os.system('pause')

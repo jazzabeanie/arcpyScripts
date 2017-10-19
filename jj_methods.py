@@ -360,6 +360,7 @@ def for_each_feature(feature_class, cb):
             cb(feature_layer)
             arcpy.Delete_management(feature_layer)
 
+
 def log(text):
     print(text)
     logger.info(text)
@@ -367,3 +368,19 @@ def log(text):
     #     arcpy.AddMessages(text)
 
 
+def join_csv(in_data, in_field, csv, csv_field, included_fields="#"):
+    """
+    Converts a csv to a table, then joins it to another table.
+    """
+    delete_if_exists(arcpy.env.workspace+"\\temp_table")
+    arcpy.TableToTable_conversion(
+        in_rows=csv,
+        out_path=arcpy.env.workspace,
+        out_name='temp_table')
+    arcpy.JoinField_management(
+            in_data,
+            in_field,
+            join_table=arcpy.env.workspace+"\\temp_table",
+            join_field=csv_field,
+            fields=included_fields)
+    arcpy.Delete_management(arcpy.env.workspace+"\\temp_table")
