@@ -7,13 +7,13 @@
 # ArcGIS Version:   10.5
 # Python Version:   2.7
 # Source: https://blogs.esri.com/esri/arcgis/2011/08/04/pythontemplate/
+# Run command: execfile(r'__') TODO
 # --------------------------------
 import os # noqa
 import sys # noqa
 import arcpy
 import logging
 import json
-import jj_methods as m # noqa # deleteme?
 import imp
 from datetime import datetime
 jj = imp.load_source('jj_methods', r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\jj_methods.py') # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
@@ -58,15 +58,6 @@ with open("O:\\Data\\Planning_IP\\Admin\\Staff\\Jared\\GIS\\Tools\\arcpyScripts\
         infrastructure = json.load(data_file)
 
 
-
-# delete this and use jj.delete_if_exists
-def delete_if_exists(layer):
-    """Deleted the passed in layer if it exists. This avoids errors."""
-    if arcpy.Exists(layer):
-        logging.warning("Deleting %s" % layer)
-        arcpy.Delete_management(layer)
-
-
 def do_analysis(*argv):
     """TODO: Add documentation about this function here"""
     try:
@@ -87,9 +78,7 @@ def do_analysis(*argv):
 # as a geoprocessing script tool, or as a module imported in
 # another script
 if __name__ == '__main__':
-    print("""
-# TODO: print docstring of do_analysis: do_analysis.__doc__
-""")
+    print(do_analysis.__doc__)
     os.system('pause')
     # Arguments overwrite defaults
     default_output = (r'')
