@@ -18,7 +18,8 @@ import imp
 from datetime import datetime
 jj = imp.load_source('jj_methods', r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\jj_methods.py') # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
 
-arcpy.env.workspace = "in_memory"
+# arcpy.env.workspace = "in_memory" # I think some tools aren't compatible with in_memory workspaces (like the redistributePolygon tool).
+arcpy.env.workspace = "C:\TempArcGIS\scratchworkspace.gdb"
 testing = True
 now = r'%s' % datetime.now().strftime("%Y%m%d%H%M")
 

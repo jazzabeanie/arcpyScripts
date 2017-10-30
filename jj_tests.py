@@ -141,20 +141,51 @@ def test_redistributePolygon():
     redistributePolygonInputs["growth_model_polygon"] = arcpy.env.workspace + "\\growth_model_polygon_test"
     redistributePolygonInputs["output_filename"] = "redistributed"
     redistributePolygonInputs["field_list"] = ["Dwelling_1"]
+    print("  Testing number of fields")
+    redistributePolygonInputs["distribution_method"] = 2
+    print("    Fields in %s" % redistributePolygonInputs["redistribution_layer_name"])
+    redistribution_layer_fields = [f.name for f in arcpy.ListFields(redistributePolygonInputs["redistribution_layer_name"])]
+    for field in redistribution_layer_fields:
+        print("      %s" % field)
+    print("    Fields in %s" % redistributePolygonInputs["growth_model_polygon"])
+    growth_model_polygon_fields = [f.name for f in arcpy.ListFields(redistributePolygonInputs["growth_model_polygon"])]
+    for field in growth_model_polygon_fields:
+        print("      %s" % field)
+    jj.redistributePolygon(redistributePolygonInputs)
+    print("    Fields in %s" % redistributePolygonInputs["output_filename"])
+    output_fields = [f.name for f in arcpy.ListFields(redistributePolygonInputs["output_filename"])]
+    for field in output_fields:
+        print("      %s" % field)
+    if True:
+        print("  Pass?")
     print "  Testing invalid distribution method is caught"
     for method in [0, "blah", 6.5]:
         redistributePolygonInputs["distribution_method"] = method
         try:
             jj.redistributePolygon(redistributePolygonInputs)
         except AttributeError as e:
-            if e.args[0] == 'distribution method must be either 1, 2 or 3': # FIXME
+            if re.match('distribution method must be either 1, 2 or 3', e.args[0]):
                 print "    Pass"
             else:
                 print "    Fail"
         except Exception as e:
             print "    Fail:"
             print "      " + e.args[0]
+    print "  Testing invalid field is caught"
+    redistributePolygonInputs["field_list"] = ["nonexistent_field"]
+    try:
+        jj.redistributePolygon(redistributePolygonInputs)
+    except AttributeError as e:
+        if re.match('.*does not exist.*', e.args[0]):
+            print "    Pass"
+        else:
+            print "    Fail: wrong error message"
+            print "      " + e.args[0]
+    except Exception as e:
+        print "    Fail: Some other exception raised"
+        print "      " + e.args[0]
     print "  Testing number of properties method:"
+    redistributePolygonInputs["field_list"] = ["Dwelling_1"]
     redistributePolygonInputs["distribution_method"] = 2
     jj.redistributePolygon(redistributePolygonInputs)
     with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['Dwelling_1']) as cursor:
@@ -163,6 +194,21 @@ def test_redistributePolygon():
                 print "    Pass"
             else:
                 print "    Fail: Dwelling_1 should be 10"
+    print "    Testing sums are equal:"
+    #
+    redistributed_count = 0
+    with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], "Dwelling_1") as cursor:
+        for row in cursor:
+            redistributed_count += row[0]
+    #
+    growth_model_polygon_count = 0
+    with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], "Dwelling_1") as cursor:
+        for row in cursor:
+            growth_model_polygon_count += row[0]
+    if growth_model_polygon_count == redistributed_count:
+        print("      Pass")
+    else:
+        print("      Fail: sum of dewllings is not equal for growth_model_polygon (%s) and output (%s)" % (growth_model_polygon_count, redistributed_count))
     print "  Testing area method:"
     redistributePolygonInputs["distribution_method"] = 1
     jj.redistributePolygon(redistributePolygonInputs)
@@ -171,6 +217,16 @@ def test_redistributePolygon():
             print "    Pass"
         else:
             print "    Fail: Dwelling_1 should be 4"
+    print "    Testing sums are equal:"
+    # Recalculate redistributed_count:
+    redistributed_count = 0
+    with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], "Dwelling_1") as cursor:
+        for row in cursor:
+            redistributed_count += row[0]
+    if growth_model_polygon_count == redistributed_count:
+        print("      Pass")
+    else:
+        print("      Fail: sum of dewllings is not equal for growth_model_polygon (%s) and output (%s)" % (growth_model_polygon_count, redistributed_count))
     print "------"
 
 
@@ -290,6 +346,12 @@ def test_join_csv():
     print "------"
 
 
+def test_get_sum():
+    print "TODO: Testing get_sum..."
+    pass # TODO
+    print "------"
+
+
 if __name__ == '__main__':
     # TODO: set up logging so that I don't see 'No handlers could be found for logger "__main__"'
     print "Running tests"
@@ -302,9 +364,10 @@ if __name__ == '__main__':
     # test_get_file_from_path()
     # test_get_directory_from_path()
     # test_renameFieldMap()
-    # test_redistributePolygon()
+    test_redistributePolygon()
     # test_for_each_featuretest_create_polygon()
     # test_for_each_feature()
-    test_join_csv()
+    # test_join_csv()
+    # test_get_sum()
 
     os.system('pause')
