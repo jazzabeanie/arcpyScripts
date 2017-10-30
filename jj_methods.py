@@ -193,8 +193,9 @@ def redistributePolygon(redistribution_inputs):
             """
             logger.info("Executing calculate_field_proportion_based_on_area(%s, %s)" % (field_to_calculate, total_area_field))
             logger.info("    Calculating %s field based on the proportion of the polygon area to the %s field" % (field_to_calculate, total_area_field))
-            arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_area_proportion_of_total(!"+total_area_field+"!, !Shape_Area!, !" + field_to_calculate + "!)", "PYTHON_9.3", """def return_area_proportion_of_total(total_area_field, Shape_Area, field_to_calculate):
-            return Shape_Area/total_area_field * int(field_to_calculate)""")
+            arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_area_proportion_of_total(!"+total_area_field+"!, !Shape_Area!, !" + field_to_calculate + "!)", "PYTHON_9.3", """import math
+            def return_area_proportion_of_total(total_area_field, Shape_Area, field_to_calculate):
+                return Shape_Area/total_area_field * int(field_to_calculate)""") # FIXME: round, dont integerise
         #
         def calculate_field_proportion_based_on_number_of_lots(field_to_calculate, larger_properties_field, local_number_of_properties_field, total_area_field):
             """
@@ -203,14 +204,15 @@ def redistributePolygon(redistribution_inputs):
             """
             logger.info("Executing calculate_field_proportion_based_on_number_of_lots(%s, %s, %s, %s)" % (field_to_calculate, larger_properties_field, local_number_of_properties_field, total_area_field))
             logger.info("    Calculating %s field based on the proportion of the total properties value in the %s field using %s" % (field_to_calculate, larger_properties_field, local_number_of_properties_field))
-            arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_number_proportion_of_total(!"+larger_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!, !"+total_area_field+"!, !Shape_Area!)", "PYTHON_9.3", """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate, total_area_field, Shape_Area):
-            if total_properties == None: # then total_properties = 0
-                new_value = int((float(Shape_Area)/float(total_area_field)) * int(field_to_calculate))
-                # print("new value = %s" % new_value)
-                # print("area = %s" % Shape_Area)
-            else:
-                new_value = int((float(local_properties)/total_properties) * int(field_to_calculate))
-            return new_value""")
+            arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_number_proportion_of_total(!"+larger_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!, !"+total_area_field+"!, !Shape_Area!)", "PYTHON_9.3", """import math
+            def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate, total_area_field, Shape_Area):
+                if total_properties == None: # then total_properties = 0
+                    new_value = int((float(Shape_Area)/float(total_area_field)) * int(field_to_calculate)) # FIXME: round, dont integerise
+                    # print("new value = %s" % new_value)
+                    # print("area = %s" % Shape_Area)
+                else:
+                    new_value = int((float(local_properties)/total_properties) * int(field_to_calculate))
+                return new_value""")
         #
         def calculate_field_proportion_based_on_combination(field_to_calculate, larger_properties_field, local_number_of_properties_field, total_area_field):
             """
@@ -218,11 +220,12 @@ def redistributePolygon(redistribution_inputs):
             """
             logger.info("Executing calculate_field_proportion_based_on_combination(%s, %s, %s, %s)" % (field_to_calculate, larger_properties_field, local_number_of_properties_field, total_area_field))
             logger.info("    Calculating %s field as the average value between area and number of lots method" % field_to_calculate)
-            arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_average_value(!"+larger_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!, !" + total_area_field + "!, !Shape_Area!)", "PYTHON_9.3", """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate):
-                    new_value =  (float(local_properties)/total_properties) * int(field_to_calculate)
+            arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_average_value(!"+larger_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!, !" + total_area_field + "!, !Shape_Area!)", "PYTHON_9.3", """import math
+            def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate):
+                    new_value =  (float(local_properties)/total_properties) * int(field_to_calculate) # FIXME: round, dont integerise
                     return int(new_value)
                 def return_area_proportion_of_total(GMZ_total_area, Shape_Area, field_to_calculate):
-                    return Shape_Area/GMZ_total_area * int(field_to_calculate)
+                    return Shape_Area/GMZ_total_area * int(field_to_calculate) # FIXME: round, dont integerise
                 def return_average_value(total_properties, local_properties, field_to_calculate, GMZ_total_area, Shape_Area):
                     properties = return_number_proportion_of_total(total_properties, local_properties, field_to_calculate)
                     area = return_area_proportion_of_total(GMZ_total_area, Shape_Area, field_to_calculate)
