@@ -18,12 +18,12 @@ arcpy.env.workspace = r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScr
 testing = True
 
 
-def create_basic_polygon():
-    array = [(479579.725,7871431.255),
-         (479579.725,7871508.742),
-         (479593.812,7871508.742),
-         (479593.812,7871431.255),
-         (479579.725,7871431.255)]
+def create_basic_polygon(left_x=479579.725, lower_y=7871431.255, right_x=479593.812, upper_y=7871508.742):
+    array = [(left_x,lower_y),
+         (left_x,upper_y),
+         (right_x,upper_y),
+         (right_x,lower_y),
+         (left_x,lower_y)]
     output = arcpy.env.workspace + "\\basic_polygon_for_testing"
     jj.delete_if_exists(output)
     jj.create_polygon(output, array)
@@ -227,6 +227,22 @@ def test_redistributePolygon():
         print("      Pass")
     else:
         print("      Fail: sum of dewllings is not equal for growth_model_polygon (%s) and output (%s)" % (growth_model_polygon_count, redistributed_count))
+    print "    Testing for rounding errors:"
+    # TODO: create a situation that would produce and error if the values were integerised instead of rounded.
+    # gm_test_area = [(479580,7871650),
+    #      (479580,7871700),
+    #      (479770,7871700),
+    #      (479770,7871650),
+    #      (479580,7871650)]
+    # left_x = 479580
+    # right_x = 479770
+    # lower_y = 7871650
+    # upper_y = 7871700
+    # array = [(left_x,lower_y),
+    #      (left_x,upper_y),
+    #      (right_x,upper_y),
+    #      (right_x,lower_y),
+    #      (left_x,lower_y)]
     print "------"
 
 
@@ -364,10 +380,10 @@ if __name__ == '__main__':
     # test_get_file_from_path()
     # test_get_directory_from_path()
     # test_renameFieldMap()
-    test_redistributePolygon()
+    # test_redistributePolygon()
     # test_for_each_featuretest_create_polygon()
     # test_for_each_feature()
-    # test_join_csv()
+    test_join_csv()
     # test_get_sum()
 
     os.system('pause')
