@@ -15,19 +15,13 @@ import logging
 import jj_methods as jj
 
 arcpy.env.workspace = r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\TestingDataset.gdb'
-testing = True
+# testing = True
+testing = False
 
-
-def create_basic_polygon(left_x=479579.725, lower_y=7871431.255, right_x=479593.812, upper_y=7871508.742):
-    array = [(left_x,lower_y),
-         (left_x,upper_y),
-         (right_x,upper_y),
-         (right_x,lower_y),
-         (left_x,lower_y)]
-    output = arcpy.env.workspace + "\\basic_polygon_for_testing"
-    jj.delete_if_exists(output)
-    jj.create_polygon(output, array)
-    return output
+logging.basicConfig(filename='jj_tests.log',
+    level=logging.INFO,
+    format='%(asctime)s @ %(lineno)d: %(message)s',
+    datefmt='%Y-%m-%d,%H:%M:%S')
 
 
 def test_delete_if_exists():
@@ -123,7 +117,7 @@ def test_renameFieldMap():
 
 def test_redistributePolygon():
     # TODO: improve the tests for this method. All input data should be created on the fly, more tests should be added, more polygons should be added, etc.
-    print "Testing redistributePolygon..."
+    jj.log("Testing redistributePolygon...")
     left_x = 479582.11
     right_x = 479649.579
     lower_y = 7871595.813
@@ -141,60 +135,60 @@ def test_redistributePolygon():
     redistributePolygonInputs["growth_model_polygon"] = arcpy.env.workspace + "\\growth_model_polygon_test"
     redistributePolygonInputs["output_filename"] = "redistributed"
     redistributePolygonInputs["field_list"] = ["Dwelling_1"]
-    print("  Testing number of fields")
+    jj.log("  Testing number of fields")
     redistributePolygonInputs["distribution_method"] = 2
-    print("    Fields in %s" % redistributePolygonInputs["redistribution_layer_name"])
+    jj.log("    Fields in %s" % redistributePolygonInputs["redistribution_layer_name"])
     redistribution_layer_fields = [f.name for f in arcpy.ListFields(redistributePolygonInputs["redistribution_layer_name"])]
     for field in redistribution_layer_fields:
-        print("      %s" % field)
-    print("    Fields in %s" % redistributePolygonInputs["growth_model_polygon"])
+        jj.log("      %s" % field)
+    jj.log("    Fields in %s" % redistributePolygonInputs["growth_model_polygon"])
     growth_model_polygon_fields = [f.name for f in arcpy.ListFields(redistributePolygonInputs["growth_model_polygon"])]
     for field in growth_model_polygon_fields:
-        print("      %s" % field)
+        jj.log("      %s" % field)
     jj.redistributePolygon(redistributePolygonInputs)
-    print("    Fields in %s" % redistributePolygonInputs["output_filename"])
+    jj.log("    Fields in %s" % redistributePolygonInputs["output_filename"])
     output_fields = [f.name for f in arcpy.ListFields(redistributePolygonInputs["output_filename"])]
     for field in output_fields:
-        print("      %s" % field)
+        jj.log("      %s" % field)
     if True:
-        print("  Pass?")
-    print "  Testing invalid distribution method is caught"
+        jj.log("  Pass?")
+    jj.log("  Testing invalid distribution method is caught")
     for method in [0, "blah", 6.5]:
         redistributePolygonInputs["distribution_method"] = method
         try:
             jj.redistributePolygon(redistributePolygonInputs)
         except AttributeError as e:
             if re.match('distribution method must be either 1, 2 or 3', e.args[0]):
-                print "    Pass"
+                jj.log("    Pass")
             else:
-                print "    Fail"
+                jj.log("    Fail")
         except Exception as e:
-            print "    Fail:"
-            print "      " + e.args[0]
-    print "  Testing invalid field is caught"
+            jj.log("    Fail:")
+            jj.log("      " + e.args[0])
+    jj.log("  Testing invalid field is caught")
     redistributePolygonInputs["field_list"] = ["nonexistent_field"]
     try:
         jj.redistributePolygon(redistributePolygonInputs)
     except AttributeError as e:
         if re.match('.*does not exist.*', e.args[0]):
-            print "    Pass"
+            jj.log("    Pass")
         else:
-            print "    Fail: wrong error message"
-            print "      " + e.args[0]
+            jj.log("    Fail: wrong error message")
+            jj.log("      " + e.args[0])
     except Exception as e:
-        print "    Fail: Some other exception raised"
-        print "      " + e.args[0]
-    print "  Testing number of properties method:"
+        jj.log("    Fail: Some other exception raised")
+        jj.log("      " + e.args[0])
+    jj.log("  Testing number of properties method:")
     redistributePolygonInputs["field_list"] = ["Dwelling_1"]
     redistributePolygonInputs["distribution_method"] = 2
     jj.redistributePolygon(redistributePolygonInputs)
     with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['Dwelling_1']) as cursor:
         for row in cursor:
             if row[0] == 10:
-                print "    Pass"
+                jj.log("    Pass")
             else:
-                print "    Fail: Dwelling_1 should be 10"
-    print "    Testing sums are equal:"
+                jj.log("    Fail: Dwelling_1 should be 10")
+    jj.log("    Testing sums are equal:")
     #
     redistributed_count = 0
     with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], "Dwelling_1") as cursor:
@@ -206,50 +200,73 @@ def test_redistributePolygon():
         for row in cursor:
             growth_model_polygon_count += row[0]
     if growth_model_polygon_count == redistributed_count:
-        print("      Pass")
+        jj.log("      Pass")
     else:
-        print("      Fail: sum of dewllings is not equal for growth_model_polygon (%s) and output (%s)" % (growth_model_polygon_count, redistributed_count))
-    print "  Testing area method:"
+        jj.log("      Fail: sum of dewllings is not equal for growth_model_polygon (%s) and output (%s)" % (growth_model_polygon_count, redistributed_count))
+    jj.log("  Testing area method:")
     redistributePolygonInputs["distribution_method"] = 1
     jj.redistributePolygon(redistributePolygonInputs)
     for row in arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['Dwelling_1']):
         if row[0] == 4:
-            print "    Pass"
+            jj.log("    Pass")
         else:
-            print "    Fail: Dwelling_1 should be 4"
-    print "    Testing sums are equal:"
+            jj.log("    Fail: Dwelling_1 should be 4")
+    jj.log("    Testing sums are equal:")
     # Recalculate redistributed_count:
     redistributed_count = 0
     with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], "Dwelling_1") as cursor:
         for row in cursor:
             redistributed_count += row[0]
     if growth_model_polygon_count == redistributed_count:
-        print("      Pass")
+        jj.log("      Pass")
     else:
-        print("      Fail: sum of dewllings is not equal for growth_model_polygon (%s) and output (%s)" % (growth_model_polygon_count, redistributed_count))
-    print "    Testing for rounding errors:"
+        jj.log("      Fail: sum of dewllings is not equal for growth_model_polygon (%s) and output (%s)" % (growth_model_polygon_count, redistributed_count))
+    jj.log("    Testing for rounding:")
+    gm_test_area = jj.create_basic_polygon(output="gm_test_area", left_x=479580, lower_y=7871650, right_x=479770, upper_y=7871700)
+    arcpy.AddField_management(gm_test_area, "Dwelling_1", "LONG")
+    arcpy.CalculateField_management(in_table=gm_test_area, field="Dwelling_1", expression="1", expression_type="PYTHON_9.3", code_block="")
+    redistribution_areas = jj.create_polygon("redistribution_areas", [(479580, 7871650), (479580, 7871700), (479644, 7871700), (479644, 7871650), (479580, 7871650)], [(479644, 7871650), (479644, 7871700), (479707, 7871700), (479707, 7871650), (479644, 7871650)], [(479707, 7871650), (479707, 7871700), (479770, 7871700), (479770, 7871650), (479707, 7871650)])
+    redistributePolygonInputs["distribution_method"] = 1
+    redistributePolygonInputs["redistribution_layer_name"] = redistribution_areas
+    redistributePolygonInputs["growth_model_polygon"] = gm_test_area
+    redistributePolygonInputs["output_filename"] = "redistributed"
+    redistributePolygonInputs["field_list"] = ["Dwelling_1"]
+    jj.redistributePolygon(redistributePolygonInputs)
+    total_dwellings = jj.get_sum("Dwelling_1", redistributePolygonInputs["output_filename"])
+    if total_dwellings == 1:
+        jj.log("      Pass")
+    elif total_dwellings == 0:
+        jj.log("      Fail: total dwellings in output was 0. This means that rounding errors are accumulating.")
+    else:
+        jj.log("      Fail: total dwellings in %s should be 1, but was %s" % (redistributePolygonInputs["output_filename"], total_dwellings))
+    jj.log("    Testing for integerising:")
     # TODO: create a situation that would produce and error if the values were integerised instead of rounded.
-    # gm_test_area = [(479580,7871650),
-    #      (479580,7871700),
-    #      (479770,7871700),
-    #      (479770,7871650),
-    #      (479580,7871650)]
-    # left_x = 479580
-    # right_x = 479770
-    # lower_y = 7871650
-    # upper_y = 7871700
-    # array = [(left_x,lower_y),
-    #      (left_x,upper_y),
-    #      (right_x,upper_y),
-    #      (right_x,lower_y),
-    #      (left_x,lower_y)]
-    print "------"
+    gm_test_area = jj.create_basic_polygon(output="gm_test_area", left_x=479580, lower_y=7871650, right_x=479770, upper_y=7871700)
+    arcpy.AddField_management(gm_test_area, "Dwelling_1", "LONG")
+    arcpy.CalculateField_management(in_table=gm_test_area, field="Dwelling_1", expression="1", expression_type="PYTHON_9.3", code_block="")
+    redistribution_areas = jj.create_polygon(
+        "redistribution_areas",
+        [(479580, 7871650), (479580, 7871700), (479707, 7871700), (479707, 7871650), (479580, 7871650)],
+        [(479707, 7871650), (479707, 7871700), (479770, 7871700), (479770, 7871650), (479707, 7871650)])
+    redistributePolygonInputs["distribution_method"] = 1
+    redistributePolygonInputs["redistribution_layer_name"] = redistribution_areas
+    redistributePolygonInputs["growth_model_polygon"] = gm_test_area
+    redistributePolygonInputs["output_filename"] = "redistributed"
+    redistributePolygonInputs["field_list"] = ["Dwelling_1"]
+    jj.redistributePolygon(redistributePolygonInputs)
+    total_dwellings = jj.get_sum("Dwelling_1", redistributePolygonInputs["output_filename"])
+    if total_dwellings == 1:
+        jj.log("      Pass")
+    elif total_dwellings == 0:
+        jj.log("      Fail: total dwellings in output was 0. This means that decimas are being integerised, not rounded")
+    else:
+        jj.log("      Fail: total dwellings in %s should be 1, but was %s. This error was unexpected and needs to be investigated." % (redistributePolygonInputs["output_filename"], total_dwellings))
+    jj.log("------")
 
 
 def test_create_polygon():
     print "Testing create_polygon..."
     print "  Testing create a polygon that intersects a point ..."
-    # TODO: refactor to use create_basic_polygon()
     array = [(479509.625,7871431.255),
          (479509.625,7871508.742),
          (479563.712,7871508.742),
@@ -286,6 +303,19 @@ def test_create_polygon():
         print "    Pass"
     else:
         print "    Fail: tool doesn't create shape in expected location or selection feature location has changed (%s)" % output
+    print "------"
+
+
+def test_create_basic_polygon():
+    print "Testing create_basic_polygon..."
+    print "  Testing a polygon is created with default params..."
+    output = arcpy.env.workspace + "\\test_create_polygon"
+    jj.create_basic_polygon()
+    number_of_features = jj.get_sum("OBJECTID", output)
+    if number_of_features==1:
+        print "    Pass"
+    else:
+        print "    Fail: creates %s features by default, should be 1" % number_of_features
     print "------"
 
 
@@ -336,7 +366,7 @@ def test_join_csv():
     csv_file = open(".\\test.csv", "w+")
     csv_file.write("character,species\njake,dog\nfinn,human")
     csv_file.close()
-    polygon = create_basic_polygon()
+    polygon = jj.create_basic_polygon()
     arcpy.AddField_management(
         in_table=polygon,
         field_name="character",
@@ -369,21 +399,29 @@ def test_get_sum():
 
 
 if __name__ == '__main__':
-    # TODO: set up logging so that I don't see 'No handlers could be found for logger "__main__"'
-    print "Running tests"
-    print ""
-    # test_delete_if_exists()
-    # test_arguments_exist()
-    # test_field_in_feature_class()
-    # test_return_tuple_of_args()
-    # test_calculate_external_field()
-    # test_get_file_from_path()
-    # test_get_directory_from_path()
-    # test_renameFieldMap()
-    # test_redistributePolygon()
-    # test_for_each_featuretest_create_polygon()
-    # test_for_each_feature()
-    test_join_csv()
-    # test_get_sum()
+    try:
+        jj.log("Running tests")
+        jj.log("")
+        # test_delete_if_exists()
+        # test_arguments_exist()
+        # test_field_in_feature_class()
+        # test_return_tuple_of_args()
+        # test_calculate_external_field()
+        # test_get_file_from_path()
+        # test_get_directory_from_path()
+        # test_renameFieldMap()
+        test_redistributePolygon()
+        # test_for_each_feature
+        # test_create_polygon()
+        # test_for_each_feature()
+        # test_join_csv()
+        # test_create_basic_polygon()
+        # test_get_sum()
+    except arcpy.ExecuteError:
+        print arcpy.GetMessages(2)
+        logging.exception(arcpy.GetMessages(2))
+    except Exception as e:
+        print e.args[0]
+        logging.exception(e.args[0])
 
     os.system('pause')

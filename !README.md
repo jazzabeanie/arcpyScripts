@@ -17,9 +17,5 @@ see that they are as expected.
 
 ### lint the code
 
-### Create a log() method 
-This function will print(), logging.info(), or arcpy.AddMessages()
-depending on how it's run.
-
 ### put code blocks into variable
 This will keep folds working and increase readability.
