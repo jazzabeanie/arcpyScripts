@@ -404,7 +404,13 @@ def for_each_feature(feature_class, cb, where_clause=""):
         logger.warning("WARNING: looping likes to receive the feature_class as the full path to the file, not just the name. A backslash (\\) was not found in %s" % feature_class)
     feature_layer='feature_layer'
     logger.debug("Itterating over %s..." % feature_class)
-    with arcpy.da.SearchCursor(feature_class, "OBJECTID", where_clause) as cursor:
+    if field_in_feature_class("OBJECTID", feature_class):
+        id_field = "OBJECTID"
+    elif field_in_feature_class("FID", feature_class):
+        id_field = "FID"
+    else:
+        raise AttributeError("%s does not contain an OBJECTID or FID" % feature_class)
+    with arcpy.da.SearchCursor(feature_class, id_field, where_clause) as cursor:
         for row in cursor:
             arcpy.MakeFeatureLayer_management(
                 in_features=feature_class,
