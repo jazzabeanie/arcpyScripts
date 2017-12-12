@@ -415,7 +415,7 @@ def for_each_feature(feature_class, cb, where_clause=""):
             arcpy.MakeFeatureLayer_management(
                 in_features=feature_class,
                 out_layer=feature_layer,
-                where_clause="OBJECTID = %s" % row[0])
+                where_clause="%s = %s" % (id_field, row[0]))
             cb(feature_layer)
             arcpy.Delete_management(feature_layer)
 
@@ -452,11 +452,11 @@ def join_csv(in_data, in_field, csv, csv_field, included_fields="#"):
     arcpy.TableToTable_conversion(
         in_rows=csv,
         out_path=arcpy.env.workspace,
-        out_name='temp_table')
+        out_name="temp_table")
     log('joining temp_table to %s...' % in_data)
-    logger.debug('%s in %s = %s' % (csv_field, 'temp_table', field_in_feature_class(csv_field, 'temp_table')))
-    logger.debug('fields in %s:' % 'temp_table')
-    for f in arcpy.ListFields('temp_table'):
+    logger.debug('%s in %s = %s' % (csv_field, arcpy.env.workspace+"\\temp_table", field_in_feature_class(csv_field, arcpy.env.workspace+"\\temp_table")))
+    logger.debug('fields in %s:' % arcpy.env.workspace+"\\temp_table")
+    for f in arcpy.ListFields(arcpy.env.workspace+"\\temp_table"):
         logger.debug("  %s" % f.name)
     # arcpy.JoinField_management(
     #         in_data="mesh_blocks_feature_layer",
