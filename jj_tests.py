@@ -321,6 +321,8 @@ def test_create_basic_polygon():
 
 def test_for_each_feature():
     print "Testing test_for_each_features..."
+    def error_throwing_cb():
+        print "Fail, features not containing an argument is called"
     def increase(feature_layer):
         global count
         count+=1
@@ -358,6 +360,12 @@ def test_for_each_feature():
         print "    Pass"
     else:
         print "    Fail, count = %s (supposed to be 3)" % count
+    print "check cb takes 1 argument..."
+    try:
+        jj.for_each_feature(for_each_test_feature_class, error_throwing_cb)
+        print "    Fail, no exception thrown"
+    except TypeError as e:
+        print "    Pass, exception thrown if cb takes no argument"
     print "------"
 
 
@@ -410,8 +418,8 @@ if __name__ == '__main__':
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
-        test_redistributePolygon()
-        # test_for_each_feature
+        # test_redistributePolygon()
+        test_for_each_feature()
         # test_create_polygon()
         # test_for_each_feature()
         # test_join_csv()
