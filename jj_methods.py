@@ -1,3 +1,4 @@
+from __future__ import division
 # --------------------------------
 # Name: jj_methods.py
 # Purpose: To server commonly used methods.
@@ -182,7 +183,7 @@ def redistributePolygon(redistribution_inputs):
         for key in redistribution_inputs:
             log("  %s = %s" % (key, redistribution_inputs[key]))
         if arcpy.Describe(redistribution_inputs["redistribution_layer_name"]).spatialReference != arcpy.Describe(redistribution_inputs["growth_model_polygon"]).spatialReference :
-            logger.warning("WARNING: %s and %s do not have the same coordinate system. The area fields may not calculate with the same coordinates. According to http://pro.arcgis.com/en/pro-app/tool-reference/data-management/calculate-field.htm, 'Using areal units on geographic data will yield questionable results as decimal degrees are not consistent across the globe.'" % (redistribution_inputs["redistribution_layer_name"], redistribution_inputs["growth_model_polygon"]))
+            logger.warning("WARNING: %s and %s do not have the same coordinate system. The area fields may not calculate with the same coordinates. According to http://pro.arcgis.com/en/pro-app/tool-reference/data-management/calculate-field.htm, 'Using areal units on geographic data will yield questionable results as decimal degrees are not consistent across the globe.'\rThe best approach is to use the Project (Data Management) tool to reproject the data into MGA Zone 55 and try again." % (redistribution_inputs["redistribution_layer_name"], redistribution_inputs["growth_model_polygon"]))
         for field in redistribution_inputs["field_list"]:
             if not field_in_feature_class(field, redistribution_inputs["growth_model_polygon"]):
                 raise AttributeError('Error: %s does not exist in redistribution_inputs["growth_model_polygon"]' % redistribution_inputs["field_list"])
@@ -431,7 +432,7 @@ def get_sum(field_name, feature_class):
 
 
 def log(text):
-    # print(text)
+    print(text)
     logger.info(text)
     # TODO: if arcpy has attribute:
     #     arcpy.AddMessages(text)
