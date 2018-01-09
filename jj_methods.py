@@ -170,27 +170,29 @@ def redistributePolygon(redistribution_inputs):
     """This function redistributes a feature class to another feature class based on different methods of distribution:
     1: By proportion of area
     2: By proportion of number of lots
-    3: By the average of 1 and 2
+    3: By a combination of 1 and 2
 
     It take a dictionary called 'redistribution_inputs' as an argument, which contains the following keys:
-    - redistribution_layer_name
-    - growth_model_polygon
+    - layer_to_redistribute_to
+    - layer_to_be_redistributed
     - output_filename
     - distribution_method
-    - field_list"""
+    - fields_to_be_distributed"""
     try:
         log("redistribution_inputs:")
         for key in redistribution_inputs:
             log("  %s = %s" % (key, redistribution_inputs[key]))
-        if arcpy.Describe(redistribution_inputs["redistribution_layer_name"]).spatialReference != arcpy.Describe(redistribution_inputs["growth_model_polygon"]).spatialReference :
-            logger.warning("WARNING: %s and %s do not have the same coordinate system. The area fields may not calculate with the same coordinates. According to http://pro.arcgis.com/en/pro-app/tool-reference/data-management/calculate-field.htm, 'Using areal units on geographic data will yield questionable results as decimal degrees are not consistent across the globe.'\rThe best approach is to use the Project (Data Management) tool to reproject the data into MGA Zone 55 and try again." % (redistribution_inputs["redistribution_layer_name"], redistribution_inputs["growth_model_polygon"]))
-        for field in redistribution_inputs["field_list"]:
-            if not field_in_feature_class(field, redistribution_inputs["growth_model_polygon"]):
-                raise AttributeError('Error: %s does not exist in redistribution_inputs["growth_model_polygon"]' % redistribution_inputs["field_list"])
+        if arcpy.Describe(redistribution_inputs["layer_to_redistribute_to"]).spatialReference != arcpy.Describe(redistribution_inputs["layer_to_be_redistributed"]).spatialReference :
+            logger.warning("WARNING: %s and %s do not have the same coordinate system. The area fields may not calculate with the same coordinates. According to http://pro.arcgis.com/en/pro-app/tool-reference/data-management/calculate-field.htm, 'Using areal units on geographic data will yield questionable results as decimal degrees are not consistent across the globe.'\rThe best approach is to use the Project (Data Management) tool to reproject the data into MGA Zone 55 and try again." % (redistribution_inputs["layer_to_redistribute_to"], redistribution_inputs["layer_to_be_redistributed"]))
+        for field in redistribution_inputs["fields_to_be_distributed"]:
+            if not field_in_feature_class(field, redistribution_inputs["layer_to_be_redistributed"]):
+                raise AttributeError('Error: %s does not exist in redistribution_inputs["layer_to_be_redistributed"]' % redistribution_inputs["fields_to_be_distributed"])
         if arcpy.env.workspace == "in_memory":
             logger.warning("WARNGING: this tool may not be compatible with an in_memory workspace")
         if redistribution_inputs["distribution_method"] in [1, 2, 3]:
             logger.debug("distribution method %s is valid" % redistribution_inputs["distribution_method"])
+            if redistribution_inputs["distribution_method"] == 3:
+                logger.warning("WARNGING: this distribution method only works if the layer to be redistributed it growth model results")
         else:
             raise AttributeError('distribution method must be either 1, 2 or 3. Specified value = %s' % redistribution_inputs["distribution_method"])
         if hasattr(__main__, 'testing'):
@@ -206,7 +208,7 @@ def redistributePolygon(redistribution_inputs):
 
         def calculate_field_proportion_based_on_area(field_to_calculate, total_area_field):
             """
-            Calculates the field_to_calculate for each polygon based on its percentage of the total area of the polygon to calculate from
+            Calculates the field_to_calculate for each polygon based on its percentage of the total area of the polygon to calculate from.
             Arguments should be the names of the fields as strings
             """
             logger.debug("Executing calculate_field_proportion_based_on_area(%s, %s)" % (field_to_calculate, total_area_field))
@@ -289,12 +291,12 @@ def redistributePolygon(redistribution_inputs):
         #
         def create_intersecting_polygons():
             """
-            Creates intersecting_polygons layer by intersecting redistribution_layer (PS_Catchments) and data_layer (GMZ).
+            Creates intersecting_polygons layer by intersecting desired_shape and source_data.
             """
             logger.debug("Executing create_intersecting_polygons")
             delete_if_exists(intersecting_polygons)
             logger.debug("    Computing the polygons that intersect both features")
-            arcpy.Intersect_analysis ([redistribution_layer, data_layer], intersecting_polygons, "ALL", "", "INPUT")
+            arcpy.Intersect_analysis ([desired_shape, source_data], intersecting_polygons, "ALL", "", "INPUT")
             logger.debug("    intersecting_polygons output: %s" % intersecting_polygons)
         #
 
@@ -304,30 +306,28 @@ def redistributePolygon(redistribution_inputs):
         total_properties_field = "total_counted_properties"
         global intersecting_polygons
         intersecting_polygons = "intersecting_polygons"
-        global growthmodel_table
-        growthmodel_table = "growthmodel_table"
-        global redistribution_layer
-        redistribution_layer = "redistribution_layer"
-        delete_if_exists(redistribution_layer)
+        global desired_shape
+        desired_shape = "desired_shape"
+        delete_if_exists(desired_shape)
         global total_area_field
-        total_area_field = "GMZ_TOTAL_AREA"
-        global data_layer
-        data_layer = "data_layer"
-        delete_if_exists(data_layer)
-        arcpy.CopyFeatures_management(redistribution_inputs["growth_model_polygon"], data_layer)
-        arcpy.AddField_management(data_layer, total_area_field, "FLOAT")
-        arcpy.CalculateField_management(data_layer, total_area_field, "!shape.area@squaremeters!", "PYTHON_9.3")
+        total_area_field = "soure_total_area"
+        global source_data
+        source_data = "source_data"
+        delete_if_exists(source_data)
+        arcpy.CopyFeatures_management(redistribution_inputs["layer_to_be_redistributed"], source_data)
+        arcpy.AddField_management(source_data, total_area_field, "FLOAT")
+        arcpy.CalculateField_management(source_data, total_area_field, "!shape.area@squaremeters!", "PYTHON_9.3")
 
-        add_property_count_to_layer_x_with_name_x(data_layer, total_properties_field)
+        add_property_count_to_layer_x_with_name_x(source_data, total_properties_field)
 
-        arcpy.CopyFeatures_management(redistribution_inputs["redistribution_layer_name"], redistribution_layer)
+        arcpy.CopyFeatures_management(redistribution_inputs["layer_to_redistribute_to"], desired_shape)
 
         create_intersecting_polygons()
 
         add_property_count_to_layer_x_with_name_x(intersecting_polygons, local_number_of_properties_field)
 
         ## Recalculate groth model fields
-        for GM_field in redistribution_inputs["field_list"]:
+        for GM_field in redistribution_inputs["fields_to_be_distributed"]:
             if field_in_feature_class(GM_field, intersecting_polygons):
                 if redistribution_inputs["distribution_method"] == 1:
                     calculate_field_proportion_based_on_area(GM_field, total_area_field)
@@ -349,14 +349,14 @@ def redistributePolygon(redistribution_inputs):
 
         ## Spatially Join intersecting_polygons back to redistribution layer
         fieldmappings = arcpy.FieldMappings()
-        for field in arcpy.ListFields(redistribution_inputs["redistribution_layer_name"]):
+        for field in arcpy.ListFields(redistribution_inputs["layer_to_redistribute_to"]):
             if field.name not in ['OBJECTID', 'Shape_Length', 'Shape_Area', 'Join_Count', 'Shape']:
                 logger.debug("Adding fieldmap for %s" % field.name)
                 fm = arcpy.FieldMap()
-                fm.addInputField(redistribution_inputs["redistribution_layer_name"], field.name)
+                fm.addInputField(redistribution_inputs["layer_to_redistribute_to"], field.name)
                 renameFieldMap(fm, field.name)
                 fieldmappings.addFieldMap(fm)
-        for GM_field in redistribution_inputs["field_list"]:
+        for GM_field in redistribution_inputs["fields_to_be_distributed"]:
             if field_in_feature_class(GM_field, intersecting_polygons):
                 fm_POP_or_Total = arcpy.FieldMap()
                 fm_POP_or_Total.addInputField(intersecting_polygons, GM_field)
@@ -366,7 +366,7 @@ def redistributePolygon(redistribution_inputs):
         delete_if_exists(redistribution_inputs["output_filename"])
         logger.debug("joining intersecting_polygons back to redistribution layer")
         arcpy.SpatialJoin_analysis(
-                target_features=redistribution_layer,
+                target_features=desired_shape,
                 join_features=intersecting_polygons,
                 out_feature_class=redistribution_inputs["output_filename"],
                 join_operation="JOIN_ONE_TO_ONE",
@@ -375,17 +375,7 @@ def redistributePolygon(redistribution_inputs):
                 match_option="INTERSECT",
                 search_radius=-1,
                 distance_field_name="#")
-        #arcpy.SpatialJoin_analysis(
-        #        redistribution_layer,
-        #        intersecting_polygons,
-        #        redistribution_inputs["output_filename"],
-        #        "JOIN_ONE_TO_ONE",
-        #        "KEEP_ALL",
-        #        fieldmappings,
-        #        "CONTAINS",
-        #        "#",
-        #        "#")
-        logger.info("Successfully redistributed %s to %s" % (data_layer, redistribution_layer))
+        logger.info("Successfully redistributed %s to %s" % (source_data, desired_shape))
         logger.info("intersecting_polygons file can be found at %s\\%s" % (arcpy.env.workspace, intersecting_polygons))
         logger.info("Output file can be found at %s" % redistribution_inputs["output_filename"])
     except arcpy.ExecuteError:
