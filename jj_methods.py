@@ -182,10 +182,10 @@ def redistributePolygon(redistribution_inputs):
         log("redistribution_inputs:")
         for key in redistribution_inputs:
             log("  %s = %s" % (key, redistribution_inputs[key]))
-        if arcpy.Describe(redistribution_inputs["layer_to_redistribute_to"]).spatialReference != arcpy.Describe(redistribution_inputs["layer_to_be_redistributed"]).spatialReference :
+        if arcpy.Describe(redistribution_inputs["layer_to_redistribute_to"]).spatialReference.name != arcpy.Describe(redistribution_inputs["layer_to_be_redistributed"]).spatialReference.name :
             logger.warning("WARNING: %s and %s do not have the same coordinate system. The area fields may not calculate with the same coordinates. According to http://pro.arcgis.com/en/pro-app/tool-reference/data-management/calculate-field.htm, 'Using areal units on geographic data will yield questionable results as decimal degrees are not consistent across the globe.'\rThe best approach is to use the Project (Data Management) tool to reproject the data into MGA Zone 55 and try again." % (redistribution_inputs["layer_to_redistribute_to"], redistribution_inputs["layer_to_be_redistributed"]))
-            logger.warning("  layer_to_redistribute_to: %s" % arcpy.Describe(redistribution_inputs["layer_to_redistribute_to"]).spatialReference)
-            logger.warning("  layer_to_be_redistributed: %s" % arcpy.Describe(redistribution_inputs["layer_to_be_redistributed"]).spatialReference)
+            logger.warning("  layer_to_redistribute_to: %s" % arcpy.Describe(redistribution_inputs["layer_to_redistribute_to"]).spatialReference.name)
+            logger.warning("  layer_to_be_redistributed: %s" % arcpy.Describe(redistribution_inputs["layer_to_be_redistributed"]).spatialReference.name)
         for field in redistribution_inputs["fields_to_be_distributed"]:
             if not field_in_feature_class(field, redistribution_inputs["layer_to_be_redistributed"]):
                 raise AttributeError('Error: %s does not exist in redistribution_inputs["layer_to_be_redistributed"]' % redistribution_inputs["fields_to_be_distributed"])
