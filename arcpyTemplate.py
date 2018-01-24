@@ -16,6 +16,12 @@ import logging
 import json
 import imp
 from datetime import datetime
+try:
+    import progressbar
+    bar = progressbar.ProgressBar()
+except ImportError as e: # ie, when progressbar is not installed (this is untested)
+    def bar(itterable):
+        return itterable
 jj = imp.load_source('jj_methods', r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\jj_methods.py') # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
 
 # arcpy.env.workspace = "in_memory" # I think some tools aren't compatible with in_memory workspaces (like the redistributePolygon tool).
