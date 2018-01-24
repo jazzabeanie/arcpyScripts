@@ -16,6 +16,13 @@ import re
 import logging
 import __main__
 from datetime import datetime
+try:
+    import progressbar
+    bar = progressbar.ProgressBar()
+except ImportError as e: # ie, when progressbar is not installed (this is untested)
+    def bar(itterable):
+        return itterable
+
 # see here for logging best practices: https://stackoverflow.com/questions/15727420/using-python-logging-in-multiple-modules
 
 logger = logging.getLogger(__name__)
@@ -402,7 +409,7 @@ def for_each_feature(feature_class, cb, where_clause=""):
     else:
         raise AttributeError("%s does not contain an OBJECTID or FID" % feature_class)
     with arcpy.da.SearchCursor(feature_class, id_field, where_clause) as cursor:
-        for row in cursor:
+        for row in bar(cursor):
             arcpy.MakeFeatureLayer_management(
                 in_features=feature_class,
                 out_layer=feature_layer,

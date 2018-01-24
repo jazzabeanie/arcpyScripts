@@ -447,10 +447,10 @@ if __name__ == '__main__':
         # test_get_directory_from_path()
         # test_renameFieldMap()
         # test_redistributePolygon()
-        # test_for_each_feature()
+        test_for_each_feature()
         # test_create_polygon()
         # test_for_each_feature()
-        test_join_csv()
+        # test_join_csv()
         # test_create_basic_polygon()
         # test_get_sum()
     except arcpy.ExecuteError:
