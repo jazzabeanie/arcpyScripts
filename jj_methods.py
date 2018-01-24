@@ -66,10 +66,8 @@ def delete_if_exists(layer):
     """Deleted the passed in layer if it exists. This avoids errors."""
     if arcpy.Exists(layer):
         logger.debug("Deleting %s" % layer)
-        print("Deleting %s" % layer)
         arcpy.Delete_management(layer)
         logger.debug("%s exists = %s" % (layer, arcpy.Exists(layer)))
-        print("%s exists = %s" % (layer, arcpy.Exists(layer)))
 
 
 def arguments_exist():
@@ -438,6 +436,8 @@ def join_csv(in_data, in_field, csv, csv_field, included_fields="#"):
     logger.debug("in_field = %s" % in_field)
     logger.debug("csv = %s" % csv)
     logger.debug("csv_field = %s" % csv_field)
+    if re.match('[0-9]', csv_field[0:1]):
+        raise ValueError("the name of the csv field must not start with a digit.")
     logger.debug("included_fields = %s" % included_fields)
     logger.debug('%s in %s = %s' % (csv_field, csv, field_in_feature_class(csv_field, csv)))
     delete_if_exists(arcpy.env.workspace+"\\temp_table")

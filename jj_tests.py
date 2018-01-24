@@ -371,8 +371,8 @@ def test_for_each_feature():
 
 
 def test_join_csv():
-    print "Testing join_csv..."
-    csv_file = open(".\\test.csv", "w+")
+    print "Testing join_csv joins fields..."
+    csv_file = open(".\\test.csv", "w")
     csv_file.write("character,species\njake,dog\nfinn,human")
     csv_file.close()
     polygon = jj.create_basic_polygon()
@@ -398,6 +398,33 @@ def test_join_csv():
         print "  The following fields were found: "
         for f in arcpy.ListFields(polygon):
             print "    %s" % f.name
+    print "Testing join_csv raises error if csv_field starts with digit..."
+    csv_file = open(".\\test.csv", "w")
+    csv_file.write("1character,species\njake,dog\nfinn,human")
+    csv_file.close()
+    polygon = jj.create_basic_polygon()
+    arcpy.AddField_management(
+        in_table=polygon,
+        field_name="character",
+        field_type="TEXT")
+    arcpy.CalculateField_management(
+        in_table=polygon,
+        field="character",
+        expression='"finn"',
+        expression_type="PYTHON_9.3",
+        code_block="")
+    try:
+        jj.join_csv(
+            in_data=polygon,
+            in_field="character",
+            csv=".\\test.csv",
+            csv_field="1character")
+        print "  Fail: no error was raised, even though csv file started with a digit"
+    except ValueError as e:
+        print("  Pass")
+    except Exception as e:
+        print "  Fail: an unexpected error was raised."
+    # TODO: test all fields in csv file. If any start with a digit, they won't be joined.
     print "------"
 
 
@@ -419,11 +446,11 @@ if __name__ == '__main__':
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
-        test_redistributePolygon()
+        # test_redistributePolygon()
         # test_for_each_feature()
         # test_create_polygon()
         # test_for_each_feature()
-        # test_join_csv()
+        test_join_csv()
         # test_create_basic_polygon()
         # test_get_sum()
     except arcpy.ExecuteError:
