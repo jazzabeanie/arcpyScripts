@@ -399,7 +399,7 @@ def for_each_feature(feature_class, cb, where_clause=""):
     Itterates over each feature in a feature class, and calls the cb function passing in a single feature layer containing the feature of the itteration.
     """
     if "\\" not in feature_class:
-        logger.warning("WARNING: looping likes to receive the feature_class as the full path to the file, not just the name. A backslash (\\) was not found in %s" % feature_class)
+        log("WARNING: looping likes to receive the feature_class as the full path to the file, not just the name. A backslash (\\) was not found in %s" % feature_class)
     feature_layer='feature_layer'
     logger.debug("Itterating over %s..." % feature_class)
     if field_in_feature_class("OBJECTID", feature_class):
