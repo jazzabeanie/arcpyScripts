@@ -74,7 +74,7 @@ def delete_if_exists(layer):
     if arcpy.Exists(layer):
         logger.debug("Deleting %s" % layer)
         arcpy.Delete_management(layer)
-        logger.debug("%s exists = %s" % (layer, arcpy.Exists(layer)))
+        # logger.debug("%s exists = %s" % (layer, arcpy.Exists(layer)))
 
 
 def arguments_exist():
