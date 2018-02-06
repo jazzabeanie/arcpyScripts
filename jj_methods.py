@@ -162,6 +162,8 @@ def get_file_from_path(path):
 
 def get_directory_from_path(path):
     """Returns the directory from a provided path."""
+    # Does this need the abspath part? With it there, if I put in a plain
+    # string, the current working directory will be returned.
     return os.path.dirname(os.path.abspath(path))
 
 
@@ -398,6 +400,7 @@ def for_each_feature(feature_class, cb, where_clause=""):
     """
     Itterates over each feature in a feature class, and calls the cb function passing in a single feature layer containing the feature of the itteration.
     """
+    # TODO: use `os.path.exists(feature_class)` here instead
     if "\\" not in feature_class:
         log("WARNING: looping likes to receive the feature_class as the full path to the file, not just the name. A backslash (\\) was not found in %s" % feature_class)
     feature_layer='feature_layer'
