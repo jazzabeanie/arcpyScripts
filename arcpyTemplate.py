@@ -29,18 +29,13 @@ arcpy.env.workspace = "C:\TempArcGIS\scratchworkspace.gdb"
 testing = True
 now = r'%s' % datetime.now().strftime("%Y%m%d%H%M")
 
-if testing:
-    logging.basicConfig(filename='log.log', # TODO
-                        level=logging.DEBUG,
-                        format='%(asctime)s @ %(lineno)d: %(message)s',
-                        datefmt='%Y-%m-%d,%H:%M:%S')
+if __name__ == '__main__':
+    logging.basicConfig(filename='log.log',  # TODO
+        level=logging.DEBUG,
+        format='%(asctime)s @ %(lineno)d: %(message)s',
+        datefmt='%Y-%m-%d,%H:%M:%S')
 else:
-    logging.basicConfig(filename='log.log', # TODO
-                        level=logging.INFO,
-                        format='%(asctime)s @ %(lineno)d: %(message)s',
-                        datefmt='%Y-%m-%d,%H:%M:%S')
-
-logging.warning("------")
+    logging.getLogger(__name__)
 
 # Commonly used layers:
 sde = "O:\\Data\\Planning_IP\\Spatial\\WindowAuth@Mapsdb01@SDE_Vector.sde"
@@ -85,6 +80,8 @@ def do_analysis(*argv):
 # as a geoprocessing script tool, or as a module imported in
 # another script
 if __name__ == '__main__':
+    logging.warning("------")
+
     print(do_analysis.__doc__)
     os.system('pause')
     # Arguments overwrite defaults
