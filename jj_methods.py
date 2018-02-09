@@ -315,6 +315,8 @@ def redistributePolygon(redistribution_inputs):
         total_properties_field = "total_counted_properties"
         global intersecting_polygons
         intersecting_polygons = "intersecting_polygons"
+        global intersecting_polygons_buffered
+        intersecting_polygons_buffered = "intersecting_polygons_buffered"
         global desired_shape
         desired_shape = "desired_shape"
         delete_if_exists(desired_shape)
@@ -374,16 +376,19 @@ def redistributePolygon(redistribution_inputs):
                 fieldmappings.addFieldMap(fm_POP_or_Total)
         delete_if_exists(redistribution_inputs["output_filename"])
         logger.debug("joining intersecting_polygons back to redistribution layer")
+        delete_if_exists(intersecting_polygons_buffered)
+        arcpy.Buffer_analysis(
+                in_features=intersecting_polygons,
+                out_feature_class=intersecting_polygons_buffered,
+                buffer_distance_or_field=-1)
         arcpy.SpatialJoin_analysis(
                 target_features=desired_shape,
-                join_features=intersecting_polygons,
+                join_features=intersecting_polygons_buffered,
                 out_feature_class=redistribution_inputs["output_filename"],
                 join_operation="JOIN_ONE_TO_ONE",
                 join_type="KEEP_ALL",
                 field_mapping=fieldmappings,
-                match_option="HAVE_THEIR_CENTER_IN",
-                search_radius=-1,
-                distance_field_name="#")
+                match_option="Intersect")
         logger.info("Successfully redistributed %s to %s" % (source_data, desired_shape))
         logger.info("intersecting_polygons file can be found at %s\\%s" % (arcpy.env.workspace, intersecting_polygons))
         logger.info("Output file can be found at %s" % redistribution_inputs["output_filename"])
