@@ -24,6 +24,10 @@ logging.basicConfig(filename='jj_tests.log',
     datefmt='%Y-%m-%d,%H:%M:%S')
 
 
+def log(text):
+    print(text)
+    logging.debug(text)
+
 def test_delete_if_exists():
     print "Testing delete_if_exists..."
     arcpy.CopyFeatures_management
@@ -117,7 +121,7 @@ def test_renameFieldMap():
 
 def test_redistributePolygon():
     # TODO: improve the tests for this method. All input data should be created on the fly, more tests should be added, more polygons should be added, etc.
-    jj.log("Testing redistributePolygon...")
+    log("Testing redistributePolygon...")
     left_x = 479582.11
     right_x = 479649.579
     lower_y = 7871595.813
@@ -135,61 +139,61 @@ def test_redistributePolygon():
     redistributePolygonInputs["layer_to_be_redistributed"] = arcpy.env.workspace + "\\growth_model_polygon_test"
     redistributePolygonInputs["output_filename"] = "redistributed"
     redistributePolygonInputs["fields_to_be_distributed"] = ["Dwelling_1"]
-    jj.log("  Testing number of fields")
+    log("  Testing number of fields")
     redistributePolygonInputs["distribution_method"] = 2
-    jj.log("    Fields in %s" % redistributePolygonInputs["layer_to_redistribute_to"])
+    # log("    Fields in %s" % redistributePolygonInputs["layer_to_redistribute_to"])
     redistribution_layer_fields = [f.name for f in arcpy.ListFields(redistributePolygonInputs["layer_to_redistribute_to"])]
-    for field in redistribution_layer_fields:
-        jj.log("      %s" % field)
-    jj.log("    Fields in %s" % redistributePolygonInputs["layer_to_be_redistributed"])
+    # for field in redistribution_layer_fields:
+    #     log("      %s" % field)
+    # log("    Fields in %s" % redistributePolygonInputs["layer_to_be_redistributed"])
     layer_to_be_redistributed_fields = [f.name for f in arcpy.ListFields(redistributePolygonInputs["layer_to_be_redistributed"])]
-    for field in layer_to_be_redistributed_fields:
-        jj.log("      %s" % field)
+    # for field in layer_to_be_redistributed_fields:
+    #     log("      %s" % field)
     jj.redistributePolygon(redistributePolygonInputs)
-    jj.log("    Fields in %s" % redistributePolygonInputs["output_filename"])
+    # log("    Fields in %s" % redistributePolygonInputs["output_filename"])
     output_fields = [f.name for f in arcpy.ListFields(redistributePolygonInputs["output_filename"])]
-    for field in output_fields:
-        jj.log("      %s" % field)
-    if True:
-        jj.log("  Pass?")
-    jj.log("  Testing invalid distribution method is caught")
+    # for field in output_fields:
+    #     log("      %s" % field)
+    if (len(redistribution_layer_fields)-4 + len(layer_to_be_redistributed_fields)-4 == len(output_fields)-6):  # every feature class has OBJECTID, Shape, Shape_Length, and Shape_Area. The output also has Join_Count, and TARGET_FID
+        log("    Pass")
+    log("  Testing invalid distribution method is caught")
     for method in [0, "blah", 6.5]:
         redistributePolygonInputs["distribution_method"] = method
         try:
             jj.redistributePolygon(redistributePolygonInputs)
         except AttributeError as e:
             if re.match('distribution method must be either 1, 2 or 3', e.args[0]):
-                jj.log("    Pass")
+                log("    Pass")
             else:
-                jj.log("    Fail")
+                log("    Fail")
         except Exception as e:
-            jj.log("    Fail:")
-            jj.log("      " + e.args[0])
-    jj.log("  Testing invalid field is caught")
+            log("    Fail:")
+            log("      " + e.args[0])
+    log("  Testing invalid field is caught")
     redistributePolygonInputs["fields_to_be_distributed"] = ["nonexistent_field"]
     try:
         jj.redistributePolygon(redistributePolygonInputs)
         # TODO: manually raise an error
     except AttributeError as e:
         if re.match('.*does not exist.*', e.args[0]):
-            jj.log("    Pass")
+            log("    Pass")
         else:
-            jj.log("    Fail: wrong error message")
-            jj.log("      " + e.args[0])
+            log("    Fail: wrong error message")
+            log("      " + e.args[0])
     except Exception as e:
-        jj.log("    Fail: Some other exception raised")
-        jj.log("      " + e.args[0])
-    jj.log("  Testing number of properties method:")
+        log("    Fail: Some other exception raised")
+        log("      " + e.args[0])
+    log("  Testing number of properties method:")
     redistributePolygonInputs["fields_to_be_distributed"] = ["Dwelling_1"]
     redistributePolygonInputs["distribution_method"] = 2
     jj.redistributePolygon(redistributePolygonInputs)
     with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['Dwelling_1']) as cursor:
         for row in cursor:
             if row[0] == 10:
-                jj.log("    Pass")
+                log("    Pass")
             else:
-                jj.log("    Fail: Dwelling_1 should be 10")
-    jj.log("    Testing sums are equal:")
+                log("    Fail: Dwelling_1 should be 10")
+    log("    Testing sums are equal:")
     #
     redistributed_count = 0
     with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], "Dwelling_1") as cursor:
@@ -201,28 +205,28 @@ def test_redistributePolygon():
         for row in cursor:
             layer_to_be_redistributed_count += row[0]
     if layer_to_be_redistributed_count == redistributed_count:
-        jj.log("      Pass")
+        log("      Pass")
     else:
-        jj.log("      Fail: sum of dewllings is not equal for layer_to_be_redistributed (%s) and output (%s)" % (layer_to_be_redistributed_count, redistributed_count))
-    jj.log("  Testing area method:")
+        log("      Fail: sum of dewllings is not equal for layer_to_be_redistributed (%s) and output (%s)" % (layer_to_be_redistributed_count, redistributed_count))
+    log("  Testing area method:")
     redistributePolygonInputs["distribution_method"] = 1
     jj.redistributePolygon(redistributePolygonInputs)
     for row in arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['Dwelling_1']):
         if row[0] == 4:
-            jj.log("    Pass")
+            log("    Pass")
         else:
-            jj.log("    Fail: Dwelling_1 should be 4")
-    jj.log("    Testing sums are equal:")
+            log("    Fail: Dwelling_1 should be 4")
+    log("    Testing sums are equal:")
     # Recalculate redistributed_count:
     redistributed_count = 0
     with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], "Dwelling_1") as cursor:
         for row in cursor:
             redistributed_count += row[0]
     if layer_to_be_redistributed_count == redistributed_count:
-        jj.log("      Pass")
+        log("      Pass")
     else:
-        jj.log("      Fail: sum of dewllings is not equal for layer_to_be_redistributed (%s) and output (%s)" % (layer_to_be_redistributed_count, redistributed_count))
-    jj.log("    Testing for rounding:")
+        log("      Fail: sum of dewllings is not equal for layer_to_be_redistributed (%s) and output (%s)" % (layer_to_be_redistributed_count, redistributed_count))
+    log("    Testing for rounding:")
     gm_test_area = jj.create_basic_polygon(output="gm_test_area", left_x=479580, lower_y=7871650, right_x=479770, upper_y=7871700)
     arcpy.AddField_management(gm_test_area, "Dwelling_1", "LONG")
     arcpy.CalculateField_management(in_table=gm_test_area, field="Dwelling_1", expression="1", expression_type="PYTHON_9.3", code_block="")
@@ -235,12 +239,12 @@ def test_redistributePolygon():
     jj.redistributePolygon(redistributePolygonInputs)
     total_dwellings = jj.get_sum("Dwelling_1", redistributePolygonInputs["output_filename"])
     if total_dwellings == 1:
-        jj.log("      Pass")
+        log("      Pass")
     elif total_dwellings == 0:
-        jj.log("      Fail: total dwellings in output was 0. This means that rounding errors are accumulating.")
+        log("      Fail: total dwellings in output was 0. This means that rounding errors are accumulating.")
     else:
-        jj.log("      Fail: total dwellings in %s should be 1, but was %s" % (redistributePolygonInputs["output_filename"], total_dwellings))
-    jj.log("    Testing for integerising:")
+        log("      Fail: total dwellings in %s should be 1, but was %s" % (redistributePolygonInputs["output_filename"], total_dwellings))
+    log("    Testing for integerising:")
     # TODO: create a situation that would produce and error if the values were integerised instead of rounded.
     gm_test_area = jj.create_basic_polygon(output="gm_test_area", left_x=479580, lower_y=7871650, right_x=479770, upper_y=7871700)
     arcpy.AddField_management(gm_test_area, "Dwelling_1", "LONG")
@@ -257,12 +261,12 @@ def test_redistributePolygon():
     jj.redistributePolygon(redistributePolygonInputs)
     total_dwellings = jj.get_sum("Dwelling_1", redistributePolygonInputs["output_filename"])
     if total_dwellings == 1:
-        jj.log("      Pass")
+        log("      Pass")
     elif total_dwellings == 0:
-        jj.log("      Fail: total dwellings in output was 0. This means that decimas are being integerised, not rounded")
+        log("      Fail: total dwellings in output was 0. This means that decimas are being integerised, not rounded")
     else:
-        jj.log("      Fail: total dwellings in %s should be 1, but was %s. This error was unexpected and needs to be investigated." % (redistributePolygonInputs["output_filename"], total_dwellings))
-    jj.log("------")
+        log("      Fail: total dwellings in %s should be 1, but was %s. This error was unexpected and needs to be investigated." % (redistributePolygonInputs["output_filename"], total_dwellings))
+    log("------")
 
 
 def test_create_polygon():
@@ -436,8 +440,8 @@ def test_get_sum():
 
 if __name__ == '__main__':
     try:
-        jj.log("Running tests")
-        jj.log("")
+        log("Running tests")
+        log("")
         # test_delete_if_exists()
         # test_arguments_exist()
         # test_field_in_feature_class()
@@ -446,8 +450,8 @@ if __name__ == '__main__':
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
-        # test_redistributePolygon()
-        test_for_each_feature()
+        test_redistributePolygon()
+        # test_for_each_feature()
         # test_create_polygon()
         # test_for_each_feature()
         # test_join_csv()

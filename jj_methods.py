@@ -378,25 +378,25 @@ def redistributePolygon(redistribution_inputs):
         logger.debug("joining intersecting_polygons back to redistribution layer")
         delete_if_exists(intersecting_polygons_buffered)
         arcpy.Buffer_analysis(
-                in_features=intersecting_polygons,
-                out_feature_class=intersecting_polygons_buffered,
-                buffer_distance_or_field=-1)
+            in_features=intersecting_polygons,
+            out_feature_class=intersecting_polygons_buffered,
+            buffer_distance_or_field=-1)
         arcpy.SpatialJoin_analysis(
-                target_features=desired_shape,
-                join_features=intersecting_polygons_buffered,
-                out_feature_class=redistribution_inputs["output_filename"],
-                join_operation="JOIN_ONE_TO_ONE",
-                join_type="KEEP_ALL",
-                field_mapping=fieldmappings,
-                match_option="Intersect")
+            target_features=desired_shape,
+            join_features=intersecting_polygons_buffered,
+            out_feature_class=redistribution_inputs["output_filename"],
+            join_operation="JOIN_ONE_TO_ONE",
+            join_type="KEEP_ALL",
+            field_mapping=fieldmappings,
+            match_option="Intersect")
         logger.info("Successfully redistributed %s to %s" % (source_data, desired_shape))
         logger.info("intersecting_polygons file can be found at %s\\%s" % (arcpy.env.workspace, intersecting_polygons))
         logger.info("Output file can be found at %s" % redistribution_inputs["output_filename"])
     except arcpy.ExecuteError:
-        print arcpy.GetMessages(2)
+        # print arcpy.GetMessages(2)
         logger.exception(arcpy.GetMessages(2))
     except Exception as e:
-        print e.args[0]
+        # print e.args[0]
         logger.exception(e.args[0])
         raise e
 
@@ -437,10 +437,10 @@ def get_sum(field_name, feature_class):
 
 
 def log(text):
-    print(text)
+    # print(text)
     logger.info(text)
     # TODO: if arcpy has attribute:
-    #     arcpy.AddMessages(text)
+    #     arcpy.AddMessage(text)
 
 
 def join_csv(in_data, in_field, csv, csv_field, included_fields="#"):
