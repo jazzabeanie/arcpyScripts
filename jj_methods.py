@@ -381,7 +381,7 @@ def redistributePolygon(redistribution_inputs):
                 join_operation="JOIN_ONE_TO_ONE",
                 join_type="KEEP_ALL",
                 field_mapping=fieldmappings,
-                match_option="INTERSECT",
+                match_option="HAVE_THEIR_CENTER_IN",
                 search_radius=-1,
                 distance_field_name="#")
         logger.info("Successfully redistributed %s to %s" % (source_data, desired_shape))
