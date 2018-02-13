@@ -14,7 +14,8 @@ import re
 import logging
 import jj_methods as jj
 
-arcpy.env.workspace = r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\TestingDataset.gdb'
+# arcpy.env.workspace = r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\TestingDataset.gdb'
+arcpy.env.workspace = arcpy.env.scratchGDB
 # testing = True
 testing = False
 
@@ -30,13 +31,12 @@ def log(text):
 
 def test_delete_if_exists():
     print "Testing delete_if_exists..."
-    arcpy.CopyFeatures_management
-    (r'R:\InfrastructureModels\Growth\Database\GrowthModelGMZ.mdb\GMZ',
-     r'C:\TempArcGIS\scratchworkspace.gdb\testing_delete_if_exists')
-    jj.delete_if_exists
-    (r'C:\TempArcGIS\scratchworkspace.gdb\testing_delete_if_exists')
-    if arcpy.Exists(r'C:\TempArcGIS\scratchworkspace.gdb'
-                    r'\testing_delete_if_exists'):
+    # arcpy.CopyFeatures_management
+    # (r'R:\InfrastructureModels\Growth\Database\GrowthModelGMZ.mdb\GMZ',
+    #  r'C:\TempArcGIS\scratchworkspace.gdb\testing_delete_if_exists')
+    basic_polygon = jj.create_basic_polygon()
+    jj.delete_if_exists(basic_polygon)
+    if arcpy.Exists(basic_polygon):
         print "  delete_if_exists failed. Layer not deleted."
     else:
         print "  pass"
@@ -442,7 +442,7 @@ if __name__ == '__main__':
     try:
         log("Running tests")
         log("")
-        # test_delete_if_exists()
+        test_delete_if_exists()
         # test_arguments_exist()
         # test_field_in_feature_class()
         # test_return_tuple_of_args()
@@ -450,7 +450,7 @@ if __name__ == '__main__':
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
-        test_redistributePolygon()
+        # test_redistributePolygon()
         # test_for_each_feature()
         # test_create_polygon()
         # test_for_each_feature()
