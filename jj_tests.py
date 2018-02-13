@@ -31,9 +31,6 @@ def log(text):
 
 def test_delete_if_exists():
     print "Testing delete_if_exists..."
-    # arcpy.CopyFeatures_management
-    # (r'R:\InfrastructureModels\Growth\Database\GrowthModelGMZ.mdb\GMZ',
-    #  r'C:\TempArcGIS\scratchworkspace.gdb\testing_delete_if_exists')
     basic_polygon = jj.create_basic_polygon()
     jj.delete_if_exists(basic_polygon)
     if arcpy.Exists(basic_polygon):
@@ -82,12 +79,23 @@ def test_return_tuple_of_args():
 
 def test_calculate_external_field():
     print "Testing calculate_external_field..."
+    one_field = jj.create_basic_polygon()
+    arcpy.AddField_management(one_field, "first", "TEXT")
+    arcpy.CalculateField_management(one_field,  "first", "get_text()", "PYTHON_9.3", """def get_text():
+            return 'from one_field'""")
+    two_fields = jj.create_basic_polygon()
+    arcpy.AddField_management(two_fields, "first", "TEXT")
+    arcpy.AddField_management(two_fields, "second", "TEXT")
+    # arcpy.CalculateField_management(in_table, field, expression, {expression_type}, {code_block})
+    arcpy.CalculateField_management(two_fields,  "first", "get_text()", "PYTHON_9.3", """def get_text():
+            return 'from two_fields'""")
+    arcpy.CalculateField_management(two_fields,  "second", "get_text()", "PYTHON_9.3", """def get_text():
+            return 'from two_fields'""")
     output = "testing_calculate_external_field"
-    jj.calculate_external_field("one_field", "first", "two_fields", "first", output)
+    jj.calculate_external_field(one_field, "first", two_fields, "first", output)
     with arcpy.da.SearchCursor(output, "first") as cursor:
-        print("cursor %s" % cursor)
         for row in cursor:
-            regexp = re.compile('two_fields.*')
+            regexp = re.compile('from two_fields')
             assert(regexp.match("%s" % row))
     print "  pass"
     print "------"
@@ -442,11 +450,11 @@ if __name__ == '__main__':
     try:
         log("Running tests")
         log("")
-        test_delete_if_exists()
+        # test_delete_if_exists()
         # test_arguments_exist()
         # test_field_in_feature_class()
         # test_return_tuple_of_args()
-        # test_calculate_external_field()
+        test_calculate_external_field()
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
@@ -461,7 +469,7 @@ if __name__ == '__main__':
         print arcpy.GetMessages(2)
         logging.exception(arcpy.GetMessages(2))
     except Exception as e:
-        print e.args[0]
         logging.exception(e.args[0])
+        print e.args[0]
 
     os.system('pause')
