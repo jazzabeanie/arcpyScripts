@@ -23,7 +23,7 @@ try:
 except ImportError as e: # ie, when progressbar is not installed (this is untested)
     def bar(itterable):
         return itterable
-jj = imp.load_source('jj_methods', r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\jj_methods.py') # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
+jj = imp.load_source('jj_methods', r'\\corp\tcc\Plan & Comm Engage\Plan\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\jj_methods.py') # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
 
 # arcpy.env.workspace = "in_memory" # I think some tools aren't compatible with in_memory workspaces (like the redistributePolygon tool).
 arcpy.env.workspace = "C:\TempArcGIS\scratchworkspace.gdb"
