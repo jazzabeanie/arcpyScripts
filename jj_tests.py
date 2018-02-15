@@ -20,7 +20,7 @@ arcpy.env.workspace = arcpy.env.scratchGDB
 testing = False
 
 logging.basicConfig(filename='jj_tests.log',
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s @ %(lineno)d: %(message)s',
     datefmt='%Y-%m-%d,%H:%M:%S')
 
@@ -321,13 +321,50 @@ def test_redistributePolygon():
     log("------")
 
 
+def test_create_point():
+    print("Testing create_point...")
+    print("  Testing defaults...")
+    try:
+        point = jj.create_point()
+        if int(arcpy.GetCount_management(point).getOutput(0)) == 1:
+            print("    pass")
+        else:
+            print("    fail: %s features created instead of 1" % int(arcpy.GetCount_management(points).getOutput(0)))
+    except Exception as e:
+        print("    fail")
+        print e.args[0]
+    #
+    print("  Testing takes coordinates...")
+    try:
+        jj.create_point(523, 5223)
+        print("    pass")
+    except Exception as e:
+        print("    fail: %s" % e.args[0])
+    #
+    print("  Testing takes output...")
+    try:
+        jj.delete_if_exists("somefile")
+        jj.create_point(output="somefile")
+        if arcpy.Exists("somefile"):
+            print("    pass")
+        else:
+            print("    fail: 'somefile' not created")
+    except Exception as e:
+        print("    fail: %s" % e.args[0])
+
+
 def test_create_points():
     print("Testing create_points...")
-    # jj.create_points((1, 2))
-    # from inspect import getcallargs
-    # from inspect import getargspec
-    # print("getcallargs with ((1, 2)) = \n  %s" % getcallargs(jj.create_points, (1, 2)))
-    # # print("getargspec = \n  %s" % getargspec(jj.create_points))
+    print("  Testing arguments are compulsory...")
+    try:
+        jj.create_points()
+    except AttributeError as e:
+        print("    pass")
+    try:
+        jj.create_points(output="blah")
+    except AttributeError as e:
+        print("    pass")
+    #
     print("  Testing invalid coordinates raises an error...")
     try:
         jj.create_points(1)
@@ -337,24 +374,38 @@ def test_create_points():
         jj.create_points(((1, 5), 3))
     except AttributeError as e:
         print("    pass")
-    print("    all pass")
-    #
-    print("  Testing defaults...")
-    try:
-        jj.create_points()
-    except Exception as e:
-        print("    fail")
-        print e.args[0]
-    print("    TODO")
     #
     print("  Testing single list of coordinates creates a point...")
     try:
-        jj.create_points((1, 2))
+        points = jj.create_points(((1, 2), (2, 3)))
+        if int(arcpy.GetCount_management(points).getOutput(0)) == 2:
+            print("    pass")
+        else:
+            print("    fail: %s features created instead of 2" % int(arcpy.GetCount_management(points).getOutput(0)))
     except Exception as e:
         print("    fail")
         print e.args[0]
-    print("    TODO")
-    print("  TODO")
+    #
+    print("  Testing take an output filename")
+    try:
+        jj.create_points(((1, 2), (4, 5)), output="some_filename")
+        if arcpy.Exists("some_filename"):
+            print("    pass")
+        else:
+            print("    fail: some_filename not created")
+    except Exception as e:
+        print("    fail: %s" % e.args[0])
+    #
+    print("  Testing take an output path")
+    try:
+        jj.create_points(((2345, 523), (423, 2)), output="%s\\some_filename" % arcpy.env.scratchGDB)
+        if arcpy.Exists("%s\\some_filename" % arcpy.env.scratchGDB):
+            print("    pass")
+        else:
+            print("    fail: %s\\some_filename not created" % arcpy.env.scratchGDB)
+    except Exception as e:
+        print("    fail: %s" % e.args[0])
+    print("  pass")
 
 
 def test_create_polygon():
@@ -377,6 +428,7 @@ def test_create_polygon():
         print "    Pass"
     else:
         print "    Fail: tool doesn't create shape in expected location or doens't create shape at all (%s)" % output
+    #
     print "  Testing create a polygon that doesn't intersects a point ..."
     array = [(479579.725,7871431.255),
          (479579.725,7871508.742),
@@ -528,8 +580,8 @@ def test_get_sum():
 
 if __name__ == '__main__':
     try:
-        log("Running tests")
-        log("")
+        logging.info("Running tests")
+        logging.info("")
         # test_delete_if_exists()
         # test_arguments_exist()
         # test_field_in_feature_class()
@@ -539,7 +591,8 @@ if __name__ == '__main__':
         # test_get_directory_from_path()
         # test_renameFieldMap()
         # test_redistributePolygon()
-        test_create_points()
+        test_create_point()
+        # test_create_points()
         # test_create_polygon()
         # test_create_basic_polygon()
         # test_for_each_feature()

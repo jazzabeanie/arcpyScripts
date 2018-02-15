@@ -68,22 +68,17 @@ def create_basic_polygon(output="basic_polygon", left_x=479579.725, lower_y=7871
     return output
 
 
-def create_points(coords_lists=(), output="basic_points", x_coord=479585 , y_coord=7871450):
+def create_point(x_coord=479585 , y_coord=7871450, output="basic_point"):
     """
-    Creates a features class with a bunch of points as passed in.
+    Creates a features class with a single point with the co-ordinates as passed in.
+
+    Arguments:
+        x_coord - the x_coordinate of the point (479585 by default)
+        y_coord - the y_coordinate of the point (7871450 by default)
+        output - the location to save the output
     """
-    if len(coords_lists) == 0:
-        coords_lists = ((x_coord, y_coord), )
-    elif (len(coords_lists) == 2):
-        coords_lists = (coords_lists, )
-    else:
-        try:
-            for i in coords_lists:
-                for c in i:
-                    pass
-        except TypeError as e:
-            print e.args[0]
-            raise AttributeError("Error: create_points, take a list/tuple of coordinates, where each item is a list/tuple containing the x and y coordinate of the point to be added. One of these was found to not be itterable.")
+    if os.sep not in output:
+        output=arcpy.env.workspace+"\\"+output
     delete_if_exists(output)
     logger.debug("directory = " + get_directory_from_path(output))
     logger.debug("name = " + get_file_from_path(output))
@@ -91,7 +86,41 @@ def create_points(coords_lists=(), output="basic_points", x_coord=479585 , y_coo
         out_path=get_directory_from_path(output),
         out_name=get_file_from_path(output),
         geometry_type="POINT")
-    for p in coords_lists:
+    cursor = arcpy.da.InsertCursor(output, ['SHAPE@XY'])
+    cursor.insertRow([(x_coord, y_coord)])
+    del cursor
+    return output
+    # help: http://pro.arcgis.com/en/pro-app/arcpy/get-started/writing-geometries.htm
+
+
+def create_points(coords_list=None, output="points"):
+    """
+    Creates a features class with a bunch of points as passed in.
+    """
+    # if type(coords_list) != type(()) or type(coords_list) != type([]):
+    if type(coords_list) != type(()):
+        logging.debug("coords_list type = %s" % type(coords_list))
+        raise AttributeError("Error: coords_list is not a tuple or a list")
+    else:
+        logging.debug("coords_list = %s" % (coords_list, ))
+        try:
+            for i in coords_list:
+                for c in i:
+                    logging.debug("item in coords_list is all good")
+        except TypeError as e:
+            logging.debug("items in coords_list aren't itterable.")
+            logging.debug(e.args[0])
+            raise AttributeError('Error: item in coords_list are not itterable. create_points, take a list/tuple of coordinates as the first argument, where each item is a list/tuple containing the x and y coordinates of the point to be added. One of these was found to not be itterable.\nPlease call create_points like so: `create_points(((1, 2), (5, 2)), output="filename")`')
+    if os.sep not in output:
+        output=arcpy.env.workspace+"\\"+output
+    delete_if_exists(output)
+    logger.debug("directory = " + get_directory_from_path(output))
+    logger.debug("name = " + get_file_from_path(output))
+    output = arcpy.CreateFeatureclass_management(
+        out_path=get_directory_from_path(output),
+        out_name=get_file_from_path(output),
+        geometry_type="POINT")
+    for p in coords_list:
         cursor = arcpy.da.InsertCursor(output, ['SHAPE@XY'])
         cursor.insertRow([p])
         # help: http://pro.arcgis.com/en/pro-app/arcpy/get-started/writing-geometries.htm
