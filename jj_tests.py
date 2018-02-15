@@ -139,6 +139,7 @@ def test_redistributePolygon():
          (right_x,upper_y),
          (right_x,lower_y),
          (left_x,lower_y)]
+    # This array creates an area that is around 40% of the growth model polygon.
     redistribution_test = arcpy.env.workspace + "\\redistribution_test_layer"
     jj.delete_if_exists(redistribution_test)
     jj.create_polygon(redistribution_test, array)
@@ -254,20 +255,49 @@ def test_redistributePolygon():
 
     def testing_area_method():
         log("  Testing area method:")
+        log("    Testing 40% of area yeilds 40% of population:")
         redistributePolygonInputs["distribution_method"] = 1
         jj.redistributePolygon(redistributePolygonInputs)
         for row in arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['Dwelling_1']):
             if row[0] == 4:
-                log("    Pass")
+                log("      Pass")
             else:
-                log("    Fail: Dwelling_1 should be 4")
-        # # This test fails because there areas to redistribute don't cover the layer to be redistributed. It may be enough to move this test after test for rounding below.
+                log("      Fail: Dwelling_1 should be 4")
+        #
+        # # This test is essentially a replication of testing_for_rounding below
         # log("    Testing sums are equal:")
+        # gm_test_area = jj.create_basic_polygon(
+        #         output="gm_test_area",
+        #         left_x=479580,
+        #         lower_y=7871650,
+        #         right_x=479770,
+        #         upper_y=7871700)
+        # arcpy.AddField_management(gm_test_area, "Dwelling_1", "LONG")
+        # arcpy.CalculateField_management(
+        #         in_table=gm_test_area,
+        #         field="Dwelling_1",
+        #         expression="10",
+        #         expression_type="PYTHON_9.3",
+        #         code_block="")
+        # redistribution_areas = jj.create_polygon("redistribution_areas",
+        #     [(479580, 7871650), (479580, 7871700), (479644, 7871700), (479644, 7871650), (479580, 7871650)],
+        #     [(479644, 7871650), (479644, 7871700), (479707, 7871700), (479707, 7871650), (479644, 7871650)],
+        #     [(479707, 7871650), (479707, 7871700), (479770, 7871700), (479770, 7871650), (479707, 7871650)])
+        # redistributePolygonInputs["distribution_method"] = 1
+        # redistributePolygonInputs["layer_to_redistribute_to"] = redistribution_areas
+        # redistributePolygonInputs["layer_to_be_redistributed"] = gm_test_area
+        # redistributePolygonInputs["output_filename"] = "redistributed"
+        # redistributePolygonInputs["fields_to_be_distributed"] = ["Dwelling_1"]
+        # jj.redistributePolygon(redistributePolygonInputs)
         # # Recalculate redistributed_count:
         # redistributed_count = 0
         # with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], "Dwelling_1") as cursor:
         #     for row in cursor:
         #         redistributed_count += row[0]
+        # layer_to_be_redistributed_count = 0
+        # with arcpy.da.SearchCursor(redistributePolygonInputs["layer_to_be_redistributed"], "Dwelling_1") as cursor:
+        #     for row in cursor:
+        #         layer_to_be_redistributed_count += row[0]
         # if layer_to_be_redistributed_count == redistributed_count:
         #     log("      Pass")
         # else:
@@ -320,11 +350,11 @@ def test_redistributePolygon():
             log("    Fail: total dwellings in %s should be 1, but was %s. This error was unexpected and needs to be investigated." % (redistributePolygonInputs["output_filename"], total_dwellings))
 
 
-    # testing_number_of_fields()
-    # testing_invalid_distribution_method_is_caught()
-    # testing_invalid_field_is_caught()
-    # testing_number_of_properties_method()
-    # testing_area_method()
+    testing_number_of_fields()
+    testing_invalid_distribution_method_is_caught()
+    testing_invalid_field_is_caught()
+    testing_number_of_properties_method()
+    testing_area_method()
     testing_for_rounding()
     testing_for_integerising()
     log("------")
