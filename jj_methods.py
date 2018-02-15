@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 testing = True
 
 
-# TODO: create a bunch of functions that create test data sets. For example: add the function below, but let the list of verticies be passed in as an argument.
 def create_polygon(output, *shapes_lists):
     """
     Creates a polygon at the output from the list of points provided. Multiple points list can be provided.
@@ -66,6 +65,48 @@ def create_basic_polygon(output="basic_polygon", left_x=479579.725, lower_y=7871
         output=arcpy.env.workspace+"\\"+output
     delete_if_exists(output)
     create_polygon(output, array)
+    return output
+
+
+def create_points(coords_lists=(), output="basic_points", x_coord=479585 , y_coord=7871450):
+    """
+    Creates a features class with a bunch of points as passed in.
+    """
+    # TODO: print all function argument
+    # print(coords_lists)
+    # print(output)
+    # print(x_coord)
+    # print(y_coord)
+    # if len(coords_lists):
+    #     print("coords_lists = %s" % (coords_lists, ))
+    # print("output = %s" % output)
+    # print("x_coord = %s" % x_coord)
+    # print("y_coord = %s" % y_coord)
+    if len(coords_lists) == 0:
+        coords_lists = ((x_coord, y_coord), )
+    elif (len(coords_lists) == 2):
+        coords_lists = (coords_lists, )
+    else:
+        try:
+            for i in coords_lists:
+                for c in i:
+                    pass
+        except TypeError as e:
+            print e.args[0]
+            raise AttributeError("Error: create_points, take a list/tuple of coordinates, where each item is a list/tuple containing the x and y coordinate of the point to be added. One of these was found to not be itterable.")
+    delete_if_exists(output)
+    logger.debug("directory = " + get_directory_from_path(output))
+    logger.debug("name = " + get_file_from_path(output))
+    output = arcpy.CreateFeatureclass_management(
+        out_path=get_directory_from_path(output),
+        out_name=get_file_from_path(output),
+        geometry_type="POINT")
+    for p in coords_lists:
+        point = arcpy.Point(p[0], p[1])
+        cursor = arcpy.da.InsertCursor(output, ['SHAPE@'])
+        cursor.insertRow([point])
+        # help: http://pro.arcgis.com/en/pro-app/arcpy/get-started/writing-geometries.htm
+    del cursor
     return output
 
 

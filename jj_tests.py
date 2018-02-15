@@ -263,45 +263,6 @@ def test_redistributePolygon():
                 log("      Pass")
             else:
                 log("      Fail: Dwelling_1 should be 4")
-        #
-        # # This test is essentially a replication of testing_for_rounding below
-        # log("    Testing sums are equal:")
-        # gm_test_area = jj.create_basic_polygon(
-        #         output="gm_test_area",
-        #         left_x=479580,
-        #         lower_y=7871650,
-        #         right_x=479770,
-        #         upper_y=7871700)
-        # arcpy.AddField_management(gm_test_area, "Dwelling_1", "LONG")
-        # arcpy.CalculateField_management(
-        #         in_table=gm_test_area,
-        #         field="Dwelling_1",
-        #         expression="10",
-        #         expression_type="PYTHON_9.3",
-        #         code_block="")
-        # redistribution_areas = jj.create_polygon("redistribution_areas",
-        #     [(479580, 7871650), (479580, 7871700), (479644, 7871700), (479644, 7871650), (479580, 7871650)],
-        #     [(479644, 7871650), (479644, 7871700), (479707, 7871700), (479707, 7871650), (479644, 7871650)],
-        #     [(479707, 7871650), (479707, 7871700), (479770, 7871700), (479770, 7871650), (479707, 7871650)])
-        # redistributePolygonInputs["distribution_method"] = 1
-        # redistributePolygonInputs["layer_to_redistribute_to"] = redistribution_areas
-        # redistributePolygonInputs["layer_to_be_redistributed"] = gm_test_area
-        # redistributePolygonInputs["output_filename"] = "redistributed"
-        # redistributePolygonInputs["fields_to_be_distributed"] = ["Dwelling_1"]
-        # jj.redistributePolygon(redistributePolygonInputs)
-        # # Recalculate redistributed_count:
-        # redistributed_count = 0
-        # with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], "Dwelling_1") as cursor:
-        #     for row in cursor:
-        #         redistributed_count += row[0]
-        # layer_to_be_redistributed_count = 0
-        # with arcpy.da.SearchCursor(redistributePolygonInputs["layer_to_be_redistributed"], "Dwelling_1") as cursor:
-        #     for row in cursor:
-        #         layer_to_be_redistributed_count += row[0]
-        # if layer_to_be_redistributed_count == redistributed_count:
-        #     log("      Pass")
-        # else:
-        #     log("      Fail: sum of dewllings is not equal for layer_to_be_redistributed (%s) and output (%s)" % (layer_to_be_redistributed_count, redistributed_count))
 
 
     def testing_for_rounding():
@@ -358,6 +319,42 @@ def test_redistributePolygon():
     testing_for_rounding()
     testing_for_integerising()
     log("------")
+
+
+def test_create_points():
+    print("Testing create_points...")
+    # jj.create_points((1, 2))
+    # from inspect import getcallargs
+    # from inspect import getargspec
+    # print("getcallargs with ((1, 2)) = \n  %s" % getcallargs(jj.create_points, (1, 2)))
+    # # print("getargspec = \n  %s" % getargspec(jj.create_points))
+    print("  Testing invalid coordinates raises an error...")
+    try:
+        jj.create_points(1)
+    except AttributeError as e:
+        print("    pass")
+    try:
+        jj.create_points(((1, 5), 3))
+    except AttributeError as e:
+        print("    pass")
+    print("    all pass")
+    #
+    print("  Testing defaults...")
+    try:
+        jj.create_points()
+    except Exception as e:
+        print("    fail")
+        print e.args[0]
+    print("    TODO")
+    #
+    print("  Testing single list of coordinates creates a point...")
+    try:
+        jj.create_points((1, 2))
+    except Exception as e:
+        print("    fail")
+        print e.args[0]
+    print("    TODO")
+    print("  TODO")
 
 
 def test_create_polygon():
@@ -541,9 +538,10 @@ if __name__ == '__main__':
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
-        test_redistributePolygon()
-        # test_for_each_feature()
+        # test_redistributePolygon()
+        test_create_points()
         # test_create_polygon()
+        # test_create_basic_polygon()
         # test_for_each_feature()
         # test_join_csv()
         # test_create_basic_polygon()
