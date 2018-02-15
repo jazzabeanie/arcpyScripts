@@ -72,16 +72,6 @@ def create_points(coords_lists=(), output="basic_points", x_coord=479585 , y_coo
     """
     Creates a features class with a bunch of points as passed in.
     """
-    # TODO: print all function argument
-    # print(coords_lists)
-    # print(output)
-    # print(x_coord)
-    # print(y_coord)
-    # if len(coords_lists):
-    #     print("coords_lists = %s" % (coords_lists, ))
-    # print("output = %s" % output)
-    # print("x_coord = %s" % x_coord)
-    # print("y_coord = %s" % y_coord)
     if len(coords_lists) == 0:
         coords_lists = ((x_coord, y_coord), )
     elif (len(coords_lists) == 2):
@@ -102,9 +92,8 @@ def create_points(coords_lists=(), output="basic_points", x_coord=479585 , y_coo
         out_name=get_file_from_path(output),
         geometry_type="POINT")
     for p in coords_lists:
-        point = arcpy.Point(p[0], p[1])
-        cursor = arcpy.da.InsertCursor(output, ['SHAPE@'])
-        cursor.insertRow([point])
+        cursor = arcpy.da.InsertCursor(output, ['SHAPE@XY'])
+        cursor.insertRow([p])
         # help: http://pro.arcgis.com/en/pro-app/arcpy/get-started/writing-geometries.htm
     del cursor
     return output
