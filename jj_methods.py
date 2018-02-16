@@ -506,6 +506,9 @@ def join_csv(in_data, in_field, csv, csv_field, included_fields="#"):
     """
     Converts a csv to a table, then joins it to another table.
     """
+    for f in arcpy.ListFields(csv):
+        if re.match('[0-9]', f.name[0:1]):
+            logger.warning("Warning: some fields in %s start with digits. these will not be joined." % csv)
     logger.debug("in_data = %s" % in_data)
     logger.debug("in_field = %s" % in_field)
     logger.debug("csv = %s" % csv)

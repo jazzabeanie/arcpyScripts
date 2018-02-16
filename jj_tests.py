@@ -351,6 +351,7 @@ def test_create_point():
             print("    fail: 'somefile' not created")
     except Exception as e:
         print("    fail: %s" % e.args[0])
+    print "------"
 
 
 def test_create_points():
@@ -406,6 +407,7 @@ def test_create_points():
     except Exception as e:
         print("    fail: %s" % e.args[0])
     print("  pass")
+    print "------"
 
 
 def test_create_polygon():
@@ -422,7 +424,8 @@ def test_create_polygon():
     feature_layer = "test_create_polygon_feature_layer"
     jj.delete_if_exists(feature_layer)
     arcpy.MakeFeatureLayer_management(output, feature_layer)
-    arcpy.SelectLayerByLocation_management(feature_layer, "INTERSECT", "one_field")
+    point = jj.create_point(479520, 7871470)
+    arcpy.SelectLayerByLocation_management(feature_layer, "INTERSECT", point)
     selected = arcpy.Describe(feature_layer).FIDSet
     if selected:
         print "    Pass"
@@ -441,7 +444,8 @@ def test_create_polygon():
     jj.delete_if_exists(feature_layer)
     feature_layer = "test_create_polygon_feature_layer"
     arcpy.MakeFeatureLayer_management(output, feature_layer)
-    arcpy.SelectLayerByLocation_management(feature_layer, "INTERSECT", "one_field")
+    point = jj.create_point(479520, 7871470)
+    arcpy.SelectLayerByLocation_management(feature_layer, "INTERSECT", point)
     print "    Selected: %s" % arcpy.Describe(feature_layer).FIDSet
     selected = arcpy.Describe(feature_layer).FIDSet
     if selected == "":
@@ -455,7 +459,8 @@ def test_create_basic_polygon():
     print "Testing create_basic_polygon..."
     print "  Testing a polygon is created with default params..."
     output = arcpy.env.workspace + "\\test_create_polygon"
-    jj.create_basic_polygon()
+    jj.delete_if_exists(output)
+    jj.create_basic_polygon(output)
     number_of_features = jj.get_sum("OBJECTID", output)
     if number_of_features==1:
         print "    Pass"
@@ -473,7 +478,7 @@ def test_for_each_feature():
         count+=1
     def check_only_1_feature(feature_layer):
         feature_count = arcpy.GetCount_management(feature_layer)
-        if feature_count.getOutput(0) == u'1':
+        if int(feature_count.getOutput(0)) == 1:
             print "    Pass"
         else:
             print "    Fail: multiple objects selected in %s" % feature_layer
@@ -492,12 +497,12 @@ def test_for_each_feature():
          (479763.712,7871508.742),
          (479763.712,7871431.255),
          (479709.625,7871431.255)]
-    for_each_test_feature_class = r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\TestingDataset.gdb\for_each_test_feature_class'
+    for_each_test_feature_class = r'for_each_test_feature_class'
     jj.delete_if_exists(for_each_test_feature_class)
     jj.create_polygon(for_each_test_feature_class, shape1, shape2, shape3)
-    print "  Only 1 object seleted..."
+    print "  testing callback called with only 1 object seleted..."
     jj.for_each_feature(for_each_test_feature_class, check_only_1_feature)
-    print "  Every feature is itterated over..."
+    print "  testing every feature is itterated over..."
     global count
     count = 0
     jj.for_each_feature(for_each_test_feature_class, increase)
@@ -505,7 +510,7 @@ def test_for_each_feature():
         print "    Pass"
     else:
         print "    Fail, count = %s (supposed to be 3)" % count
-    print "check cb takes 1 argument..."
+    print "  testing callback function must take 1 argument..."
     try:
         jj.for_each_feature(for_each_test_feature_class, error_throwing_cb)
         print "    Fail, no exception thrown"
@@ -515,7 +520,8 @@ def test_for_each_feature():
 
 
 def test_join_csv():
-    print "Testing join_csv joins fields..."
+    print("Testing join_csv...")
+    print "  Testing join_csv joins fields..."
     csv_file = open(".\\test.csv", "w")
     csv_file.write("character,species\njake,dog\nfinn,human")
     csv_file.close()
@@ -536,13 +542,13 @@ def test_join_csv():
         csv=".\\test.csv",
         csv_field="character")
     if jj.field_in_feature_class("species", polygon):
-        print "  Pass"
+        print "    Pass"
     else:
-        print "  Fail: %s field not found in %s" % ("species", polygon)
-        print "  The following fields were found: "
+        print "    Fail: %s field not found in %s" % ("species", polygon)
+        print "    The following fields were found: "
         for f in arcpy.ListFields(polygon):
             print "    %s" % f.name
-    print "Testing join_csv raises error if csv_field starts with digit..."
+    print "  Testing join_csv raises error if csv_field starts with digit..."
     csv_file = open(".\\test.csv", "w")
     csv_file.write("1character,species\njake,dog\nfinn,human")
     csv_file.close()
@@ -563,18 +569,27 @@ def test_join_csv():
             in_field="character",
             csv=".\\test.csv",
             csv_field="1character")
-        print "  Fail: no error was raised, even though csv file started with a digit"
+        print("    logs should issues a warning about csv fields")
+        print "    Fail: no error was raised, even though csv file started with a digit"
     except ValueError as e:
-        print("  Pass")
+        print("    Pass")
     except Exception as e:
-        print "  Fail: an unexpected error was raised."
-    # TODO: test all fields in csv file. If any start with a digit, they won't be joined.
+        print "    Fail: an unexpected error was raised."
+    print("  pass")
     print "------"
 
 
 def test_get_sum():
-    print "TODO: Testing get_sum..."
-    pass # TODO
+    print "Testing get_sum..."
+    point = jj.create_points(((234, 52), (245, 542)))
+    arcpy.AddField_management(point, "value", "SHORT")
+    arcpy.CalculateField_management(point,  "value", "10")
+    value_sum = jj.get_sum("value", point)
+    try:
+        assert(value_sum == 20)
+        print("  pass")
+    except AssertionError as e:
+        print("  fail: sum was not 20 as expected")
     print "------"
 
 
@@ -591,14 +606,13 @@ if __name__ == '__main__':
         # test_get_directory_from_path()
         # test_renameFieldMap()
         # test_redistributePolygon()
-        test_create_point()
+        # test_create_point()
         # test_create_points()
         # test_create_polygon()
         # test_create_basic_polygon()
         # test_for_each_feature()
         # test_join_csv()
-        # test_create_basic_polygon()
-        # test_get_sum()
+        test_get_sum()
     except arcpy.ExecuteError:
         print arcpy.GetMessages(2)
         logging.exception(arcpy.GetMessages(2))
