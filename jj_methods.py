@@ -160,6 +160,8 @@ def field_in_feature_class(field_name, feature_class):
 def return_tuple_of_args():
     """Takes all the arguments passed into the script, and puts them into a
     tuple."""
+    # Is this function necessary? I can get arguments with sys.argv. arcpy.GetParamterAsText is only useful when a script is converted to model builder tool?
+    # I don't think this function is actually used anywhere except jj_tests.py
     args = tuple(arcpy.GetParameterAsText(i)
                  for i in range(arcpy.GetArgumentCount()))
     logger.debug("args = " + str(args))

@@ -72,10 +72,11 @@ def test_arguments_exist():
         print "  This file was not called with arguments"
     print "------"
 
-def test_return_tuple_of_args():
-    print "Testing return_tuple_of_args..."
-    print "  Here are the passed in args: " + str(jj.return_tuple_of_args())
-    print "------"
+# def test_return_tuple_of_args():
+#     # I don't think this function is actually used.
+#     print "Testing return_tuple_of_args..."
+#     print "  Here are the passed in args: " + str(jj.return_tuple_of_args())
+#     print "------"
 
 def test_calculate_external_field():
     print "Testing calculate_external_field..."
@@ -577,6 +578,7 @@ def test_join_csv():
         print "    Fail: an unexpected error was raised."
     print("  pass")
     print "------"
+    jj.delete_if_exists(".\\test.csv")
 
 
 def test_get_sum():
