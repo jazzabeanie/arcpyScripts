@@ -184,8 +184,11 @@ def calculate_external_field(target_layer, target_field, join_layer, join_field,
     original_fields = arcpy.ListFields(target_layer)
     original_field_names = [f.name for f in original_fields]
     join_layer_layer = "join_layer_layer"
+    delete_if_exists(join_layer_layer)
     arcpy.MakeFeatureLayer_management(join_layer, join_layer_layer)
-    tmp_field_name = "tmp_a035bh"
+    tmp_field_name = "delete_me"
+    if tmp_field_name in [f.name for f in arcpy.ListFields(join_layer_layer)]:
+        raise AttributeError("Error: cannot perform this operation on a field named 'delete_me'")
     try:
         join_field_object = arcpy.ListFields(join_layer, join_field)[0]
     except IndexError as e:
@@ -196,7 +199,7 @@ def calculate_external_field(target_layer, target_field, join_layer, join_field,
     arcpy.AddField_management(join_layer_layer, tmp_field_name, join_field_object.type)
     arcpy.CalculateField_management(join_layer_layer, tmp_field_name, "!" + join_field + "!", "PYTHON", "")
     logger.debug("  Spatially joining %s to %s" % (join_layer, target_layer))
-    arcpy.SpatialJoin_analysis(target_layer, join_layer, output)
+    output = arcpy.SpatialJoin_analysis(target_layer, join_layer, output)
     output_fields = arcpy.ListFields(output)
     new_fields = [f for f in output_fields if f.name not in original_field_names]
     logger.debug("  Calculating %s = %s" % (target_field, tmp_field_name))
@@ -208,6 +211,8 @@ def calculate_external_field(target_layer, target_field, join_layer, join_field,
             arcpy.DeleteField_management(output, f.name)
         else:
             logger.warning("    Warning: Cannot delete required field: %s" % f.name)
+    logging.info("Create %s" % output)
+    return output
 
 
 def unique_values(table, field):

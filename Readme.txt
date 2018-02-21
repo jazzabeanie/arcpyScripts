@@ -2,12 +2,13 @@ view git config: `vim ~/.gitconfig`
 
 ------
 
-run `git config --global http.proxy http[s]://userName:password@proxyaddress:port`
+run `git config --global http.proxy http[s]://userName@proxyaddress:port`
 
-then git push as usual.
+then git push as usual. May need to run `git config --global credential.helper manager`.
 
 got proxy address and port from here: http://superuser.com/questions/346372/how-do-i-know-what-proxy-server-im-using
 
+No need to store password, see last answer here: https://stackoverflow.com/questions/22799825/using-git-on-windows-behind-an-http-proxy-without-storing-proxy-password-on-di
 
 ----------
 original help found here:

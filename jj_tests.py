@@ -80,6 +80,7 @@ def test_arguments_exist():
 
 def test_calculate_external_field():
     print "Testing calculate_external_field..."
+    print "  Testing external field is joined..."
     one_field = jj.create_basic_polygon()
     arcpy.AddField_management(one_field, "first", "TEXT")
     arcpy.CalculateField_management(one_field,  "first", "get_text()", "PYTHON_9.3", """def get_text():
@@ -98,7 +99,42 @@ def test_calculate_external_field():
         for row in cursor:
             regexp = re.compile('from two_fields')
             assert(regexp.match("%s" % row))
-    print "  pass"
+    print "    pass"
+    print "  Testing tmp_field_name is deleted..."
+    output = "testing_join_field_is_deleted"
+    conflicting_layer = jj.create_basic_polygon()
+    arcpy.AddField_management(conflicting_layer, "first", "TEXT")
+    arcpy.AddField_management(conflicting_layer, "second", "TEXT")
+    arcpy.AddField_management(conflicting_layer, "delete_me", "TEXT")
+    arcpy.CalculateField_management(
+        conflicting_layer,
+        "first",
+        "get_text()",
+        "PYTHON_9.3",
+        """def get_text():
+            return 'from conflicting_layer'""")
+    arcpy.CalculateField_management(
+        conflicting_layer,
+        "second",
+        "get_text()",
+        "PYTHON_9.3",
+        """def get_text():
+            return 'from conflicting_layer'""")
+    arcpy.CalculateField_management(
+        conflicting_layer,
+        "delete_me",
+        "get_text()",
+        "PYTHON_9.3",
+        """def get_text():
+            return 'this text should not be visible'""")
+    jj.delete_if_exists(output)
+    try:
+        output = jj.calculate_external_field(one_field, "first", conflicting_layer, "delete_me", output)
+        print("    fail: no error was raised")
+    except AttributeError as e:
+        print("    pass")
+    except Exception as e:
+        print("    fail: some other error %s" % e.args[0])
     print "------"
 
 
@@ -599,22 +635,22 @@ if __name__ == '__main__':
     try:
         logging.info("Running tests")
         logging.info("")
-        test_delete_if_exists()
-        test_arguments_exist()
-        test_field_in_feature_class()
-        test_return_tuple_of_args()
+        # test_delete_if_exists()
+        # test_arguments_exist()
+        # test_field_in_feature_class()
+        # test_return_tuple_of_args()
         test_calculate_external_field()
-        test_get_file_from_path()
-        test_get_directory_from_path()
-        test_renameFieldMap()
-        test_redistributePolygon()
-        test_create_point()
-        test_create_points()
-        test_create_polygon()
-        test_create_basic_polygon()
-        test_for_each_feature()
-        test_join_csv()
-        test_get_sum()
+        # test_get_file_from_path()
+        # test_get_directory_from_path()
+        # test_renameFieldMap()
+        # test_redistributePolygon()
+        # test_create_point()
+        # test_create_points()
+        # test_create_polygon()
+        # test_create_basic_polygon()
+        # test_for_each_feature()
+        # test_join_csv()
+        # test_get_sum()
     except arcpy.ExecuteError:
         print arcpy.GetMessages(2)
         logging.exception(arcpy.GetMessages(2))
