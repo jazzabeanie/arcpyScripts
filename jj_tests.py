@@ -135,27 +135,46 @@ def test_calculate_external_field():
         print("    pass")
     except Exception as e:
         print("    fail: some other error %s" % e.args[0])
+    print "  Testing spatial join works correctly for adjacent polygons..."
+    print("    TODO")
     print "------"
 
 
 def test_get_file_from_path():
-    print "Testing get_file_from_path..."
+    print "  Testing get_file_from_path..."
     some_path = r'C:\TempArcGIS\testing.gdb\foobar'
     if (jj.get_file_from_path(some_path) == "foobar"):
-        print "  pass"
+        print "    pass"
     else:
-        print "  fail"
+        print "    fail"
+    print "  Testing get_file_from_path with where \\ not found in string..."
+    some_string = r'foobar'
+    if (jj.get_file_from_path(some_path) == "foobar"):
+        print "    pass"
+    else:
+        print "    fail. results = %s" % jj.get_directory_from_path(some_string)
     print "------"
 
 
 def test_get_directory_from_path():
     print "Testing get_directory_from_path..."
+    print "  Testing get_directory_from_path with standard path..."
     some_path = r'C:\TempArcGIS\testing.gdb\foobar'
     if (jj.get_directory_from_path(some_path) == "C:\\TempArcGIS\\testing.gdb"):
-        print "  pass"
+        print "    pass"
     else:
-        print "  fail"
-    print "------"
+        print "    fail. results = %s" % jj.get_directory_from_path(some_path)
+    print "  Testing get_directory_from_path with where \\ not found in string..."
+    some_string = r'foobar'
+    try:
+        path = jj.get_directory_from_path(some_string)
+        if (path == ""):
+            print "    fail, path was an empty string. No error raised even though there was no path in the string"
+        else:
+            print "    fail. Should raise an error. path = %s" % path
+        print "------"
+    except AttributeError as e:
+        print("    pass. get_directory_from_path raises an error")
 
 
 def test_renameFieldMap():
@@ -638,10 +657,9 @@ if __name__ == '__main__':
         # test_delete_if_exists()
         # test_arguments_exist()
         # test_field_in_feature_class()
-        # test_return_tuple_of_args()
-        test_calculate_external_field()
-        # test_get_file_from_path()
-        # test_get_directory_from_path()
+        # test_calculate_external_field()
+        test_get_file_from_path()
+        test_get_directory_from_path()
         # test_renameFieldMap()
         # test_redistributePolygon()
         # test_create_point()

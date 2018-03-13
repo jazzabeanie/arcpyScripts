@@ -1,0 +1,1 @@
+nnoremap <localleader>t :! run_jj_tests.bat<CR>

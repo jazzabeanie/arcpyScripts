@@ -199,7 +199,13 @@ def calculate_external_field(target_layer, target_field, join_layer, join_field,
     arcpy.AddField_management(join_layer_layer, tmp_field_name, join_field_object.type)
     arcpy.CalculateField_management(join_layer_layer, tmp_field_name, "!" + join_field + "!", "PYTHON", "")
     logger.debug("  Spatially joining %s to %s" % (join_layer, target_layer))
-    output = arcpy.SpatialJoin_analysis(target_layer, join_layer, output)
+    join_layer_buffered = "join_layer_buffered"
+    delete_if_exists(join_layer_buffered)
+    join_layer_buffered = arcpy.Buffer_analysis(
+        in_features=join_layer,
+        out_feature_class=join_layer_buffered,
+        buffer_distance_or_field=-0.5)
+    output = arcpy.SpatialJoin_analysis(target_layer, join_layer_buffered, output)
     output_fields = arcpy.ListFields(output)
     new_fields = [f for f in output_fields if f.name not in original_field_names]
     logger.debug("  Calculating %s = %s" % (target_field, tmp_field_name))
@@ -224,13 +230,19 @@ def get_file_from_path(path):
     """Returns the filename from a provided path."""
     head, tail = os.path.split(path)
     return tail or os.path.basename(head)
+    # return tail
 
 
 def get_directory_from_path(path):
     """Returns the directory from a provided path."""
     # Does this need the abspath part? With it there, if I put in a plain
     # string, the current working directory will be returned.
-    return os.path.dirname(os.path.abspath(path))
+    # return os.path.dirname(os.path.abspath(path))
+    if os.path.dirname(path):
+        return os.path.dirname(path)
+    else:
+        raise AttributeError("get_directory_from_path received a string with no path. What should be the default behaviour here? return arcpy.env.workspace of returnt he current working directory from os.path.abspath()?")
+
 
 
 def test_print():
@@ -348,15 +360,15 @@ def redistributePolygon(redistribution_inputs):
             delete_if_exists(stats)
             logger.debug("    joining properties to "+ feature_layer +" and outputing to %s" % properties_SpatialJoin)
             arcpy.SpatialJoin_analysis(
-                    properties, # target_features
-                    feature_layer, # join_features
-                    properties_SpatialJoin, # out_feature_class
-                    "JOIN_ONE_TO_MANY", # join_operation
-                    "KEEP_COMMON", # join_type
-                    "#", # field_mapping
-                     "HAVE_THEIR_CENTER_IN", # match_option
-                    "#", # search_radius
-                    "#")# distance_field_name
+                properties, # target_features
+                feature_layer, # join_features
+                properties_SpatialJoin, # out_feature_class
+                "JOIN_ONE_TO_MANY", # join_operation
+                "KEEP_COMMON", # join_type
+                "#", # field_mapping
+                 "HAVE_THEIR_CENTER_IN", # match_option
+                "#", # search_radius
+                "#")# distance_field_name
             logger.debug("    Calculating statistics table at stats")
             arcpy.Statistics_analysis(properties_SpatialJoin, stats, "Join_Count SUM","JOIN_FID")
             logger.debug("    joining back to %s" % feature_class)
