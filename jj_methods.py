@@ -228,6 +228,7 @@ def unique_values(table, field):
 
 def get_file_from_path(path):
     """Returns the filename from a provided path."""
+    path = str(path)
     head, tail = os.path.split(path)
     return tail or os.path.basename(head)
     # return tail
@@ -238,6 +239,7 @@ def get_directory_from_path(path):
     # Does this need the abspath part? With it there, if I put in a plain
     # string, the current working directory will be returned.
     # return os.path.dirname(os.path.abspath(path))
+    path = str(path)
     if os.path.dirname(path):
         return os.path.dirname(path)
     else:
@@ -479,7 +481,7 @@ def redistributePolygon(redistribution_inputs):
         raise e
 
 
-def for_each_feature(feature_class, cb, where_clause=""):
+def for_each_feature(feature_class, cb):
     """
     Itterates over each feature in a feature class, and calls the cb function passing in a single feature layer containing the feature of the itteration.
     """
@@ -494,7 +496,7 @@ def for_each_feature(feature_class, cb, where_clause=""):
         id_field = "FID"
     else:
         raise AttributeError("%s does not contain an OBJECTID or FID" % feature_class)
-    with arcpy.da.SearchCursor(feature_class, id_field, where_clause) as cursor:
+    with arcpy.da.SearchCursor(feature_class, id_field) as cursor:
         for row in bar(cursor):
             arcpy.MakeFeatureLayer_management(
                 in_features=feature_class,

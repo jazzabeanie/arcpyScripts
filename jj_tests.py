@@ -1,3 +1,4 @@
+from __future__ import division
 # --------------------------------
 # Name: jj_tests.py
 # Purpose: To test commonly used methods.
@@ -9,10 +10,15 @@
 # Template Source: https://blogs.esri.com/esri/arcgis/2011/08/04/pythontemplate/
 # --------------------------------
 import os # noqa
+import sys # noqa
 import arcpy
-import re
 import logging
+import json
+import csv
+import imp
+import re
 import jj_methods as jj
+from datetime import datetime
 
 # arcpy.env.workspace = r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\TestingDataset.gdb'
 arcpy.env.workspace = arcpy.env.scratchGDB
@@ -149,10 +155,20 @@ def test_get_file_from_path():
         print "    fail"
     print "  Testing get_file_from_path with where \\ not found in string..."
     some_string = r'foobar'
-    if (jj.get_file_from_path(some_path) == "foobar"):
+    if (jj.get_file_from_path(some_string) == "foobar"):
         print "    pass"
     else:
         print "    fail. results = %s" % jj.get_directory_from_path(some_string)
+    print "  Testing get_file_from_path for non string..."
+    some_non_string = 2016
+    try:
+        if (jj.get_file_from_path(some_non_string) == "2016"):
+            print "    pass"
+        else:
+            print "    fail. results = %s" % jj.get_directory_from_path(some_non_string)
+    except Exception as e:
+        print "    fail. Exception caught."
+        print "    %s" % e.arge[0]
     print "------"
 
 
@@ -557,6 +573,7 @@ def test_for_each_feature():
     jj.delete_if_exists(for_each_test_feature_class)
     jj.create_polygon(for_each_test_feature_class, shape1, shape2, shape3)
     print "  testing callback called with only 1 object seleted..."
+    # TODO: test so that cb argument should come last
     jj.for_each_feature(for_each_test_feature_class, check_only_1_feature)
     print "  testing every feature is itterated over..."
     global count
@@ -658,15 +675,15 @@ if __name__ == '__main__':
         # test_arguments_exist()
         # test_field_in_feature_class()
         # test_calculate_external_field()
-        test_get_file_from_path()
-        test_get_directory_from_path()
+        # test_get_file_from_path()
+        # test_get_directory_from_path()
         # test_renameFieldMap()
         # test_redistributePolygon()
         # test_create_point()
         # test_create_points()
         # test_create_polygon()
         # test_create_basic_polygon()
-        # test_for_each_feature()
+        test_for_each_feature()
         # test_join_csv()
         # test_get_sum()
     except arcpy.ExecuteError:
