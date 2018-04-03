@@ -20,6 +20,13 @@ import re
 import jj_methods as jj
 from datetime import datetime
 
+
+
+def _bar(itterable):
+    return itterable
+
+jj.bar = _bar # to disable progress bar
+
 # arcpy.env.workspace = r'O:\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\TestingDataset.gdb'
 arcpy.env.workspace = arcpy.env.scratchGDB
 # testing = True
@@ -621,6 +628,24 @@ def test_for_each_feature():
         jj.for_each_feature(for_each_test_feature_class, checks_extra_args, True)
 
 
+    def test_where_clause_argument():
+        print "  testing where_clause argument is used..."
+
+
+        def checks_object_id_of_feature_passed_in(feature_layer):
+            with arcpy.da.SearchCursor(feature_layer, "OBJECTID") as cursor:
+                for row in cursor:
+                    if row[0] == 1:
+                        print "    Pass"
+                    else:
+                        print "    Fail: where_clause was not used"
+
+        jj.for_each_feature(
+                for_each_test_feature_class,
+                checks_object_id_of_feature_passed_in,
+                where_clause="OBJECTID=1")
+
+    test_where_clause_argument()
     testing_extra_args_are_passed_to_cb()
     testing_every_feature_is_itterated_over()
     testing_callback_called_with_only_1_object_seleted()

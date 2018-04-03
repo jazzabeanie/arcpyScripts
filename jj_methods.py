@@ -481,10 +481,14 @@ def redistributePolygon(redistribution_inputs):
         raise e
 
 
-def for_each_feature(feature_class, cb, *args):
+def for_each_feature(feature_class, cb, *args, **kwargs):
     """
     Itterates over each feature in a feature class, and calls the cb function passing in a single feature layer containing the feature of the itteration.
     """
+    if "where_clause" in kwargs.keys():
+        where_clause = kwargs["where_clause"]
+    else:
+        where_clause = None
     # TODO: use `os.path.exists(feature_class)` here instead
     if "\\" not in feature_class:
         log("WARNING: looping likes to receive the feature_class as the full path to the file, not just the name. A backslash (\\) was not found in %s" % feature_class)
@@ -496,7 +500,7 @@ def for_each_feature(feature_class, cb, *args):
         id_field = "FID"
     else:
         raise AttributeError("%s does not contain an OBJECTID or FID" % feature_class)
-    with arcpy.da.SearchCursor(feature_class, id_field) as cursor:
+    with arcpy.da.SearchCursor(feature_class, id_field, where_clause) as cursor:
         for row in bar(cursor):
             arcpy.MakeFeatureLayer_management(
                 in_features=feature_class,
