@@ -481,7 +481,7 @@ def redistributePolygon(redistribution_inputs):
         raise e
 
 
-def for_each_feature(feature_class, cb):
+def for_each_feature(feature_class, cb, *args):
     """
     Itterates over each feature in a feature class, and calls the cb function passing in a single feature layer containing the feature of the itteration.
     """
@@ -502,7 +502,7 @@ def for_each_feature(feature_class, cb):
                 in_features=feature_class,
                 out_layer=feature_layer,
                 where_clause="%s = %s" % (id_field, row[0]))
-            cb(feature_layer)
+            cb(feature_layer, *args)
             arcpy.Delete_management(feature_layer)
 
 

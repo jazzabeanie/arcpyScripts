@@ -543,17 +543,6 @@ def test_create_basic_polygon():
 
 def test_for_each_feature():
     print "Testing test_for_each_features..."
-    def error_throwing_cb():
-        print "Fail, features not containing an argument is called"
-    def increase(feature_layer):
-        global count
-        count+=1
-    def check_only_1_feature(feature_layer):
-        feature_count = arcpy.GetCount_management(feature_layer)
-        if int(feature_count.getOutput(0)) == 1:
-            print "    Pass"
-        else:
-            print "    Fail: multiple objects selected in %s" % feature_layer
     shape1 = [(479509.625,7871431.255),
          (479509.625,7871508.742),
          (479563.712,7871508.742),
@@ -572,23 +561,70 @@ def test_for_each_feature():
     for_each_test_feature_class = r'for_each_test_feature_class'
     jj.delete_if_exists(for_each_test_feature_class)
     jj.create_polygon(for_each_test_feature_class, shape1, shape2, shape3)
-    print "  testing callback called with only 1 object seleted..."
-    # TODO: test so that cb argument should come last
-    jj.for_each_feature(for_each_test_feature_class, check_only_1_feature)
-    print "  testing every feature is itterated over..."
-    global count
-    count = 0
-    jj.for_each_feature(for_each_test_feature_class, increase)
-    if count == 3:
-        print "    Pass"
-    else:
-        print "    Fail, count = %s (supposed to be 3)" % count
-    print "  testing callback function must take 1 argument..."
-    try:
-        jj.for_each_feature(for_each_test_feature_class, error_throwing_cb)
-        print "    Fail, no exception thrown"
-    except TypeError as e:
-        print "    Pass, exception thrown if cb takes no argument"
+
+
+    def testing_callback_called_with_only_1_object_seleted():
+        print "  testing callback called with only 1 object seleted..."
+
+
+        def check_only_1_feature(feature_layer):
+            feature_count = arcpy.GetCount_management(feature_layer)
+            if int(feature_count.getOutput(0)) == 1:
+                print "    Pass"
+            else:
+                print "    Fail: multiple objects selected in %s" % feature_layer
+
+        jj.for_each_feature(for_each_test_feature_class, check_only_1_feature)
+
+
+    def testing_every_feature_is_itterated_over():
+        print "  testing every feature is itterated over..."
+
+
+        def increase(feature_layer):
+            global count
+            count+=1
+
+        global count
+        count = 0
+        jj.for_each_feature(for_each_test_feature_class, increase)
+        if count == 3:
+            print "    Pass"
+        else:
+            print "    Fail, count = %s (supposed to be 3)" % count
+
+
+    def testing_callback_function_must_take_1_argument():
+        print "  testing callback function must take 1 argument..."
+
+
+        def error_throwing_cb():
+            print "Fail, features not containing an argument is called"
+
+        try:
+            jj.for_each_feature(for_each_test_feature_class, error_throwing_cb)
+            print "    Fail, no exception thrown"
+        except TypeError as e:
+            print "    Pass, exception thrown if cb takes no argument"
+
+
+    def testing_extra_args_are_passed_to_cb():
+        print "  testing extra args are passed to cb..."
+
+
+        def checks_extra_args(feature_layer, check=False):
+            if check is True:
+                print "    Pass"
+            else:
+                print "    Fail: extra True argument not passed to callback function"
+
+        jj.for_each_feature(for_each_test_feature_class, checks_extra_args, True)
+
+
+    testing_extra_args_are_passed_to_cb()
+    testing_every_feature_is_itterated_over()
+    testing_callback_called_with_only_1_object_seleted()
+    testing_callback_function_must_take_1_argument()
     print "------"
 
 
