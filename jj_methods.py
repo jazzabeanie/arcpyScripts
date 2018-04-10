@@ -520,6 +520,27 @@ def get_sum(field_name, feature_class):
     return count
 
 
+def apply_symbology(source, destinations):
+    """
+    Applys the symbology from the source to each layer in the destination list.
+    Only useful when run from the python window in arcmap.
+
+    Params
+    ------
+
+    first: source
+        The layer that has the symbology to apply
+    second: destinations
+        A list of layers to apply the symbology to.
+
+    Returns nothing. The source can be easily written by draging the layer into
+    the python window from the table of contents. The desintation list can be
+    done similarly by dragging into multiple highlighted layers.
+    """
+    for layer in destinations:
+        arcpy.ApplySymbologyFromLayer_management(layer, source)
+
+
 def log(text):
     # print(text)
     logger.info(text)
