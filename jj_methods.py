@@ -1,15 +1,18 @@
 from __future__ import division
 # --------------------------------
-# Name: jj_methods.py
-# Purpose: To server commonly used methods.
+module_name = "jj_methods"
+module_description = """
+This module contains commonly used functions to help with analysis and mapping
+in ArcGIS.  It is designed to be imported into other python scripts."""
 # Author: Jared Johnston
 # Created: 10/02/2017
 # Copyright:   (c) TCC
-# ArcGIS Version:   10.2
+# ArcGIS Version:   10.5.1
 # Python Version:   2.7
+module_version = "01.01.20180417"
 # Template Source: https://blogs.esri.com/esri/arcgis/2011/08/04/pythontemplate/
 # --------------------------------
-import os # noqa
+import os
 import sys # noqa
 import arcpy
 import re
@@ -27,6 +30,10 @@ except ImportError as e: # ie, when progressbar is not installed (this is untest
 
 logger = logging.getLogger(__name__)
 testing = True
+
+
+def help():
+    print()
 
 
 def create_polygon(output, *shapes_lists):
@@ -588,3 +595,10 @@ def join_csv(in_data, in_field, csv, csv_field, included_fields="#"):
         fields=included_fields)
     arcpy.Delete_management(arcpy.env.workspace+"\\temp_table")
     log('%s joined to %s' % (csv, in_data))
+
+if __name__ == '__main__':
+    print("")
+    print("name: %s" % module_name)
+    print("version: %s" % module_version)
+    print("description: \n%s\n" % module_description)
+    os.system('pause')
