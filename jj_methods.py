@@ -13,6 +13,18 @@ module_version = "01.01.20180417"
 # Template Source: https://blogs.esri.com/esri/arcgis/2011/08/04/pythontemplate/
 # --------------------------------
 import os
+
+
+def main():
+    print("")
+    print("name: %s" % module_name)
+    print("version: %s" % module_version)
+    print("description: \n%s\n" % module_description)
+
+if __name__ == '__main__':
+    main()
+    exit()
+
 import sys # noqa
 import arcpy
 import re
@@ -30,10 +42,6 @@ except ImportError as e: # ie, when progressbar is not installed (this is untest
 
 logger = logging.getLogger(__name__)
 testing = True
-
-
-def help():
-    print()
 
 
 def create_polygon(output, *shapes_lists):
@@ -595,10 +603,3 @@ def join_csv(in_data, in_field, csv, csv_field, included_fields="#"):
         fields=included_fields)
     arcpy.Delete_management(arcpy.env.workspace+"\\temp_table")
     log('%s joined to %s' % (csv, in_data))
-
-if __name__ == '__main__':
-    print("")
-    print("name: %s" % module_name)
-    print("version: %s" % module_version)
-    print("description: \n%s\n" % module_description)
-    os.system('pause')
