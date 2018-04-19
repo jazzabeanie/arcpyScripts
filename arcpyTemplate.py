@@ -85,6 +85,7 @@ if __name__ == '__main__':
 
     print(do_analysis.__doc__)
     os.system('pause')
+    # TODO: consider using argparse: https://docs.python.org/2/library/argparse.html#module-argparse
     # Arguments overwrite defaults
     default_output = (r'')
     argv = [default_output]
