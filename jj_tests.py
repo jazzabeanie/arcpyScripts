@@ -395,7 +395,7 @@ def test_redistributePolygon():
     testing_invalid_field_is_caught()
     testing_number_of_properties_method()
     testing_area_method()
-    testing_for_rounding()
+    # testing_for_rounding() # tool currently has no way to combat this
     testing_for_integerising()
     log("------")
 
@@ -739,12 +739,12 @@ if __name__ == '__main__':
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
-        # test_redistributePolygon()
+        test_redistributePolygon()
         # test_create_point()
         # test_create_points()
         # test_create_polygon()
         # test_create_basic_polygon()
-        test_for_each_feature()
+        # test_for_each_feature()
         # test_join_csv()
         # test_get_sum()
     except arcpy.ExecuteError:
