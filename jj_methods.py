@@ -296,6 +296,15 @@ def redistributePolygon(redistribution_inputs):
     - output_filename
     - distribution_method
     - fields_to_be_distributed"""
+    local_number_of_properties_field = "local_counted_properties"
+    total_properties_field = "total_counted_properties"
+    intersecting_polygons = "intersecting_polygons"
+    intersecting_polygons_buffered = "intersecting_polygons_buffered"
+    desired_shape = "desired_shape"
+    delete_if_exists(desired_shape)
+    total_area_field = "soure_total_area"
+    source_data = "source_data"
+    delete_if_exists(source_data)
 
     def log_inputs():
         log("redistribution_inputs:")
@@ -447,33 +456,29 @@ def redistributePolygon(redistribution_inputs):
         perform_checks()
         get_testing_and_now()
 
-        global local_number_of_properties_field
-        local_number_of_properties_field = "local_counted_properties"
-        global total_properties_field
-        total_properties_field = "total_counted_properties"
-        global intersecting_polygons
-        intersecting_polygons = "intersecting_polygons"
-        global intersecting_polygons_buffered
-        intersecting_polygons_buffered = "intersecting_polygons_buffered"
-        global desired_shape
-        desired_shape = "desired_shape"
-        delete_if_exists(desired_shape)
-        global total_area_field
-        total_area_field = "soure_total_area"
-        global source_data
-        source_data = "source_data"
-        delete_if_exists(source_data)
-        arcpy.CopyFeatures_management(redistribution_inputs["layer_to_be_redistributed"], source_data)
+        arcpy.CopyFeatures_management(
+            redistribution_inputs["layer_to_be_redistributed"],
+            source_data)
         arcpy.AddField_management(source_data, total_area_field, "FLOAT")
-        arcpy.CalculateField_management(source_data, total_area_field, "!shape.area@squaremeters!", "PYTHON_9.3")
+        arcpy.CalculateField_management(
+            source_data,
+            total_area_field,
+            "!shape.area@squaremeters!",
+            "PYTHON_9.3")
 
-        add_property_count_to_layer_x_with_name_x(source_data, total_properties_field)
+        add_property_count_to_layer_x_with_name_x(
+            source_data,
+            total_properties_field)
 
-        arcpy.CopyFeatures_management(redistribution_inputs["layer_to_redistribute_to"], desired_shape)
+        arcpy.CopyFeatures_management(
+            redistribution_inputs["layer_to_redistribute_to"],
+            desired_shape)
 
         create_intersecting_polygons()
 
-        add_property_count_to_layer_x_with_name_x(intersecting_polygons, local_number_of_properties_field)
+        add_property_count_to_layer_x_with_name_x(
+            intersecting_polygons,
+            local_number_of_properties_field)
 
         ## Recalculate groth model fields
         for GM_field in redistribution_inputs["fields_to_be_distributed"]:
