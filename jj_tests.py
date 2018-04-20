@@ -206,6 +206,9 @@ def test_renameFieldMap():
     print "------"
 
 
+def test_add_layer_count():
+    pass  # TODO: write tests for this method
+
 def test_redistributePolygon():
     # TODO: improve the tests for this method. All input data should be created on the fly, more tests should be added, more polygons should be added, etc.
     log("Testing redistributePolygon...")

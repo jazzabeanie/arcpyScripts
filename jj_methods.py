@@ -282,6 +282,12 @@ def test_print():
     logger.debug("fail")
 
 
+def add_layer_count(in_features, count_features, new_field_name):
+    """Creates a new field in in_features called new_field_name, then populates it with the number of count_features that fall inside it."""
+    pass  # TODO: refactor redistributePolygon to use this function instead of add_property_count_to_layer_x_with_name_x
+    arcpy.AddField_management(in_features, new_field_name, "LONG")
+
+
 def redistributePolygon(redistribution_inputs):
     """This function redistributes a feature class to another feature class
     based on different methods of distribution:
@@ -401,10 +407,11 @@ def redistributePolygon(redistribution_inputs):
                 average = (area + properties) / 2
                 return average""")
 
+    # TODO: write this method in a way that is reusable. See add_layer_count
     def add_property_count_to_layer_x_with_name_x(feature_class, field_name):
         """
         Adds a field to the feature class containing the number of properties (from the SDE) in each polygon.
-        """ # Previously properties would get double counted. This issue has now been fixed.
+        """
         logger.debug("Executing add_property_count_to_layer_x_with_name_x(%s, %s)" % (feature_class, field_name))
         properties = r"O:\\Data\\Planning_IP\\Spatial\\WindowAuth@Mapsdb01@SDE_Vector.sde\\sde_vector.TCC.Cadastral\\sde_vector.TCC.Properties"
         feature_layer = "add_property_count_to_layer_x_with_name_x_feature_layer"
