@@ -284,9 +284,34 @@ def test_print():
 
 def add_layer_count(in_features, count_features, new_field_name, out_feature):
     """Creates a new field in in_features called new_field_name, then populates it with the number of count_features that fall inside it."""
-    pass  # TODO: refactor redistributePolygon to use this function instead of add_property_count_to_layer_x_with_name_x
-    arcpy.AddField_management(in_features, new_field_name, "LONG")
-    return in_features
+    delete_if_exists("in_features_fl")
+    delete_if_exists("count_features_fl")
+    in_features = arcpy.MakeFeatureLayer_management(in_features, "in_features_fl")
+    count_features = arcpy.MakeFeatureLayer_management(count_features, "count_features_fl")
+    arcpy.AddField_management(in_features, "original_id", "LONG")
+    arcpy.CalculateField_management(in_features, "original_id", "!OBJECTID!", "PYTHON_9.3")
+    arcpy.AddField_management(count_features, new_field_name, "FLOAT")
+    arcpy.CalculateField_management(count_features, new_field_name, "1", "PYTHON_9.3")
+    arcpy.AddField_management(in_features, new_field_name, "FLOAT")
+    # TODO: check if in_features has an OBJECTID or some other identifier
+    count_table = "in_memory\\add_layer_count_table"
+    count_table = arcpy.TabulateIntersection_analysis(
+        in_zone_features = in_features,
+        zone_fields = "original_id",
+        in_class_features = count_features,
+        out_table = count_table,
+        # class_fields = "description",
+        sum_fields = new_field_name)
+    # arcpy.Statistics_analysis (in_table, out_table, {statistics_fields}, {case_field})
+    # deletes old field values
+    arcpy.DeleteField_management(in_features, new_field_name)
+    output = arcpy.JoinField_management(
+        in_data = in_features,
+        in_field = "OBJECTID",
+        join_table = count_table,
+        join_field = "original_id",
+        fields = new_field_name)
+    return output
 
 
 def redistributePolygon(redistribution_inputs):

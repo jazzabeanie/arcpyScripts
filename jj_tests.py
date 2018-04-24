@@ -209,8 +209,9 @@ def test_renameFieldMap():
 def test_add_layer_count():
     print "Testing add_layer_count..."
     left_x = 479580
-    mid_x = 479590
+    mid_x = 479595
     right_x =479600
+    far_right_x =479610
     bottom_y = 7871600
     top_y = 7871590
     layer = jj.create_basic_polygon(
@@ -227,27 +228,53 @@ def test_add_layer_count():
     right_shape = [
         (mid_x, bottom_y),
         (mid_x, top_y),
-        (right_x, top_y),
-        (right_x, bottom_y),
+        (far_right_x, top_y),
+        (far_right_x, bottom_y),
         (mid_x, bottom_y)]
     count_layer = "count_layer"
     jj.delete_if_exists(count_layer)
     count_layer = jj.create_polygon(count_layer, left_shape, right_shape)
+    arcpy.AddField_management(count_layer, "description", "TEXT")
+    arcpy.CalculateField_management(count_layer, "description", "getName(!OBJECTID!)", "PYTHON_9.3",
+        """def getName(id):
+            if id == 1:
+                return "left"
+            elif id == 2:
+                return "right"
+            else:
+                return "unknown"
+        """)
     count_field_name = "count_field"
     result = jj.add_layer_count(layer, count_layer, count_field_name, "in_memory\\add_layer_count_result")
-    print "  Testing add_layer_count adds an field..."
-    fields = [field.name for field in arcpy.ListFields(result)]
-    if count_field_name in fields:
-        print "    Pass"
-    else:
-        print "    Fail: %s not found in results. The following fiels were found: %s" % (count_field_name, fields)
-    print "  Testing added field counts the number of occurences of count_layer that are inside the layer..."
-    with arcpy.da.SearchCursor(result, count_field_name) as cursor:
+
+    def test_adds_a_field():
+        print "  Testing add_layer_count adds a field..."
+        fields = [field.name for field in arcpy.ListFields(result)]
+        if count_field_name in fields:
+            print "    Pass"
+        else:
+            print "    Fail: %s not found in results. The following fiels were found: %s" % (count_field_name, fields)
+
+    def test_counts_correctly():
+        print "  Testing added field counts the number of occurences of count_layer that are inside the layer..."
+        with arcpy.da.SearchCursor(result, count_field_name) as cursor:
+            for row in cursor:
+                if row[0] == 2:
+                    print("    Pass")
+                else:
+                    print("    Fail: result was %s. Should have been 2" % row[0])
+
+    # test_adds_a_field()
+    # test_counts_correctly()
+
+    f_list = []
+    for field in [field.name for field in arcpy.ListFields(result)]:
+        f_list.append(field)
+    print(f_list)
+    with arcpy.da.SearchCursor(result, "*") as cursor:
         for row in cursor:
-            if row[0] == 2:
-                print("    Pass")
-            else:
-                print("    Fail: result was %s. Should have been 2" % row[0])
+            print(row)
+
 
 def test_redistributePolygon():
     # TODO: improve the tests for this method. All input data should be created on the fly, more tests should be added, more polygons should be added, etc.
