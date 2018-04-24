@@ -235,12 +235,19 @@ def test_add_layer_count():
     count_layer = jj.create_polygon(count_layer, left_shape, right_shape)
     count_field_name = "count_field"
     result = jj.add_layer_count(layer, count_layer, count_field_name, "in_memory\\add_layer_count_result")
-    print "  Testing add_layer_count adds a field..."
+    print "  Testing add_layer_count adds an field..."
     fields = [field.name for field in arcpy.ListFields(result)]
     if count_field_name in fields:
         print "    Pass"
     else:
         print "    Fail: %s not found in results. The following fiels were found: %s" % (count_field_name, fields)
+    print "  Testing added field counts the number of occurences of count_layer that are inside the layer..."
+    with arcpy.da.SearchCursor(result, count_field_name) as cursor:
+        for row in cursor:
+            if row[0] == 2:
+                print("    Pass")
+            else:
+                print("    Fail: result was %s. Should have been 2" % row[0])
 
 def test_redistributePolygon():
     # TODO: improve the tests for this method. All input data should be created on the fly, more tests should be added, more polygons should be added, etc.
