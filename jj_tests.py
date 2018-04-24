@@ -237,8 +237,6 @@ def test_add_layer_count():
     count_field_name = "count_field"
     result = jj.add_layer_count(layer, count_layer, count_field_name, "in_memory\\add_layer_count_result")
 
-    # jj.print_table(result)
-
     def test_adds_a_field():
         print "  Testing add_layer_count adds a field..."
         fields = [field.name for field in arcpy.ListFields(result)]
@@ -256,9 +254,13 @@ def test_add_layer_count():
                 else:
                     print("    Fail: result was %s. Should have been 2" % row[0])
 
-    test_adds_a_field()
-    test_counts_correctly()
+    # test_adds_a_field()
+    # test_counts_correctly()
 
+    count_is_5 = r'O:\Data\Planning_IP\Admin\Staff\Jared\Land_Use_Monitoring\Residential_Estates\testing_datasets.gdb\count_is_5'
+    sample_land_parcels = r'O:\Data\Planning_IP\Admin\Staff\Jared\Land_Use_Monitoring\Residential_Estates\testing_datasets.gdb\sample_land_parcels'
+    result = jj.add_layer_count(count_is_5, sample_land_parcels, "property_count", "in_memory\\test_property_count")
+    jj.print_table(result)
 
 
 def test_redistributePolygon():

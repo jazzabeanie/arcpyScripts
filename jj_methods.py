@@ -45,6 +45,14 @@ logger = logging.getLogger(__name__)
 testing = True
 
 
+def get_identifying_field(layer):
+    if field_in_feature_class("OBJECTID", layer):
+        return "OBJECTID"
+    elif field_in_feature_class("FID", layer):
+        return "FID"
+    else:
+        raise AttributeError("%s does not contain an OBJECTID or FID" % layer)
+
 def create_polygon(output, *shapes_lists):
     """
     Creates a polygon at the output from the list of points provided. Multiple points list can be provided.
@@ -296,15 +304,16 @@ def add_layer_count(in_features, count_features, new_field_name, out_feature):
     """Creates a new field in in_features called new_field_name, then populates it with the number of count_features that fall inside it."""
     delete_if_exists("in_features_fl")
     delete_if_exists("count_features_fl")
+    id_field = get_identifying_field(in_features)
     in_features = arcpy.MakeFeatureLayer_management(in_features, "in_features_fl")
     count_features = arcpy.MakeFeatureLayer_management(count_features, "count_features_fl")
     arcpy.AddField_management(in_features, "original_id", "LONG")
-    arcpy.CalculateField_management(in_features, "original_id", "!OBJECTID!", "PYTHON_9.3")
+    arcpy.CalculateField_management(in_features, "original_id", "!%s!" % id_field, "PYTHON_9.3")
     arcpy.AddField_management(count_features, new_field_name, "FLOAT")
     arcpy.CalculateField_management(count_features, new_field_name, "1", "PYTHON_9.3")
     arcpy.AddField_management(in_features, new_field_name, "FLOAT")
-    # TODO: check if in_features has an OBJECTID or some other identifier
     count_table = "in_memory\\add_layer_count_table"
+    delete_if_exists(count_table)
     count_table = arcpy.TabulateIntersection_analysis(
         in_zone_features = in_features,
         zone_fields = "original_id",
@@ -315,7 +324,7 @@ def add_layer_count(in_features, count_features, new_field_name, out_feature):
     arcpy.DeleteField_management(in_features, new_field_name)
     output = arcpy.JoinField_management(
         in_data = in_features,
-        in_field = "OBJECTID",
+        in_field = id_field,
         join_table = count_table,
         join_field = "original_id",
         fields = new_field_name)
@@ -599,12 +608,7 @@ def for_each_feature(feature_class, cb, *args, **kwargs):
         log("WARNING: looping likes to receive the feature_class as the full path to the file, not just the name. A backslash (\\) was not found in %s" % feature_class)
     feature_layer='feature_layer'
     logger.debug("Itterating over %s..." % feature_class)
-    if field_in_feature_class("OBJECTID", feature_class):
-        id_field = "OBJECTID"
-    elif field_in_feature_class("FID", feature_class):
-        id_field = "FID"
-    else:
-        raise AttributeError("%s does not contain an OBJECTID or FID" % feature_class)
+    id_field = get_identifying_field(feature_class)
     with arcpy.da.SearchCursor(feature_class, id_field, where_clause) as cursor:
         for row in bar(cursor):
             arcpy.MakeFeatureLayer_management(
