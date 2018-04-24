@@ -282,10 +282,11 @@ def test_print():
     logger.debug("fail")
 
 
-def add_layer_count(in_features, count_features, new_field_name):
+def add_layer_count(in_features, count_features, new_field_name, out_feature):
     """Creates a new field in in_features called new_field_name, then populates it with the number of count_features that fall inside it."""
     pass  # TODO: refactor redistributePolygon to use this function instead of add_property_count_to_layer_x_with_name_x
     arcpy.AddField_management(in_features, new_field_name, "LONG")
+    return in_features
 
 
 def redistributePolygon(redistribution_inputs):

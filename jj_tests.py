@@ -207,7 +207,40 @@ def test_renameFieldMap():
 
 
 def test_add_layer_count():
-    pass  # TODO: write tests for this method
+    print "Testing add_layer_count..."
+    left_x = 479580
+    mid_x = 479590
+    right_x =479600
+    bottom_y = 7871600
+    top_y = 7871590
+    layer = jj.create_basic_polygon(
+        left_x = left_x,
+        lower_y = bottom_y,
+        right_x = right_x,
+        upper_y = top_y)
+    left_shape = [
+        (left_x, bottom_y),
+        (left_x, top_y),
+        (mid_x, top_y),
+        (mid_x, bottom_y),
+        (left_x, bottom_y)]
+    right_shape = [
+        (mid_x, bottom_y),
+        (mid_x, top_y),
+        (right_x, top_y),
+        (right_x, bottom_y),
+        (mid_x, bottom_y)]
+    count_layer = "count_layer"
+    jj.delete_if_exists(count_layer)
+    count_layer = jj.create_polygon(count_layer, left_shape, right_shape)
+    count_field_name = "count_field"
+    result = jj.add_layer_count(layer, count_layer, count_field_name, "in_memory\\add_layer_count_result")
+    print "  Testing add_layer_count adds a field..."
+    fields = [field.name for field in arcpy.ListFields(result)]
+    if count_field_name in fields:
+        print "    Pass"
+    else:
+        print "    Fail: %s not found in results. The following fiels were found: %s" % (count_field_name, fields)
 
 def test_redistributePolygon():
     # TODO: improve the tests for this method. All input data should be created on the fly, more tests should be added, more polygons should be added, etc.
@@ -742,7 +775,8 @@ if __name__ == '__main__':
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
-        test_redistributePolygon()
+        test_add_layer_count()
+        # test_redistributePolygon()
         # test_create_point()
         # test_create_points()
         # test_create_polygon()
