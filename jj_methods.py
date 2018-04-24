@@ -282,6 +282,16 @@ def test_print():
     logger.debug("fail")
 
 
+def print_table(table):
+    f_list = []
+    for field in [field.name for field in arcpy.ListFields(table)]:
+        f_list.append(field)
+    print(f_list)
+    with arcpy.da.SearchCursor(table, "*") as cursor:
+        for row in cursor:
+            print(row)
+
+
 def add_layer_count(in_features, count_features, new_field_name, out_feature):
     """Creates a new field in in_features called new_field_name, then populates it with the number of count_features that fall inside it."""
     delete_if_exists("in_features_fl")
@@ -300,9 +310,7 @@ def add_layer_count(in_features, count_features, new_field_name, out_feature):
         zone_fields = "original_id",
         in_class_features = count_features,
         out_table = count_table,
-        # class_fields = "description",
         sum_fields = new_field_name)
-    # arcpy.Statistics_analysis (in_table, out_table, {statistics_fields}, {case_field})
     # deletes old field values
     arcpy.DeleteField_management(in_features, new_field_name)
     output = arcpy.JoinField_management(
