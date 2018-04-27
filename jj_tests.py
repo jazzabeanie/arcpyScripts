@@ -42,6 +42,7 @@ def log(text):
     print(text)
     logging.debug(text)
 
+
 def test_delete_if_exists():
     print "Testing delete_if_exists..."
     basic_polygon = jj.create_basic_polygon()
@@ -51,6 +52,15 @@ def test_delete_if_exists():
     else:
         print "  pass"
     print "------"
+
+
+def test_is_polygon():
+    print "Testing is_polygon..."
+    basic_polygon = jj.create_basic_polygon()
+    if jj.is_polygon(basic_polygon):
+        print "  Pass"
+    else:
+        print "  Fail: is_polygon did not return true when passed a polygon"
 
 def test_field_in_feature_class():
     print "Testing field_in_feature_class finds an existing field..."
@@ -255,13 +265,31 @@ def test_add_layer_count():
                     if int(row[0]*10)/10 == 1.3:
                         print("    Pass")
                     else:
-                        print("    Fail: result was %s. Should have been 1.3" % row[0])
+                        print("    Fail: result was %s. Should have been 1.3" %
+                                row[0])
 
-        test_adds_a_field()
-        test_counts_correctly_by_area()
+        def test_points_raises_an_error():
+            print("  Testing: if add_layer_count is called with the by_area")
+            print("  method set to true, and polygon features classes are")
+            print("  passed in, an error should be raised...")
+            polygon_1 = jj.create_basic_polygon(output="polygon_1")
+            polygon_2 = jj.create_basic_polygon(output="polygon_2")
+            try:
+                jj.add_layer_count(polygon_1, polygon_2, "some_field", by_area=True)
+                print("    Fail: no error raised.")
+            except AttributeError as e:
+                print("    Pass")
+            except Exception as e:
+                print("    Fail: some other error raised. See logs for details")
+                logging.exception(e.args[0])
+
+
+        test_points_raises_an_error()
+        # test_adds_a_field()
+        # test_counts_correctly_by_area()
 
     def test_by_centroid():
-        result = jj.add_layer_count(layer, count_layer, count_field_name) # TODO: move this call into the relevant test
+        result = jj.add_layer_count(layer, count_layer, count_field_name)
 
         def test_counts_correctly_by_centroid():
             print("  Testing: newly added field counts the number of occurences of")
@@ -291,7 +319,7 @@ def test_add_layer_count():
         test_points_can_be_used_as_count_layer()
 
     test_by_area()
-    test_by_centroid()
+    # test_by_centroid()
 
 def test_redistributePolygon():
     # TODO: improve the tests for this method. All input data should be created on the fly, more tests should be added, more polygons should be added, etc.
@@ -822,14 +850,15 @@ if __name__ == '__main__':
         logging.info("Running tests")
         logging.info("")
         # test_delete_if_exists()
+        # test_is_polygon()
         # test_arguments_exist()
         # test_field_in_feature_class()
         # test_calculate_external_field()
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
-        # test_add_layer_count()
-        test_redistributePolygon()
+        test_add_layer_count()
+        # test_redistributePolygon()
         # test_create_point()
         # test_create_points()
         # test_create_polygon()

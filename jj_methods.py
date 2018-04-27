@@ -56,6 +56,7 @@ if not arcpy.Exists(arcpy.env.scratchWorkspace):
 if not arcpy.Exists(arcpy.env.workspace):
     raise ExecuteError("ERROR: %s does not exist. You must create this database, or set one that already exists." % arcpy.env.workspace)
 
+
 def get_identifying_field(layer):
     if field_in_feature_class("OBJECTID", layer):
         return "OBJECTID"
@@ -63,6 +64,7 @@ def get_identifying_field(layer):
         return "FID"
     else:
         raise AttributeError("%s does not contain an OBJECTID or FID" % layer)
+
 
 def create_polygon(output, *shapes_lists):
     """
@@ -170,6 +172,16 @@ def delete_if_exists(layer):
         arcpy.Delete_management(layer)
         # logger.debug("%s exists = %s" % (layer, arcpy.Exists(layer)))
 
+
+def is_polygon(layer):
+    """
+    If layer is a polygon, returns True, otherwise returns false.
+    """
+    desc = arcpy.Describe(layer)
+    if desc.shapeType == "Polygon":
+        return True
+    else:
+        return False
 
 def arguments_exist():
     """Returns true if the file was called with arguments, false otherwise."""
@@ -491,12 +503,11 @@ def add_layer_count(in_features, count_features, new_field_name, output="in_memo
 
     if by_area is True:
         # TODO: check that count_features is a polygon
+        if not is_polygon(count_features) or not is_polygon(in_features):
+            raise AttributeError("if by_area is True, both in_features and count_features must be polygons")
         return add_layer_count_by_area(in_features, count_features, new_field_name, output)
     else:
         return add_layer_count_by_centroid(in_features, count_features, new_field_name, output)
-
-
-
 
 
 def redistributePolygon(redistribution_inputs):
@@ -638,47 +649,6 @@ def redistributePolygon(redistribution_inputs):
                 average = (area + properties) / 2
                 return average""")
 
-    # TODO: write this method in a way that is reusable. See add_layer_count
-    def add_property_count_to_layer_x_with_name_x(feature_class, field_name):
-        """
-        Adds a field to the feature class containing the number of properties (from the SDE) in each polygon.
-        """
-        logger.debug("Executing add_property_count_to_layer_x_with_name_x(%s, %s)" % (feature_class, field_name))
-        properties = r"O:\\Data\\Planning_IP\\Spatial\\WindowAuth@Mapsdb01@SDE_Vector.sde\\sde_vector.TCC.Cadastral\\sde_vector.TCC.Properties"
-        feature_layer = "add_property_count_to_layer_x_with_name_x_feature_layer"
-        delete_if_exists(feature_layer)
-        logger.debug("    making feature layer from feature class %s" % feature_class)
-        arcpy.MakeFeatureLayer_management(
-                feature_class, # in_features
-                feature_layer, # out_layer
-                "#", # where_clause
-                "#", # workspace
-                "#") # field_info
-        if (field_in_feature_class("TARGET_FID", feature_layer)):
-            logger.debug("    deleteing TARGET_FID field from feature_layer")
-            arcpy.DeleteField_management(feature_layer, "TARGET_FID")
-        properties_SpatialJoin = "properties_SpatialJoin"
-        delete_if_exists(properties_SpatialJoin)
-        stats = "stats"
-        delete_if_exists(stats)
-        logger.debug("    joining properties to "+ feature_layer +" and outputing to %s" % properties_SpatialJoin)
-        arcpy.SpatialJoin_analysis(
-            properties, # target_features
-            feature_layer, # join_features
-            properties_SpatialJoin, # out_feature_class
-            "JOIN_ONE_TO_MANY", # join_operation
-            "KEEP_COMMON", # join_type
-            "#", # field_mapping
-             "HAVE_THEIR_CENTER_IN", # match_option
-            "#", # search_radius
-            "#")# distance_field_name
-        logger.debug("    Calculating statistics table at stats")
-        arcpy.Statistics_analysis(properties_SpatialJoin, stats, "Join_Count SUM","JOIN_FID")
-        logger.debug("    joining back to %s" % feature_class)
-        arcpy.JoinField_management (feature_class, "OBJECTID", stats, "JOIN_FID", "FREQUENCY")
-        logger.debug("    renaming 'FREQUENCY' to '%s'" % field_name)
-        arcpy.AlterField_management (feature_class, "FREQUENCY", field_name)
-
     def create_intersecting_polygons():
         """
         Creates intersecting_polygons layer by intersecting desired_shape and source_data.
@@ -704,13 +674,8 @@ def redistributePolygon(redistribution_inputs):
             "!shape.area@squaremeters!",
             "PYTHON_9.3")
 
-        # add_property_count_to_layer_x_with_name_x(
-        #     source_data,
-        #     total_properties_field)
-
         land_parcels = r'Database Connections\WindowAuth@Mapsdb01@SDE_Vector.sde\sde_vector.TCC.Cadastral\sde_vector.TCC.Land_Parcels'
         # land_parcels = r'C:\TempArcGIS\testing.gdb\testing_properties'
-        # add_layer_count(
         source_data = add_layer_count(
             in_features = source_data,
             count_features = land_parcels,
@@ -723,10 +688,6 @@ def redistributePolygon(redistribution_inputs):
 
         create_intersecting_polygons()
 
-        # add_property_count_to_layer_x_with_name_x(
-        #     intersecting_polygons,
-        #     local_number_of_properties_field)
-        # add_layer_count(
         intersecting_polygons = add_layer_count(
             in_features = intersecting_polygons,
             count_features = land_parcels,
