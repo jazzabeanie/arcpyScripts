@@ -44,6 +44,17 @@ except ImportError as e:  # ie, when progressbar is not installed (this is untes
 logger = logging.getLogger(__name__)
 testing = True
 
+if arcpy.env.scratchWorkspace is None:
+    arcpy.env.scratchWorkspace = r'C:\TempArcGIS\scratchworkspace.gdb'
+
+if arcpy.env.workspace is None:
+    arcpy.env.workspace = r'C:\TempArcGIS\scratchworkspace.gdb'
+
+if not arcpy.Exists(arcpy.env.scratchWorkspace):
+    raise ExecuteError("ERROR: %s does not exist. You must create this database, or set one that already exists." % arcpy.env.scratchWorkspace)
+
+if not arcpy.Exists(arcpy.env.workspace):
+    raise ExecuteError("ERROR: %s does not exist. You must create this database, or set one that already exists." % arcpy.env.workspace)
 
 def get_identifying_field(layer):
     if field_in_feature_class("OBJECTID", layer):
@@ -300,35 +311,192 @@ def print_table(table):
             print(row)
 
 
-def add_layer_count(in_features, count_features, new_field_name, out_feature):
-    """Creates a new field in in_features called new_field_name, then populates it with the number of count_features that fall inside it."""
-    delete_if_exists("in_features_fl")
-    delete_if_exists("count_features_fl")
-    id_field = get_identifying_field(in_features)
-    in_features = arcpy.MakeFeatureLayer_management(in_features, "in_features_fl")
-    count_features = arcpy.MakeFeatureLayer_management(count_features, "count_features_fl")
-    arcpy.AddField_management(in_features, "original_id", "LONG")
-    arcpy.CalculateField_management(in_features, "original_id", "!%s!" % id_field, "PYTHON_9.3")
-    arcpy.AddField_management(count_features, new_field_name, "FLOAT")
-    arcpy.CalculateField_management(count_features, new_field_name, "1", "PYTHON_9.3")
-    arcpy.AddField_management(in_features, new_field_name, "FLOAT")
-    count_table = "in_memory\\add_layer_count_table"
-    delete_if_exists(count_table)
-    count_table = arcpy.TabulateIntersection_analysis(
-        in_zone_features = in_features,
-        zone_fields = "original_id",
-        in_class_features = count_features,
-        out_table = count_table,
-        sum_fields = new_field_name)
-    # deletes old field values
-    arcpy.DeleteField_management(in_features, new_field_name)
-    output = arcpy.JoinField_management(
-        in_data = in_features,
-        in_field = id_field,
-        join_table = count_table,
-        join_field = "original_id",
-        fields = new_field_name)
-    return output
+def add_layer_count(in_features, count_features, new_field_name, output="in_memory\\add_layer_count_result", by_area=False):
+    """
+    Creates a new field in in_features called new_field_name, then populates it
+    with the number of count_features that fall inside it.
+
+    Params
+    ------
+
+    first: in_features
+        The layer that will have the count added to it
+    second: count_features
+        The features that will be counted
+    third: new_field_name
+        The name of the new field that will contain the count
+    fourth: output (optional)
+        The output location to save the new layer
+    fifth: by_area (optional)
+        A boolean. If True, the count_features will be counted by the area that
+        falls within the in_features. If False (default), the count_features
+        will be counted by the number of centroids that fall inside the
+        in_features.
+
+    Returns a new layer with the new_field_name added.
+    """
+
+    logger.debug("Executing add_layer_count(%s, %s, %s, %s, %s)" % (in_features, count_features, new_field_name, output, by_area))
+    if field_in_feature_class(new_field_name, in_features):
+        raise AttributeError("ERROR: Cannot add field. Field %s already exists in %s" % (new_field_name, in_features))
+
+    def get_original_id_name(in_features):
+        name = "original_id"
+        appendix = 2
+        while field_in_feature_class(name, in_features):
+            name = "original_id_%s" % appendix
+            appendix += 1
+        return name
+
+    def get_count_field_name(count_features):
+        """creates a uniqe name for a field to add to the count_features."""
+        name = "count_field"
+        appendix = 2
+        while field_in_feature_class(name, count_features):
+            name = "count_field_%s" % appendix
+            appendix += 1
+        return name
+
+    def add_layer_count_by_area(in_features, count_features, new_field_name, output):
+        """Creates a new field in in_features called new_field_name, then populates it with the number of count_features that fall inside it."""
+
+        id_field = get_identifying_field(in_features)
+        count_field = get_count_field_name(count_features)
+        original_id_field = get_original_id_name(in_features)
+
+        # Make temporary layers so that the source files are not changed
+        in_features_copy = "%s\\in_features_copy" % arcpy.env.scratchWorkspace
+        delete_if_exists(in_features_copy)
+        in_features_copy = arcpy.CopyFeatures_management(
+            in_features,
+            in_features_copy)
+        logger.debug("in_features_copy = %s" % in_features_copy)
+        count_features_copy = "%s\\count_features_copy" % arcpy.env.scratchWorkspace
+        delete_if_exists(count_features_copy)
+        count_features_copy = arcpy.CopyFeatures_management(
+            count_features,
+            count_features_copy)
+        logger.debug("count_features_copy = %s" % count_features_copy)
+
+        delete_if_exists(output)
+
+        # This added field is a reference that will be used to join back to the
+        # in_features_copy later
+        if field_in_feature_class(original_id_field, in_features_copy):
+            logging.debug("WARNING: %s field already exists. %s contains the following fields: " % (original_id_field, in_features_copy))
+            logging.debug("  %s" % [f.name for f in arcpy.ListFields(in_features_copy)])
+        arcpy.AddField_management(in_features_copy, original_id_field, "LONG")
+        arcpy.CalculateField_management(in_features_copy, original_id_field, "!%s!" % id_field, "PYTHON_9.3")
+
+        if field_in_feature_class(count_field, count_features_copy):
+            logging.debug("WARNING: %s field already exists. %s contains the following fields: " % (count_field, count_features_copy))
+            logging.debug("  %s" % [f.name for f in arcpy.ListFields(count_features_copy)])
+        # Adding the new field (of type FLOAT so fractions can be counted)
+        arcpy.AddField_management(count_features_copy, count_field, "FLOAT")
+        # Giving everyhting a value of 1, which will be used to count
+        arcpy.CalculateField_management(count_features_copy, count_field, "1", "PYTHON_9.3")
+
+        # Generate a table counting the count_features_copy
+        count_table = "%s\\add_layer_count_table" % arcpy.env.scratchWorkspace
+        delete_if_exists(count_table)
+        count_table = arcpy.TabulateIntersection_analysis(
+            in_zone_features = in_features_copy,
+            zone_fields = original_id_field,
+            in_class_features = count_features_copy,
+            out_table = count_table,
+            sum_fields = count_field)
+
+        # Deletes old field values
+        # arcpy.DeleteField_management(in_features_copy, new_field_name) # TODO: Is this required?
+
+        # Rejoin back to input_features
+        in_features_joined = arcpy.JoinField_management(
+            in_data = in_features_copy,
+            in_field = id_field,
+            join_table = count_table,
+            join_field = original_id_field,
+            fields = count_field)
+
+        # TODO: rename field to new_field_name
+        arcpy.AlterField_management(
+                in_table = in_features_joined,
+                field = count_field,
+                new_field_name = new_field_name)
+                # {new_field_alias},
+                # {field_type},
+                # {field_length},
+                # {field_is_nullable},
+                # {clear_field_alias})
+
+        output = arcpy.CopyFeatures_management(
+            in_features_joined,
+            output)
+
+        return output
+
+
+    def add_layer_count_by_centroid(in_features, count_features, new_field_name, output):
+        """
+        Creates a new field in in_features called new_field_name, then populates
+        it with the number of count_features' centroids that fall inside it.
+        """
+
+        # TODO: refactor this to use count_features as passed in
+        in_features_fl = "in_features_fl"
+        delete_if_exists(in_features_fl)
+        logger.debug("    making feature layer from feature class %s" % in_features)
+        in_features_fl = arcpy.MakeFeatureLayer_management(
+            in_features = in_features,
+            out_layer = in_features_fl)
+
+        # why delete this feild?
+        if (field_in_feature_class("TARGET_FID", in_features_fl)):
+            logger.debug("    deleteing TARGET_FID field from in_features_fl")
+            arcpy.DeleteField_management(in_features_fl, "TARGET_FID")
+
+        count_features_joined = "count_features_joined"
+        delete_if_exists(count_features_joined)
+        stats = "stats"
+        delete_if_exists(stats)
+        logger.debug("    joining count_features to %s and outputing to %s" % (in_features_fl, count_features_joined))
+        arcpy.SpatialJoin_analysis(
+            target_features = count_features,
+            join_features = in_features_fl,
+            out_feature_class = count_features_joined,
+            join_operation = "JOIN_ONE_TO_MANY",
+            join_type = "KEEP_COMMON",
+            field_mapping = "#",
+            match_option = "HAVE_THEIR_CENTER_IN",
+            search_radius = "#",
+            distance_field_name = "#")
+        logger.debug("    Calculating statistics table at stats")
+        arcpy.Statistics_analysis(
+            count_features_joined,
+            stats,
+            "Join_Count SUM",
+            "JOIN_FID") # is this field auto added by spatial join?
+        logger.debug("    joining back to %s" % in_features)
+        arcpy.JoinField_management(
+            in_features,
+            "OBJECTID",
+            stats,
+            "JOIN_FID",
+            "FREQUENCY")
+        logger.debug("    renaming 'FREQUENCY' to '%s'" % new_field_name)
+        arcpy.AlterField_management(
+            in_features,
+            "FREQUENCY",
+            new_field_name)
+        return in_features
+
+    if by_area is True:
+        # TODO: check that count_features is a polygon
+        return add_layer_count_by_area(in_features, count_features, new_field_name, output)
+    else:
+        return add_layer_count_by_centroid(in_features, count_features, new_field_name, output)
+
+
+
 
 
 def redistributePolygon(redistribution_inputs):
@@ -399,6 +567,8 @@ def redistributePolygon(redistribution_inputs):
         if hasattr(__main__, 'testing'):
             testing = __main__.testing
             logger.debug("testing status from __main__ = %s" % testing)
+        else:
+            testing = False
         if hasattr(__main__, 'now'):
             now = __main__.now
             logger.debug("'now' from __main__ = %s" % now)
@@ -422,16 +592,34 @@ def redistributePolygon(redistribution_inputs):
         Calculates the field_to_calculate for each polygon based on the number of lots in that polygon, compared to total number of lots on the larger polygon form which the data should be interpolated.
         Arguments should be the names of the fields as strings
         """
-        logger.debug("Executing calculate_field_proportion_based_on_number_of_lots(%s, %s, %s, %s)" % (field_to_calculate, larger_properties_field, local_number_of_properties_field, total_area_field))
+        logger.debug("Executing calculate_field_proportion_based_on_number_of_lots(%s, %s, %s, %s)" % (
+            field_to_calculate,
+            larger_properties_field,
+            local_number_of_properties_field,
+            total_area_field))
         logger.debug("    Calculating %s field based on the proportion of the total properties value in the %s field using %s" % (field_to_calculate, larger_properties_field, local_number_of_properties_field))
-        arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_number_proportion_of_total(!"+larger_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!, !"+total_area_field+"!, !Shape_Area!)", "PYTHON_9.3", """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate, total_area_field, Shape_Area):
-            if total_properties == None: # then total_properties = 0
-                new_value = int((float(Shape_Area)/float(total_area_field)) * int(field_to_calculate))
-                # print("new value = %s" % new_value)
-                # print("area = %s" % Shape_Area)
-            else:
-                new_value = int((float(local_properties)/total_properties) * int(field_to_calculate))
-            return new_value""")
+        arcpy.CalculateField_management(
+            intersecting_polygons,
+            field_to_calculate,
+            "return_number_proportion_of_total(!" + \
+                larger_properties_field + "!, !" + \
+                local_number_of_properties_field + "!, !"  + \
+                field_to_calculate  + "!, !" + \
+                total_area_field + "!, !Shape_Area!)",
+            "PYTHON_9.3",
+            """def return_number_proportion_of_total(
+                       total_properties,
+                       local_properties,
+                       field_to_calculate,
+                       total_area_field,
+                       Shape_Area):
+                   if total_properties == None: # then total_properties = 0
+                       new_value = int((float(Shape_Area)/float(total_area_field)) * int(field_to_calculate))
+                       # print("new value = %s" % new_value)
+                       # print("area = %s" % Shape_Area)
+                   else:
+                       new_value = int((float(local_properties)/total_properties) * int(field_to_calculate))
+                   return new_value""")
 
     def calculate_field_proportion_based_on_combination(field_to_calculate, larger_properties_field, local_number_of_properties_field, total_area_field):
         """
@@ -516,9 +704,18 @@ def redistributePolygon(redistribution_inputs):
             "!shape.area@squaremeters!",
             "PYTHON_9.3")
 
-        add_property_count_to_layer_x_with_name_x(
-            source_data,
-            total_properties_field)
+        # add_property_count_to_layer_x_with_name_x(
+        #     source_data,
+        #     total_properties_field)
+
+        land_parcels = r'Database Connections\WindowAuth@Mapsdb01@SDE_Vector.sde\sde_vector.TCC.Cadastral\sde_vector.TCC.Land_Parcels'
+        # land_parcels = r'C:\TempArcGIS\testing.gdb\testing_properties'
+        # add_layer_count(
+        source_data = add_layer_count(
+            in_features = source_data,
+            count_features = land_parcels,
+            new_field_name = total_properties_field,
+            output = "%s\\source_data" % arcpy.env.workspace)
 
         arcpy.CopyFeatures_management(
             redistribution_inputs["layer_to_redistribute_to"],
@@ -526,9 +723,18 @@ def redistributePolygon(redistribution_inputs):
 
         create_intersecting_polygons()
 
-        add_property_count_to_layer_x_with_name_x(
-            intersecting_polygons,
-            local_number_of_properties_field)
+        # add_property_count_to_layer_x_with_name_x(
+        #     intersecting_polygons,
+        #     local_number_of_properties_field)
+        # add_layer_count(
+        intersecting_polygons = add_layer_count(
+            in_features = intersecting_polygons,
+            count_features = land_parcels,
+            new_field_name = local_number_of_properties_field,
+            output = "%s\\intersecting_polygons" % arcpy.env.workspace)
+        logging.debug("Fields in %s" % intersecting_polygons)
+        for f in arcpy.ListFields(intersecting_polygons):
+            logging.debug("    %s" % f.name)
 
         ## Recalculate groth model fields
         for GM_field in redistribution_inputs["fields_to_be_distributed"]:

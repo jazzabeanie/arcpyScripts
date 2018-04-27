@@ -235,33 +235,63 @@ def test_add_layer_count():
     jj.delete_if_exists(count_layer)
     count_layer = jj.create_polygon(count_layer, left_shape, right_shape)
     count_field_name = "count_field"
-    result = jj.add_layer_count(layer, count_layer, count_field_name, "in_memory\\add_layer_count_result")
 
-    def test_adds_a_field():
-        print "  Testing add_layer_count adds a field..."
-        fields = [field.name for field in arcpy.ListFields(result)]
-        if count_field_name in fields:
-            print "    Pass"
-        else:
-            print "    Fail: %s not found in results. The following fiels were found: %s" % (count_field_name, fields)
+    def test_by_area():
+        result = jj.add_layer_count(layer, count_layer, count_field_name, by_area=True)
+        def test_adds_a_field():
+            print "  Testing add_layer_count adds a field..."
+            fields = [field.name for field in arcpy.ListFields(result)]
+            if count_field_name in fields:
+                print "    Pass"
+            else:
+                print "    Fail: %s not found in results. The following fiels were found: %s" % (count_field_name, fields)
 
-    def test_counts_correctly():
-        print "  Testing added field counts the number of occurences of count_layer that are inside the layer..."
-        with arcpy.da.SearchCursor(result, count_field_name) as cursor:
-            for row in cursor:
-                if int(row[0]) == 1:
-                    print("    Pass")
-                else:
-                    print("    Fail: result was %s. Should have been 2" % row[0])
+        def test_counts_correctly_by_area():
+            print("  Testing: newly added field counts the number of occurences of")
+            print("  count_layer that are inside the input layer by total amount")
+            print("  of area that falls within each shape...")
+            with arcpy.da.SearchCursor(result, count_field_name) as cursor:
+                for row in cursor:
+                    if int(row[0]*10)/10 == 1.3:
+                        print("    Pass")
+                    else:
+                        print("    Fail: result was %s. Should have been 1.3" % row[0])
 
-    # test_adds_a_field()
-    # test_counts_correctly()
+        test_adds_a_field()
+        test_counts_correctly_by_area()
 
-    count_is_5 = r'O:\Data\Planning_IP\Admin\Staff\Jared\Land_Use_Monitoring\Residential_Estates\testing_datasets.gdb\count_is_5'
-    sample_land_parcels = r'O:\Data\Planning_IP\Admin\Staff\Jared\Land_Use_Monitoring\Residential_Estates\testing_datasets.gdb\sample_land_parcels'
-    result = jj.add_layer_count(count_is_5, sample_land_parcels, "property_count", "in_memory\\test_property_count")
-    jj.print_table(result)
+    def test_by_centroid():
+        result = jj.add_layer_count(layer, count_layer, count_field_name) # TODO: move this call into the relevant test
 
+        def test_counts_correctly_by_centroid():
+            print("  Testing: newly added field counts the number of occurences of")
+            print("  count_layer that are inside the input layer by each centroid")
+            print("  that falls within each shape...")
+            with arcpy.da.SearchCursor(result, count_field_name) as cursor:
+                for row in cursor:
+                    if int(row[0]*10)/10 == 1.0:
+                        print("    Pass")
+                    else:
+                        print("    Fail: result was %s. Should have been 1.0" % row[0])
+
+        def test_points_can_be_used_as_count_layer():
+            print("  Testing: points as count_layer raises an error if by_area is")
+            print("  True...")
+            try:
+                # TODO
+                print("    Fail: No error was raised")
+            except AttributeError as e:
+                print("    Pass")
+            print("  Testing: point can be used as the count_layer if by_area is")
+            print("  not set to True...")
+            # TODO
+            print("    TODO")
+
+        test_counts_correctly_by_centroid()
+        test_points_can_be_used_as_count_layer()
+
+    test_by_area()
+    test_by_centroid()
 
 def test_redistributePolygon():
     # TODO: improve the tests for this method. All input data should be created on the fly, more tests should be added, more polygons should be added, etc.
@@ -387,6 +417,8 @@ def test_redistributePolygon():
             log("      Pass")
         else:
             log("      Fail: sum of dewllings is not equal for layer_to_be_redistributed (%s) and output (%s)" % (layer_to_be_redistributed_count, redistributed_count))
+            log("  layer_to_be_redistributed = %s" % redistributePolygonInputs["layer_to_be_redistributed"])
+            log("  output_filename = %s" % redistributePolygonInputs["output_filename"])
 
 
     def testing_area_method():
@@ -398,7 +430,7 @@ def test_redistributePolygon():
             if row[0] == 4:
                 log("      Pass")
             else:
-                log("      Fail: Dwelling_1 should be 4")
+                log("      Fail: Dwelling_1 should be 4, but was %s" % row[0])
 
 
     def testing_for_rounding():
@@ -447,13 +479,13 @@ def test_redistributePolygon():
             log("    Fail: total dwellings in %s should be 1, but was %s. This error was unexpected and needs to be investigated." % (redistributePolygonInputs["output_filename"], total_dwellings))
 
 
-    testing_number_of_fields()
-    testing_invalid_distribution_method_is_caught()
-    testing_invalid_field_is_caught()
-    testing_number_of_properties_method()
+    # testing_number_of_fields()
+    # testing_invalid_distribution_method_is_caught()
+    # testing_invalid_field_is_caught()
+    # testing_number_of_properties_method()
     testing_area_method()
-    # testing_for_rounding() # tool currently has no way to combat this
-    testing_for_integerising()
+    # # testing_for_rounding() # tool currently has no way to combat this
+    # testing_for_integerising()
     log("------")
 
 
@@ -796,8 +828,8 @@ if __name__ == '__main__':
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
-        test_add_layer_count()
-        # test_redistributePolygon()
+        # test_add_layer_count()
+        test_redistributePolygon()
         # test_create_point()
         # test_create_points()
         # test_create_polygon()
@@ -812,4 +844,4 @@ if __name__ == '__main__':
         logging.exception(e.args[0])
         print e.args[0]
 
-    os.system('pause')
+    # os.system('pause')
