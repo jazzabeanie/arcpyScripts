@@ -272,10 +272,27 @@ def test_add_layer_count():
             print("  Testing: if add_layer_count is called with the by_area")
             print("  method set to true, and polygon features classes are")
             print("  passed in, an error should be raised...")
+            point_1 = jj.create_point(output="point_1")
+            point_2 = jj.create_point(output="point_2")
             polygon_1 = jj.create_basic_polygon(output="polygon_1")
-            polygon_2 = jj.create_basic_polygon(output="polygon_2")
             try:
-                jj.add_layer_count(polygon_1, polygon_2, "some_field", by_area=True)
+                jj.add_layer_count(point_1, point_2, "some_field", by_area=True)
+                print("    Fail: no error raised.")
+            except AttributeError as e:
+                print("    Pass")
+            except Exception as e:
+                print("    Fail: some other error raised. See logs for details")
+                logging.exception(e.args[0])
+            try:
+                jj.add_layer_count(polygon_1, point_2, "some_field", by_area=True)
+                print("    Fail: no error raised.")
+            except AttributeError as e:
+                print("    Pass")
+            except Exception as e:
+                print("    Fail: some other error raised. See logs for details")
+                logging.exception(e.args[0])
+            try:
+                jj.add_layer_count(point_1, polygon_1, "some_field", by_area=True)
                 print("    Fail: no error raised.")
             except AttributeError as e:
                 print("    Pass")
