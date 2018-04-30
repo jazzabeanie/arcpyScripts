@@ -704,7 +704,6 @@ def redistributePolygon(redistribution_inputs):
             desired_shape)
 
 
-    # try:
     log_inputs()
     perform_checks()
     get_testing_and_now()
@@ -723,15 +722,11 @@ def redistributePolygon(redistribution_inputs):
         output = "%s\\source_data" % arcpy.env.workspace)
 
     intersecting_polygons = intersect(desired_shape, source_data)
-    # create_intersecting_polygons()
 
     intersecting_polygons = add_layer_count(new_field_name = local_number_of_properties_field,
         in_features = intersecting_polygons,
         count_features = land_parcels,
         output = "%s\\intersecting_polygons" % arcpy.env.workspace)
-    # logging.debug("Fields in %s" % intersecting_polygons)
-    # for f in arcpy.ListFields(intersecting_polygons):
-    #     logging.debug("    %s" % f.name)
 
     ## Recalculate groth model fields
     for field in redistribution_inputs["fields_to_be_distributed"]:
@@ -833,13 +828,6 @@ def redistributePolygon(redistribution_inputs):
     logger.info("Successfully redistributed %s to %s" % (source_data, desired_shape))
     logger.info("intersecting_polygons file can be found at %s\\%s" % (arcpy.env.workspace, intersecting_polygons))
     logger.info("Output file can be found at %s" % redistribution_inputs["output_filename"])
-    # except arcpy.ExecuteError:
-    #     # print arcpy.GetMessages(2)
-    #     logger.exception(arcpy.GetMessages(2))
-    # except Exception as e:
-    #     # print e.args[0]
-    #     logger.exception(e.args[0])
-    #     raise e
 
 
 def for_each_feature(feature_class, cb, *args, **kwargs):
