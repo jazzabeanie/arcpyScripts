@@ -218,36 +218,50 @@ def test_renameFieldMap():
 
 def test_add_layer_count():
     print "Testing add_layer_count..."
-    left_x = 479580
+    far_left_x = 479580
+    left_x = 479587.5
     mid_x = 479595
-    right_x =479600
+    right_x = 479600
     far_right_x =479610
     bottom_y = 7871600
     top_y = 7871590
-    layer = jj.create_basic_polygon(
-        left_x = left_x,
+    boundary_layer = jj.create_basic_polygon(
+        output="boundary_layer",
+        left_x = far_left_x,
         lower_y = bottom_y,
-        right_x = right_x,
+        right_x = 479602,
         upper_y = top_y)
+    far_left_shape = [
+        (far_left_x, bottom_y),
+        (far_left_x, top_y),
+        (left_x, top_y),
+        (left_x, bottom_y),
+        (far_left_x, bottom_y)]
     left_shape = [
         (left_x, bottom_y),
         (left_x, top_y),
         (mid_x, top_y),
         (mid_x, bottom_y),
         (left_x, bottom_y)]
-    right_shape = [
+    mid_shape = [
         (mid_x, bottom_y),
         (mid_x, top_y),
+        (right_x, top_y),
+        (right_x, bottom_y),
+        (mid_x, bottom_y)]
+    right_shape = [
+        (right_x, bottom_y),
+        (right_x, top_y),
         (far_right_x, top_y),
         (far_right_x, bottom_y),
-        (mid_x, bottom_y)]
+        (right_x, bottom_y)]
     count_layer = "count_layer"
     jj.delete_if_exists(count_layer)
-    count_layer = jj.create_polygon(count_layer, left_shape, right_shape)
+    count_layer = jj.create_polygon(count_layer, far_left_shape, left_shape, mid_shape, right_shape)
     count_field_name = "count_field"
 
     def test_by_area():
-        result = jj.add_layer_count(layer, count_layer, count_field_name, by_area=True)
+        result = jj.add_layer_count(boundary_layer, count_layer, count_field_name, by_area=True)
         def test_adds_a_field():
             print "  Testing add_layer_count adds a field..."
             fields = [field.name for field in arcpy.ListFields(result)]
@@ -258,11 +272,11 @@ def test_add_layer_count():
 
         def test_counts_correctly_by_area():
             print("  Testing: newly added field counts the number of occurences of")
-            print("  count_layer that are inside the input layer by total amount")
+            print("  count_layer that are inside the input boundary_layer by total amount")
             print("  of area that falls within each shape...")
             with arcpy.da.SearchCursor(result, count_field_name) as cursor:
                 for row in cursor:
-                    if int(row[0]*10)/10 == 1.3:
+                    if int(row[0]*10)/10 == 3.2:
                         print("    Pass")
                     else:
                         print("    Fail: result was %s. Should have been 1.3" %
@@ -270,7 +284,7 @@ def test_add_layer_count():
 
         def test_points_raises_an_error():
             print("  Testing: if add_layer_count is called with the by_area")
-            print("  method set to true, and polygon features classes are")
+            print("  method set to true, and point feature classes are")
             print("  passed in, an error should be raised...")
             point_1 = jj.create_point(output="point_1")
             point_2 = jj.create_point(output="point_2")
@@ -302,41 +316,40 @@ def test_add_layer_count():
 
 
         test_points_raises_an_error()
-        # test_adds_a_field()
-        # test_counts_correctly_by_area()
+        test_adds_a_field()
+        test_counts_correctly_by_area()
 
     def test_by_centroid():
-        result = jj.add_layer_count(layer, count_layer, count_field_name)
+        result = jj.add_layer_count(boundary_layer, count_layer, count_field_name)
 
         def test_counts_correctly_by_centroid():
             print("  Testing: newly added field counts the number of occurences of")
-            print("  count_layer that are inside the input layer by each centroid")
+            print("  count_layer that are inside the input boundary_layer by each centroid")
             print("  that falls within each shape...")
             with arcpy.da.SearchCursor(result, count_field_name) as cursor:
                 for row in cursor:
-                    if int(row[0]*10)/10 == 1.0:
+                    if int(row[0]*10)/10 == 3.0:
                         print("    Pass")
                     else:
                         print("    Fail: result was %s. Should have been 1.0" % row[0])
 
         def test_points_can_be_used_as_count_layer():
-            print("  Testing: points as count_layer raises an error if by_area is")
-            print("  True...")
-            try:
-                # TODO
-                print("    Fail: No error was raised")
-            except AttributeError as e:
-                print("    Pass")
             print("  Testing: point can be used as the count_layer if by_area is")
             print("  not set to True...")
-            # TODO
-            print("    TODO")
+            point_1 = jj.create_point(output="point_1")
+            point_2 = jj.create_point(output="point_2")
+            polygon_1 = jj.create_basic_polygon(output="polygon_1")
+            try:
+                jj.add_layer_count(polygon_1, point_1, "some_field")
+                print("    TODO: write tests")
+            except AttributeError as e:
+                print("    Fail: an Attribute error was raised")
 
         test_counts_correctly_by_centroid()
         test_points_can_be_used_as_count_layer()
 
     test_by_area()
-    # test_by_centroid()
+    test_by_centroid()
 
 def test_redistributePolygon():
     # TODO: improve the tests for this method. All input data should be created on the fly, more tests should be added, more polygons should be added, etc.
@@ -874,8 +887,8 @@ if __name__ == '__main__':
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
-        test_add_layer_count()
-        # test_redistributePolygon()
+        # test_add_layer_count()
+        test_redistributePolygon()
         # test_create_point()
         # test_create_points()
         # test_create_polygon()

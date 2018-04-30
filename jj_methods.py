@@ -171,6 +171,8 @@ def delete_if_exists(layer):
         logger.debug("Deleting %s" % layer)
         arcpy.Delete_management(layer)
         # logger.debug("%s exists = %s" % (layer, arcpy.Exists(layer)))
+    else:
+        logger.debug("Layer doesn't exist: %s" % layer)
 
 
 def is_polygon(layer):
@@ -466,9 +468,14 @@ def add_layer_count(in_features, count_features, new_field_name, output="in_memo
             logger.debug("    deleteing TARGET_FID field from in_features_fl")
             arcpy.DeleteField_management(in_features_fl, "TARGET_FID")
 
+        # multiple deletes needed if running from in ArcMap. Why??
         count_features_joined = "count_features_joined"
         delete_if_exists(count_features_joined)
+        delete_if_exists(count_features_joined)
+        delete_if_exists(count_features_joined)
         stats = "stats"
+        delete_if_exists(stats)
+        delete_if_exists(stats)
         delete_if_exists(stats)
         logger.debug("    joining count_features to %s and outputing to %s" % (in_features_fl, count_features_joined))
         arcpy.SpatialJoin_analysis(
@@ -530,7 +537,7 @@ def redistributePolygon(redistribution_inputs):
     intersecting_polygons_buffered = "intersecting_polygons_buffered"
     desired_shape = "desired_shape"
     delete_if_exists(desired_shape)
-    total_area_field = "soure_total_area"
+    total_area_field = "source_total_area"
     source_data = "source_data"
     delete_if_exists(source_data)
 
@@ -649,6 +656,28 @@ def redistributePolygon(redistribution_inputs):
                 average = (area + properties) / 2
                 return average""")
 
+    def add_area_field(layer, field_name):
+        arcpy.AddField_management(layer, field_name, "FLOAT")
+        arcpy.CalculateField_management(
+            layer,
+            field_name,
+            "!shape.area@squaremeters!",
+            "PYTHON_9.3")
+
+    def intersect(*input_layers):
+        logger.debug("Intersecting %s" % str(input_layers))
+        delete_if_exists(intersecting_polygons)
+        logger.debug("    Computing the polygons that intersect both features")
+        arcpy.Intersect_analysis(
+            in_features=list(input_layers),
+            out_feature_class=intersecting_polygons,
+            join_attributes="ALL",
+            cluster_tolerance="",
+            output_type="INPUT")
+        logger.debug("    intersecting_polygons output: %s" % intersecting_polygons)
+        return intersecting_polygons
+
+
     def create_intersecting_polygons():
         """
         Creates intersecting_polygons layer by intersecting desired_shape and source_data.
@@ -656,109 +685,161 @@ def redistributePolygon(redistribution_inputs):
         logger.debug("Executing create_intersecting_polygons")
         delete_if_exists(intersecting_polygons)
         logger.debug("    Computing the polygons that intersect both features")
-        arcpy.Intersect_analysis ([desired_shape, source_data], intersecting_polygons, "ALL", "", "INPUT")
+        arcpy.Intersect_analysis(
+            in_features=[desired_shape, source_data],
+            out_feature_class=intersecting_polygons,
+            join_attributes="ALL",
+            cluster_tolerance="",
+            output_type="INPUT")
         logger.debug("    intersecting_polygons output: %s" % intersecting_polygons)
 
-    try:
-        log_inputs()
-        perform_checks()
-        get_testing_and_now()
 
+    def create_temp_copies_of_inputs():
+        logger.debug("Creating temporary copies of input layer...")
         arcpy.CopyFeatures_management(
             redistribution_inputs["layer_to_be_redistributed"],
             source_data)
-        arcpy.AddField_management(source_data, total_area_field, "FLOAT")
-        arcpy.CalculateField_management(
-            source_data,
-            total_area_field,
-            "!shape.area@squaremeters!",
-            "PYTHON_9.3")
-
-        land_parcels = r'Database Connections\WindowAuth@Mapsdb01@SDE_Vector.sde\sde_vector.TCC.Cadastral\sde_vector.TCC.Land_Parcels'
-        # land_parcels = r'C:\TempArcGIS\testing.gdb\testing_properties'
-        source_data = add_layer_count(
-            in_features = source_data,
-            count_features = land_parcels,
-            new_field_name = total_properties_field,
-            output = "%s\\source_data" % arcpy.env.workspace)
-
         arcpy.CopyFeatures_management(
             redistribution_inputs["layer_to_redistribute_to"],
             desired_shape)
 
-        create_intersecting_polygons()
 
-        intersecting_polygons = add_layer_count(
-            in_features = intersecting_polygons,
-            count_features = land_parcels,
-            new_field_name = local_number_of_properties_field,
-            output = "%s\\intersecting_polygons" % arcpy.env.workspace)
-        logging.debug("Fields in %s" % intersecting_polygons)
-        for f in arcpy.ListFields(intersecting_polygons):
-            logging.debug("    %s" % f.name)
+    # try:
+    log_inputs()
+    perform_checks()
+    get_testing_and_now()
 
-        ## Recalculate groth model fields
-        for GM_field in redistribution_inputs["fields_to_be_distributed"]:
-            if field_in_feature_class(GM_field, intersecting_polygons):
-                if redistribution_inputs["distribution_method"] == 1:
-                    calculate_field_proportion_based_on_area(GM_field, total_area_field)
-                elif redistribution_inputs["distribution_method"] == 2:
-                    logger.debug("calculating %s field from total GMZ number of properties" % GM_field)
-                    calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_field, local_number_of_properties_field, total_area_field)
-                    # alternative is to return Peron and then calculate only where total = None here.
-                elif redistribution_inputs["distribution_method"] == 3:
-                    if GM_field in  ["POP_2016", "Tot_2016"]:
-                        calculate_field_proportion_based_on_number_of_lots(GM_field, total_properties_field, local_number_of_properties_field, total_area_field)
-                    elif GM_field in  ["POP_2036", "Tot_2036", "POP_2041", "Tot_2041", "POP_2046", "Tot_2046", "POP_2051", "Tot_2051", "POP_Full", "Tot_Full"]:
-                        calculate_field_proportion_based_on_area(GM_field, total_area_field)
-                    elif GM_field in  ["POP_2021", "Tot_2021", "POP_2026", "Tot_2026", "POP_2031", "Tot_2031"]:
-                        calculate_field_proportion_based_on_combination(GM_field, total_properties_field, local_number_of_properties_field, total_area_field)
-                    elif GM_field in  ["POP_2011", "Tot_2011"]:
-                        arcpy.CalculateField_management (intersecting_polygons, GM_field, "returnNone()", "PYTHON_9.3", """def returnNone():
-            return None""")
+    create_temp_copies_of_inputs()
+
+    add_area_field(source_data, total_area_field)
+
+    # Adding total properties
+    land_parcels = r'Database Connections\WindowAuth@Mapsdb01@SDE_Vector.sde' +\
+                   r'\sde_vector.TCC.Cadastral\sde_vector.TCC.Land_Parcels'
+    # land_parcels = r'C:\TempArcGIS\testing.gdb\testing_properties'
+    source_data = add_layer_count(new_field_name = total_properties_field,
+        in_features = source_data,
+        count_features = land_parcels,
+        output = "%s\\source_data" % arcpy.env.workspace)
+
+    intersecting_polygons = intersect(desired_shape, source_data)
+    # create_intersecting_polygons()
+
+    intersecting_polygons = add_layer_count(new_field_name = local_number_of_properties_field,
+        in_features = intersecting_polygons,
+        count_features = land_parcels,
+        output = "%s\\intersecting_polygons" % arcpy.env.workspace)
+    # logging.debug("Fields in %s" % intersecting_polygons)
+    # for f in arcpy.ListFields(intersecting_polygons):
+    #     logging.debug("    %s" % f.name)
+
+    ## Recalculate groth model fields
+    for field in redistribution_inputs["fields_to_be_distributed"]:
+        if field_in_feature_class(field, intersecting_polygons):
+            if redistribution_inputs["distribution_method"] == 1:
+                logger.debug("calculating %s field based on portion of total area" % field)
+                calculate_field_proportion_based_on_area(
+                    field,
+                    total_area_field)
+            elif redistribution_inputs["distribution_method"] == 2:
+                logger.debug("calculating %s field from total GMZ number of properties" % field)
+                calculate_field_proportion_based_on_number_of_lots(
+                    field,
+                    total_properties_field,
+                    local_number_of_properties_field,
+                    total_area_field)
+                # alternative is to return Peron and then calculate only where total = None here.
+            elif redistribution_inputs["distribution_method"] == 3:
+                if field in [
+                        "POP_2016",
+                        "Tot_2016"]:
+                    calculate_field_proportion_based_on_number_of_lots(
+                        field,
+                        total_properties_field,
+                        local_number_of_properties_field,
+                        total_area_field)
+                elif field in [
+                        "POP_2036",
+                        "Tot_2036",
+                        "POP_2041",
+                        "Tot_2041",
+                        "POP_2046",
+                        "Tot_2046",
+                        "POP_2051",
+                        "Tot_2051",
+                        "POP_Full",
+                        "Tot_Full"]:
+                    calculate_field_proportion_based_on_area(
+                        field,
+                        total_area_field)
+                elif field in [
+                        "POP_2021",
+                        "Tot_2021",
+                        "POP_2026",
+                        "Tot_2026",
+                        "POP_2031",
+                        "Tot_2031"]:
+                    calculate_field_proportion_based_on_combination(
+                        field,
+                        total_properties_field,
+                        local_number_of_properties_field,
+                        total_area_field)
+                elif field in [
+                        "POP_2011",
+                        "Tot_2011"]:
+                    arcpy.CalculateField_management(
+                        intersecting_polygons,
+                        field,
+                        "returnNone()",
+                        "PYTHON_9.3",
+                        """def returnNone():
+                               return None""")
+            elif redistribution_inputs["distribution_method"] == 4:
+                logger.debug("Calculating %s field base on the portion of developable area" % field)
+                pass # TODO
 
 
-        ## Spatially Join intersecting_polygons back to redistribution layer
-        fieldmappings = arcpy.FieldMappings()
-        for field in arcpy.ListFields(redistribution_inputs["layer_to_redistribute_to"]):
-            if field.name not in ['OBJECTID', 'Shape_Length', 'Shape_Area', 'Join_Count', 'Shape']:
-                logger.debug("Adding fieldmap for %s" % field.name)
-                fm = arcpy.FieldMap()
-                fm.addInputField(redistribution_inputs["layer_to_redistribute_to"], field.name)
-                renameFieldMap(fm, field.name)
-                fieldmappings.addFieldMap(fm)
-        for GM_field in redistribution_inputs["fields_to_be_distributed"]:
-            if field_in_feature_class(GM_field, intersecting_polygons):
-                fm_POP_or_Total = arcpy.FieldMap()
-                fm_POP_or_Total.addInputField(intersecting_polygons, GM_field)
-                renameFieldMap(fm_POP_or_Total, GM_field)
-                fm_POP_or_Total.mergeRule = "Sum"
-                fieldmappings.addFieldMap(fm_POP_or_Total)
-        delete_if_exists(redistribution_inputs["output_filename"])
-        logger.debug("joining intersecting_polygons back to redistribution layer")
-        delete_if_exists(intersecting_polygons_buffered)
-        arcpy.Buffer_analysis(
-            in_features=intersecting_polygons,
-            out_feature_class=intersecting_polygons_buffered,
-            buffer_distance_or_field=-1)
-        arcpy.SpatialJoin_analysis(
-            target_features=desired_shape,
-            join_features=intersecting_polygons_buffered,
-            out_feature_class=redistribution_inputs["output_filename"],
-            join_operation="JOIN_ONE_TO_ONE",
-            join_type="KEEP_ALL",
-            field_mapping=fieldmappings,
-            match_option="Intersect")
-        logger.info("Successfully redistributed %s to %s" % (source_data, desired_shape))
-        logger.info("intersecting_polygons file can be found at %s\\%s" % (arcpy.env.workspace, intersecting_polygons))
-        logger.info("Output file can be found at %s" % redistribution_inputs["output_filename"])
-    except arcpy.ExecuteError:
-        # print arcpy.GetMessages(2)
-        logger.exception(arcpy.GetMessages(2))
-    except Exception as e:
-        # print e.args[0]
-        logger.exception(e.args[0])
-        raise e
+    ## Spatially Join intersecting_polygons back to redistribution layer
+    fieldmappings = arcpy.FieldMappings()
+    for field in arcpy.ListFields(redistribution_inputs["layer_to_redistribute_to"]):
+        if field.name not in ['OBJECTID', 'Shape_Length', 'Shape_Area', 'Join_Count', 'Shape']:
+            logger.debug("Adding fieldmap for %s" % field.name)
+            fm = arcpy.FieldMap()
+            fm.addInputField(redistribution_inputs["layer_to_redistribute_to"], field.name)
+            renameFieldMap(fm, field.name)
+            fieldmappings.addFieldMap(fm)
+    for field in redistribution_inputs["fields_to_be_distributed"]:
+        if field_in_feature_class(field, intersecting_polygons):
+            fm_POP_or_Total = arcpy.FieldMap()
+            fm_POP_or_Total.addInputField(intersecting_polygons, field)
+            renameFieldMap(fm_POP_or_Total, field)
+            fm_POP_or_Total.mergeRule = "Sum"
+            fieldmappings.addFieldMap(fm_POP_or_Total)
+    delete_if_exists(redistribution_inputs["output_filename"])
+    logger.debug("joining intersecting_polygons back to redistribution layer")
+    delete_if_exists(intersecting_polygons_buffered)
+    arcpy.Buffer_analysis(
+        in_features=intersecting_polygons,
+        out_feature_class=intersecting_polygons_buffered,
+        buffer_distance_or_field=-1)
+    arcpy.SpatialJoin_analysis(
+        target_features=desired_shape,
+        join_features=intersecting_polygons_buffered,
+        out_feature_class=redistribution_inputs["output_filename"],
+        join_operation="JOIN_ONE_TO_ONE",
+        join_type="KEEP_ALL",
+        field_mapping=fieldmappings,
+        match_option="Intersect")
+    logger.info("Successfully redistributed %s to %s" % (source_data, desired_shape))
+    logger.info("intersecting_polygons file can be found at %s\\%s" % (arcpy.env.workspace, intersecting_polygons))
+    logger.info("Output file can be found at %s" % redistribution_inputs["output_filename"])
+    # except arcpy.ExecuteError:
+    #     # print arcpy.GetMessages(2)
+    #     logger.exception(arcpy.GetMessages(2))
+    # except Exception as e:
+    #     # print e.args[0]
+    #     logger.exception(e.args[0])
+    #     raise e
 
 
 def for_each_feature(feature_class, cb, *args, **kwargs):
