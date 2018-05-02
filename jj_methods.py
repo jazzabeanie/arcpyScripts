@@ -179,6 +179,10 @@ def is_polygon(layer):
     """
     If layer is a polygon, returns True, otherwise returns false.
     """
+    # Why does this work when add_external_area_field doesn't?
+    logger.debug("arcpy.Exists(layer) = %s" % arcpy.Exists(layer))
+    logger.debug("layer = %s" % layer)
+    # layer = "%s" % layer # TODO: Why is this necessary? What's going on here? arcpy.Describe is complaining about data sometimes, and I can't consistantly reproduce the error. in ArcGIS Pro, there is a arcpy.da.Describe function. I assume this was created for good reason and that using it will solve this problem in the future.
     desc = arcpy.Describe(layer)
     if desc.shapeType == "Polygon":
         return True
@@ -230,14 +234,75 @@ def return_tuple_of_args():
     logger.debug("args = " + str(args))
     return args
 
+def add_external_area_field(
+        in_features=None,
+        new_field_name="external_area",
+        layer_with_area_to_grab=None,
+        dissolve=True):
+    """
+    Adds a new field and give it the value of the area that intersects with
+    another feature class.
+
+    Params
+    ------
+
+    first: in_features
+        The layer that will have the new field added
+    second: new_field_name (defulat = "external_area")
+        The name of the new field that will contain the area
+    third: layer_with_area_to_grab
+        The layer that will be intersected to obtain the area
+    fourth: dissolve (default = True)
+        If true, the layer_with_area_to_grab will be dissolved before being
+        intersected. This ensures that there is only 1 feature per in_feature.
+
+    Returns a copy the original in_features with the new field added.
+    """
+    logger.debug("Executing add_external_area_field...")
+    logger.debug("in_features = %s" % in_features)
+    logger.debug("layer_with_area_to_grab = %s" % layer_with_area_to_grab)
+    logger.debug("type(in_features) = %s" % type(in_features))
+    logger.debug("type(layer_with_area_to_grab) = %s" % type(layer_with_area_to_grab))
+    in_features_is_polygon = is_polygon(in_features)
+    layer_with_area_to_grab_is_polygon = is_polygon(layer_with_area_to_grab)
+    logger.debug("is_polygon(in_features) = %s" % in_features_is_polygon)
+    logger.debug("is_polygon(layer_with_area_to_grab) = %s" % layer_with_area_to_grab_is_polygon)
+    if in_features is None or layer_with_area_to_grab is None:
+        raise AttributeError("Error: add_external_area_field function must take both in_features and layer_with_area_to_grab feature classes as arguments.")
+    elif not (arcpy.Exists(in_features) and arcpy.Exists(layer_with_area_to_grab)):
+        logger.debug("arcpy.Exists(in_features) = %s" %
+            arcpy.Exists(in_features))
+        logger.debug("arcpy.Exists(layer_with_area_to_grab) = %s" %
+            arcpy.Exists(layer_with_area_to_grab))
+        raise AttributeError("Error: both in_features and layer_with_area_to_grab feature classes must exist.")
+    elif not (in_features_is_polygon and layer_with_area_to_grab_is_polygon):
+    # elif not is_polygon(layer_with_area_to_grab):
+        raise AttributeError("Error: both in_features and layer_with_area_to_grab feature classes must be polygons.")
+    else:
+        logger.debug("Input features classes passed to add_external_area_field are OK.")
+        # print("")
+
+    in_copy = "add_external_area_in_features_copy"
+    delete_if_exists(in_copy)
+    in_copy = arcpy.CopyFeatures_management(
+        in_features = in_features,
+        out_feature_class=in_copy)
+    in_copy = arcpy.AddField_management(in_copy, new_field_name, "FLOAT")
+    # TODO: get the area of the layer_with_area_to_grab
+    # arcpy.CalculateField_management(
+    #     in_features,
+    #     field_name,
+    #     "!shape.area@squaremeters!",
+    #     "PYTHON_9.3")
+    return in_copy
 
 def renameFieldMap(fieldMap, name_text):
-	"""
-	Sets the output fieldname of a FieldMap object. Used when creating FieldMappings.
-	"""
-	type_name = fieldMap.outputField
-	type_name.name = name_text
-	fieldMap.outputField = type_name
+    """
+    Sets the output fieldname of a FieldMap object. Used when creating FieldMappings.
+    """
+    type_name = fieldMap.outputField
+    type_name.name = name_text
+    fieldMap.outputField = type_name
 
 
 def calculate_external_field(target_layer, target_field, join_layer, join_field, output):
@@ -523,6 +588,9 @@ def redistributePolygon(redistribution_inputs):
     1: By proportion of area
     2: By proportion of number of lots
     3: By a combination of 1 and 2
+    feature_class: By passing this function a features class, it will
+                   redistribute by the proportion of the feature class that
+                   falls in each area.
 
     It take a dictionary called 'redistribution_inputs' as an argument, which
     contains the following keys:
@@ -531,8 +599,8 @@ def redistributePolygon(redistribution_inputs):
     - output_filename
     - distribution_method
     - fields_to_be_distributed"""
-    local_number_of_properties_field = "local_counted_properties"
-    total_properties_field = "total_counted_properties"
+    local_number_of_properties_field = "intersected_total_properties"
+    total_properties_field = "source_total_properties"
     intersecting_polygons = "intersecting_polygons"
     intersecting_polygons_buffered = "intersecting_polygons_buffered"
     desired_shape = "desired_shape"
@@ -573,13 +641,20 @@ def redistributePolygon(redistribution_inputs):
         for field in redistribution_inputs["fields_to_be_distributed"]:
             check_field_in_fc(field, redistribution_inputs["layer_to_be_redistributed"])
         if arcpy.env.workspace == "in_memory":
-            logger.warning("WARNGING: this tool may not be compatible with an in_memory workspace")
+            logger.warning("WARNGING: this tool may not be compatible with" + \
+            "an in_memory workspace")
         if redistribution_inputs["distribution_method"] in [1, 2, 3]:
-            logger.debug("distribution method %s is valid" % redistribution_inputs["distribution_method"])
+            logger.debug("distribution method %s is valid" %
+                redistribution_inputs["distribution_method"])
             if redistribution_inputs["distribution_method"] == 3:
-                logger.warning("WARNGING: this distribution method only works if the layer to be redistributed it growth model results")
+                logger.warning("WARNGING: this distribution method only" + \
+                "works if the layer to be redistributed is growth model results")
+        elif arcpy.Exists(redistribution_inputs["distribution_method"]) and \
+                is_polygon(redistribution_inputs["distribution_method"]):
+                    logger.debug("distribution method is valid feature class: %s" %
+                        redistribution_inputs["distribution_method"])
         else:
-            raise AttributeError('distribution method must be either 1, 2 or 3. Specified value = %s' % redistribution_inputs["distribution_method"])
+            raise AttributeError('distribution method must be either 1, 2, 3, or the path to a feature class. Specified value = %s' % redistribution_inputs["distribution_method"])
 
     def get_testing_and_now():
         if hasattr(__main__, 'testing'):
@@ -712,21 +787,27 @@ def redistributePolygon(redistribution_inputs):
 
     add_area_field(source_data, total_area_field)
 
-    # Adding total properties
-    land_parcels = r'Database Connections\WindowAuth@Mapsdb01@SDE_Vector.sde' +\
-                   r'\sde_vector.TCC.Cadastral\sde_vector.TCC.Land_Parcels'
-    # land_parcels = r'C:\TempArcGIS\testing.gdb\testing_properties'
-    source_data = add_layer_count(new_field_name = total_properties_field,
-        in_features = source_data,
-        count_features = land_parcels,
-        output = "%s\\source_data" % arcpy.env.workspace)
+    if redistribution_inputs["distribution_method"] in (2, 3):
+        # Adding total properties to source_data
+        land_parcels = r'Database Connections\WindowAuth@Mapsdb01@SDE_Vector.sde' +\
+                       r'\sde_vector.TCC.Cadastral\sde_vector.TCC.Land_Parcels'
+        # land_parcels = r'C:\TempArcGIS\testing.gdb\testing_properties'
+        source_data = add_layer_count(new_field_name = total_properties_field,
+            in_features = source_data,
+            count_features = land_parcels,
+            output = "%s\\source_data" % arcpy.env.workspace)
+    elif arcpy.Exists(redistribution_inputs["distribution_method"]):
+        # Adding total intersecting area to source_data
+        pass  # TODO
+
 
     intersecting_polygons = intersect(desired_shape, source_data)
 
-    intersecting_polygons = add_layer_count(new_field_name = local_number_of_properties_field,
-        in_features = intersecting_polygons,
-        count_features = land_parcels,
-        output = "%s\\intersecting_polygons" % arcpy.env.workspace)
+    if redistribution_inputs["distribution_method"] in (2, 3):
+        intersecting_polygons = add_layer_count(new_field_name = local_number_of_properties_field,
+            in_features = intersecting_polygons,
+            count_features = land_parcels,
+            output = "%s\\intersecting_polygons" % arcpy.env.workspace)
 
     ## Recalculate groth model fields
     for field in redistribution_inputs["fields_to_be_distributed"]:

@@ -61,6 +61,22 @@ def test_is_polygon():
         print "  Pass"
     else:
         print "  Fail: is_polygon did not return true when passed a polygon"
+    basic_point = jj.create_point()
+    try:
+        if jj.is_polygon(basic_point):
+            print("  Fail: is polygon returned True for a point")
+        else:
+            print("  Pass")
+    except Error as e:
+        print("  Fail: An error was encountered")
+        print(e.args)
+    print "Testing is_polygon with logical operators..."
+    if not (jj.is_polygon(basic_polygon) and jj.is_polygon(basic_point)):
+        print("  Pass")
+    else:
+        print("  Fail: both is_polygon(basic_polygon) and is_polygon(basic_point) returned true")
+
+
 
 def test_field_in_feature_class():
     print "Testing field_in_feature_class finds an existing field..."
@@ -85,6 +101,62 @@ def test_field_in_feature_class():
         print "  Pass"
     jj.delete_if_exists(test_feature_class)
     print "------"
+
+def test_add_external_area_field():
+    print("Testing add_external_area_field...")
+    left_x = 479560  # TODO: use this in the test dataset
+    mid_left_x = 479580
+    mid_right_x = 479600
+    right_x = 479620
+    lower_y = 7871500
+    upper_y = 7871600
+    source_data = jj.create_polygon(
+        "add_external_area_field_in_features", [
+            (mid_left_x, lower_y),
+            (mid_left_x, upper_y),
+            (right_x, upper_y),
+            (right_x, lower_y),
+            (mid_left_x, lower_y)])
+    layer_with_area_to_grab = jj.create_polygon(
+        "area_to_grab", [
+            (mid_left_x, lower_y),
+            (mid_left_x, upper_y),
+            (mid_right_x, upper_y),
+            (mid_right_x, lower_y),
+            (mid_left_x, lower_y)])
+    logging.debug("in jj_tests:")
+    logging.debug("  type(source_data) = %s" % type(source_data))
+    logging.debug("  type(layer_with_area_to_grab) = %s" % type(layer_with_area_to_grab))
+    # basic_point = jj.create_point(output = "add_external_area_field_invalid_input")
+    basic_point = jj.create_point()
+    print("is_polygon(basic_point) = %s" % jj.is_polygon(basic_point))
+
+    print("  Testing point inputs raises an error...")
+    try:
+        output = jj.add_external_area_field(
+            source_data,
+            "external_area",
+            # "add_external_area_field_invalid_input",
+            basic_point,
+            dissolve=False)
+        print("    Fail: no error was raised.")
+    except AttributeError as e:
+        print("    Pass")
+
+    print("  Testing basic inputs...")
+    output = jj.add_external_area_field(
+        source_data,
+        "ext_area",
+        layer_with_area_to_grab,
+        dissolve=False)
+    # logging.debug("output = %s" % output)
+    # logging.debug("arcpy.Exists(output) = %s" % arcpy.Exists(output))
+    with arcpy.da.SearchCursor(output, ["external_area"]) as cursor:
+        for row in cursor:
+            if row[0] == 2000:
+                print("    Pass")
+            else:
+                print("    Fail: external area should have been 2000, but was %s" % row[0])
 
 
 def test_arguments_exist():
@@ -355,37 +427,40 @@ def test_redistributePolygon():
     # TODO: improve the tests for this method. All input data should be created on the fly, more tests should be added, more polygons should be added, etc.
     log("Testing redistributePolygon...")
     left_x = 479582.11
-    right_x = 479649.579
-    lower_y = 7871595.813
-    upper_y = 7871628.886
-    array = [(left_x,lower_y),
-         (left_x,upper_y),
-         (right_x,upper_y),
-         (right_x,lower_y),
-         (left_x,lower_y)]
-    # This array creates an area that is around 40% of the growth model polygon.
-    redistribution_test = arcpy.env.workspace + "\\redistribution_test_layer"
-    jj.delete_if_exists(redistribution_test)
-    jj.create_polygon(redistribution_test, array)
-    left_x = 479582.11
+    mid_x = 479649.579
     right_x = 479773.05
-    lower_y = 7871595.813
-    upper_y = 7871628.886
-    array = [(left_x,lower_y),
+    lower_y = 7871640
+    upper_y = 7871680
+    layer_to_redistribute_to = arcpy.env.workspace + "\\layer_to_redistribute_to"
+    jj.delete_if_exists(layer_to_redistribute_to)
+    # This array creates an area that is around 40% of the growth model polygon.
+    jj.create_polygon(layer_to_redistribute_to, [
+         (left_x,lower_y),
+         (left_x,upper_y),
+         (mid_x,upper_y),
+         (mid_x,lower_y),
+         (left_x,lower_y)], [
+         (mid_x,lower_y),
+         (mid_x, upper_y),
+         (right_x, upper_y),
+         (right_x, lower_y),
+         (mid_x, lower_y)
+         ])
+    layer_to_be_redistributed = arcpy.env.workspace + "\\layer_to_be_redistributed"
+    jj.delete_if_exists(layer_to_be_redistributed)
+    jj.create_polygon(layer_to_be_redistributed, [
+         (left_x,lower_y),
          (left_x,upper_y),
          (right_x,upper_y),
          (right_x,lower_y),
-         (left_x,lower_y)]
-    growth_model_polygon_test = arcpy.env.workspace + "\\growth_model_polygon_test"
-    jj.delete_if_exists(growth_model_polygon_test)
-    jj.create_polygon(growth_model_polygon_test, array)
-    arcpy.AddField_management(growth_model_polygon_test, "Dwelling_1", "LONG")
-    arcpy.CalculateField_management(growth_model_polygon_test,  "Dwelling_1", "get_10()", "PYTHON_9.3", """def get_10():
-            return 10""")
+         (left_x,lower_y)])
+    arcpy.AddField_management(layer_to_be_redistributed, "Dwelling_1", "LONG")
+    arcpy.CalculateField_management(layer_to_be_redistributed,  "Dwelling_1", "get_12()", "PYTHON_9.3", """def get_12():
+            return 12""")
     redistributePolygonInputs = {}
-    redistributePolygonInputs["layer_to_redistribute_to"] = redistribution_test
-    redistributePolygonInputs["layer_to_be_redistributed"] = growth_model_polygon_test
-    redistributePolygonInputs["output_filename"] = "redistributed"
+    redistributePolygonInputs["layer_to_redistribute_to"] = layer_to_redistribute_to
+    redistributePolygonInputs["layer_to_be_redistributed"] = layer_to_be_redistributed
+    redistributePolygonInputs["output_filename"] = "output"
     redistributePolygonInputs["fields_to_be_distributed"] = ["Dwelling_1"]
 
 
@@ -420,7 +495,7 @@ def test_redistributePolygon():
             try:
                 jj.redistributePolygon(redistributePolygonInputs)
             except AttributeError as e:
-                if re.match('distribution method must be either 1, 2 or 3', e.args[0]):
+                if re.match('distribution method must be either 1, 2, 3, or the path to a feature class', e.args[0]):
                     log("    Pass")
                 else:
                     log("    Fail: an invalid distribution method did not raise an AttributeError")
@@ -454,12 +529,14 @@ def test_redistributePolygon():
         redistributePolygonInputs["fields_to_be_distributed"] = ["Dwelling_1"]
         redistributePolygonInputs["distribution_method"] = 2
         jj.redistributePolygon(redistributePolygonInputs)
-        with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['Dwelling_1']) as cursor:
+        with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['OBJECTID', 'Dwelling_1']) as cursor:
             for row in cursor:
-                if row[0] == 10:
+                if row[0] == 1 and row[1] == 9:
+                    log("    Pass")
+                elif row[0] == 2 and row[1] == 3:
                     log("    Pass")
                 else:
-                    log("    Fail: Dwelling_1 should be 10")
+                    log("    Fail: For Dwelling_1 should be 9 or 3, but was %s (for OBJECTID = %s)" % (row[1], row[0]))
         log("    Testing that the sum of dwelling in the input and output layers are equal:")
         #
         redistributed_count = 0
@@ -484,12 +561,35 @@ def test_redistributePolygon():
         log("    Testing 40% of area yeilds 40% of population:")
         redistributePolygonInputs["distribution_method"] = 1
         jj.redistributePolygon(redistributePolygonInputs)
-        for row in arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['Dwelling_1']):
-            if row[0] == 4:
-                log("      Pass")
-            else:
-                log("      Fail: Dwelling_1 should be 4, but was %s" % row[0])
+        with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['OBJECTID', 'Dwelling_1']) as cursor:
+            for row in cursor:
+                if row[0] == 1 and row[1] == 4:
+                    log("      Pass")
+                elif row[0] == 2 and row[1] == 8:
+                    log("      Pass")
+                else:
+                    log("      Fail: Dwelling_1 should be 4, but was %s" % row[0])
 
+    def testing_generic_distribution_method():
+        log("  Testing basic distribution method:")
+        net_developable_area = jj.create_polygon(
+            "net_developable_area",
+            [(mid_x-10, lower_y),
+            (mid_x-10, upper_y),
+            (mid_x+10, upper_y),
+            (mid_x+10, lower_y),
+            (mid_x-10, lower_y)])
+        redistributePolygonInputs["distribution_method"] = net_developable_area
+        jj.redistributePolygon(redistributePolygonInputs)
+        with arcpy.da.SearchCursor(
+                redistributePolygonInputs["output_filename"],
+                ['Dwelling_1']
+        ) as cursor:
+            for row in cursor:
+                if row[0] == 6:
+                    log("      Pass")
+                else:
+                    log("      Fail: Dwelling_1 should be 6 in each area, but was %s" % row[0])
 
     def testing_for_rounding():
         log("  Testing for rounding:")
@@ -532,16 +632,17 @@ def test_redistributePolygon():
         if total_dwellings == 1:
             log("    Pass")
         elif total_dwellings == 0:
-            log("    Fail: total dwellings in output was 0. This means that decimas are being integerised, not rounded")
+            log("    Fail: total dwellings in output was 0. This means that decimals are being integerised, not rounded")
         else:
             log("    Fail: total dwellings in %s should be 1, but was %s. This error was unexpected and needs to be investigated." % (redistributePolygonInputs["output_filename"], total_dwellings))
 
 
     # testing_number_of_fields()
-    # testing_invalid_distribution_method_is_caught()
+    testing_invalid_distribution_method_is_caught()
     # testing_invalid_field_is_caught()
     # testing_number_of_properties_method()
-    testing_area_method()
+    # testing_area_method()
+    testing_generic_distribution_method()
     # # testing_for_rounding() # tool currently has no way to combat this
     # testing_for_integerising()
     log("------")
@@ -678,6 +779,12 @@ def test_create_polygon():
         print "    Pass"
     else:
         print "    Fail: tool doesn't create shape in expected location or selection feature location has changed (%s)" % output
+    print("  Testing create_polygon returns unicode string...")
+    result = jj.create_polygon("create_polygon_output_type_test", array)
+    if type(result) == type(u'blah'):
+        print("    Pass")
+    else:
+        print("    Fail: type of result should have been 'unicode' but was %s" % type(result))
     print "------"
 
 
@@ -692,6 +799,12 @@ def test_create_basic_polygon():
         print "    Pass"
     else:
         print "    Fail: creates %s features by default, should be 1" % number_of_features
+    print("  Testing creaet_polygon returns a unicode string...")
+    result = jj.create_basic_polygon()
+    if type(result) == type(u'blah'):
+        print("    Pass")
+    else:
+        print("    Fail: type of result should have been 'unicode' but was %s" % type(result))
     print "------"
 
 
@@ -879,23 +992,24 @@ if __name__ == '__main__':
     try:
         logging.info("Running tests")
         logging.info("")
-        # test_delete_if_exists()
+        # # test_delete_if_exists()
         # test_is_polygon()
-        # test_arguments_exist()
-        # test_field_in_feature_class()
-        # test_calculate_external_field()
-        # test_get_file_from_path()
-        # test_get_directory_from_path()
-        # test_renameFieldMap()
-        # test_add_layer_count()
-        test_redistributePolygon()
-        # test_create_point()
-        # test_create_points()
-        # test_create_polygon()
-        # test_create_basic_polygon()
-        # test_for_each_feature()
-        # test_join_csv()
-        # test_get_sum()
+        # # test_arguments_exist()
+        # # test_field_in_feature_class()
+        test_add_external_area_field()
+        # # test_calculate_external_field()
+        # # test_get_file_from_path()
+        # # test_get_directory_from_path()
+        # # test_renameFieldMap()
+        # # test_add_layer_count()
+        # # test_redistributePolygon()
+        # # test_create_point()
+        # # test_create_points()
+        test_create_polygon()
+        test_create_basic_polygon()
+        # # test_for_each_feature()
+        # # test_join_csv()
+        # # test_get_sum()
     except arcpy.ExecuteError:
         print arcpy.GetMessages(2)
         logging.exception(arcpy.GetMessages(2))
