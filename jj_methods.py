@@ -288,13 +288,13 @@ def add_external_area_field(
         in_features = in_features,
         out_feature_class=in_copy)
     in_copy = arcpy.AddField_management(in_copy, new_field_name, "FLOAT")
-    # TODO: get the area of the layer_with_area_to_grab
-    # arcpy.CalculateField_management(
-    #     in_features,
-    #     field_name,
-    #     "!shape.area@squaremeters!",
-    #     "PYTHON_9.3")
-    return in_copy
+    intersecting_with_external = "intersecting_with_external"
+    delete_if_exists(intersecting_with_external)
+    intersecting_with_external = arcpy.Intersect_analysis(
+        in_features = [in_copy, layer_with_area_to_grab],
+        out_feature_class = intersecting_with_external)
+    # TODO: join the area of intersecting_with_external back to in_copy then return it. Can I use calculate external field?
+    return intersecting_with_external
 
 def renameFieldMap(fieldMap, name_text):
     """

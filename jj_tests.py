@@ -119,11 +119,11 @@ def test_add_external_area_field():
             (mid_left_x, lower_y)])
     layer_with_area_to_grab = jj.create_polygon(
         "area_to_grab", [
-            (mid_left_x, lower_y),
-            (mid_left_x, upper_y),
+            (left_x, lower_y),
+            (left_x, upper_y),
             (mid_right_x, upper_y),
             (mid_right_x, lower_y),
-            (mid_left_x, lower_y)])
+            (left_x, lower_y)])
     logging.debug("in jj_tests:")
     logging.debug("  type(source_data) = %s" % type(source_data))
     logging.debug("  type(layer_with_area_to_grab) = %s" % type(layer_with_area_to_grab))
@@ -146,7 +146,7 @@ def test_add_external_area_field():
     print("  Testing basic inputs...")
     output = jj.add_external_area_field(
         source_data,
-        "ext_area",
+        "external_area",
         layer_with_area_to_grab,
         dissolve=False)
     # logging.debug("output = %s" % output)
@@ -992,24 +992,24 @@ if __name__ == '__main__':
     try:
         logging.info("Running tests")
         logging.info("")
-        # # test_delete_if_exists()
-        # test_is_polygon()
-        # # test_arguments_exist()
-        # # test_field_in_feature_class()
+        # test_delete_if_exists()
+        test_is_polygon()
+        # test_arguments_exist()
+        # test_field_in_feature_class()
         test_add_external_area_field()
-        # # test_calculate_external_field()
-        # # test_get_file_from_path()
-        # # test_get_directory_from_path()
-        # # test_renameFieldMap()
-        # # test_add_layer_count()
-        # # test_redistributePolygon()
-        # # test_create_point()
-        # # test_create_points()
-        test_create_polygon()
-        test_create_basic_polygon()
-        # # test_for_each_feature()
-        # # test_join_csv()
-        # # test_get_sum()
+        # test_calculate_external_field()
+        # test_get_file_from_path()
+        # test_get_directory_from_path()
+        # test_renameFieldMap()
+        # test_add_layer_count()
+        # test_redistributePolygon()
+        # test_create_point()
+        # test_create_points()
+        # test_create_polygon()
+        # test_create_basic_polygon()
+        # test_for_each_feature()
+        # test_join_csv()
+        # test_get_sum()
     except arcpy.ExecuteError:
         print arcpy.GetMessages(2)
         logging.exception(arcpy.GetMessages(2))
