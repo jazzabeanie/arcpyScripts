@@ -124,13 +124,7 @@ def test_add_external_area_field():
             (mid_right_x, upper_y),
             (mid_right_x, lower_y),
             (left_x, lower_y)])
-    logging.debug("in jj_tests:")
-    logging.debug("  type(source_data) = %s" % type(source_data))
-    logging.debug("  type(layer_with_area_to_grab) = %s" % type(layer_with_area_to_grab))
-    # basic_point = jj.create_point(output = "add_external_area_field_invalid_input")
     basic_point = jj.create_point()
-    print("is_polygon(basic_point) = %s" % jj.is_polygon(basic_point))
-
     print("  Testing point inputs raises an error...")
     try:
         output = jj.add_external_area_field(
@@ -149,14 +143,18 @@ def test_add_external_area_field():
         "external_area",
         layer_with_area_to_grab,
         dissolve=False)
-    # logging.debug("output = %s" % output)
-    # logging.debug("arcpy.Exists(output) = %s" % arcpy.Exists(output))
+    print("    Testing new field is added...")
+    if jj.field_in_feature_class("external_area", output):
+        print("      Pass")
+    else:
+        print("      Fail: %s does not contain the new field" % output)
+    print("    Testing new field contains the expected values...")
     with arcpy.da.SearchCursor(output, ["external_area"]) as cursor:
         for row in cursor:
             if row[0] == 2000:
-                print("    Pass")
+                print("      Pass")
             else:
-                print("    Fail: external area should have been 2000, but was %s" % row[0])
+                print("      Fail: external area should have been 2000, but was %s" % row[0])
 
 
 def test_arguments_exist():

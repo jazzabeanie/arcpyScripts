@@ -295,6 +295,7 @@ def add_external_area_field(
         out_feature_class = intersecting_with_external)
     # TODO: join the area of intersecting_with_external back to in_copy then return it. Can I use calculate external field?
     return intersecting_with_external
+    # return ?
 
 def renameFieldMap(fieldMap, name_text):
     """
