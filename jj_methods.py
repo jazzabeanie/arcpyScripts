@@ -173,6 +173,13 @@ def delete_if_exists(layer):
         # logger.debug("%s exists = %s" % (layer, arcpy.Exists(layer)))
     else:
         logger.debug("Layer doesn't exist: %s" % layer)
+    # For some reason, if a script is running in ArcMap, this function needs to be executed twice.
+    if arcpy.Exists(layer):
+        logger.debug("Deleting %s" % layer)
+        arcpy.Delete_management(layer)
+        # logger.debug("%s exists = %s" % (layer, arcpy.Exists(layer)))
+    else:
+        logger.debug("Layer doesn't exist: %s" % layer)
 
 
 def is_polygon(layer):
@@ -302,7 +309,7 @@ def add_external_area_field(
         If true, the layer_with_area_to_grab will be dissolved before being
         intersected. This ensures that there is only 1 feature per in_feature.
 
-    Returns a copy the original in_features with the new field added.
+    Returns a copy of the original in_features with the new field added.
     """
     logger.debug("Executing add_external_area_field...")
     logger.debug("in_features = %s" % in_features)
@@ -342,14 +349,15 @@ def add_external_area_field(
         in_features = [in_copy, layer_with_area_to_grab],
         out_feature_class = intersecting_with_external)
     # TODO: join the area of intersecting_with_external back to in_copy then return it. Can I use calculate external field?
-    in_copy_with_new_field = "in_copy_with_new_field"
-    delete_if_exists(in_copy_with_new_field)
+    # in_copy_with_new_field = "in_copy_with_new_field"
+    # delete_if_exists(in_copy_with_new_field)
     in_copy_with_new_field = calculate_external_field(
         target_layer = in_copy,
         target_field = new_field_name,
         join_layer = intersecting_with_external,
         join_field = "Shape_Area",
-        output = in_copy_with_new_field)
+        # output = in_copy_with_new_field)
+        output = in_features)
     return in_copy_with_new_field
 
 def renameFieldMap(fieldMap, name_text):
@@ -632,8 +640,10 @@ def redistributePolygon(redistribution_inputs):
     intersecting_polygons_buffered = "intersecting_polygons_buffered"
     desired_shape = "desired_shape"
     delete_if_exists(desired_shape)
+    delete_if_exists(desired_shape)
     total_area_field = "source_total_area"
     source_data = "source_data"
+    delete_if_exists(source_data)
     delete_if_exists(source_data)
     if "properties_layer" in redistribution_inputs.keys():
         land_parcels = redistribution_inputs["properties_layer"]
