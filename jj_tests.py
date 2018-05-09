@@ -569,7 +569,7 @@ def test_redistributePolygon():
                     log("      Fail: Dwelling_1 should be 4, but was %s" % row[0])
 
     def testing_generic_distribution_method():
-        log("  Testing basic distribution method:")
+        log("  Testing even distribution for generic distribution method:")
         net_developable_area = jj.create_polygon(
             "net_developable_area",
             [(mid_x-10, lower_y),
@@ -588,6 +588,29 @@ def test_redistributePolygon():
                     log("      Pass")
                 else:
                     log("      Fail: Dwelling_1 should be 6 in each area, but was %s" % row[0])
+        log("  Testing uneven distribution method:")
+        net_developable_area = jj.create_polygon(
+            "net_developable_area",
+            [(mid_x-5, lower_y),
+            (mid_x-5, upper_y),
+            (mid_x+15, upper_y),
+            (mid_x+15, lower_y),
+            (mid_x-5, lower_y)])
+        redistributePolygonInputs["distribution_method"] = net_developable_area
+        jj.redistributePolygon(redistributePolygonInputs)
+        with arcpy.da.SearchCursor(
+                redistributePolygonInputs["output_filename"],
+                ['Dwelling_1']
+        ) as cursor:
+            for row in cursor:
+                if row[0] in (3, 9):
+                    log("      Pass")
+                else:
+                    log("      Fail: Dwelling_1 should be 3 and 9, in each area, but was %s" % row[0])
+        log("  Testing areas with no external areas, but with properties:")
+        # TODO
+        log("  Testing areas with no external areas or properties:")
+        # TODO
 
     def testing_for_rounding():
         log("  Testing for rounding:")
@@ -635,14 +658,14 @@ def test_redistributePolygon():
             log("    Fail: total dwellings in %s should be 1, but was %s. This error was unexpected and needs to be investigated." % (redistributePolygonInputs["output_filename"], total_dwellings))
 
 
-    # testing_number_of_fields()
+    testing_number_of_fields()
     testing_invalid_distribution_method_is_caught()
-    # testing_invalid_field_is_caught()
-    # testing_number_of_properties_method()
-    # testing_area_method()
+    testing_invalid_field_is_caught()
+    testing_number_of_properties_method()
+    testing_area_method()
     testing_generic_distribution_method()
-    # # testing_for_rounding() # tool currently has no way to combat this
-    # testing_for_integerising()
+    # testing_for_rounding() # tool currently has no way to combat this
+    testing_for_integerising()
     log("------")
 
 
@@ -991,16 +1014,16 @@ if __name__ == '__main__':
         logging.info("Running tests")
         logging.info("")
         # test_delete_if_exists()
-        test_is_polygon()
+        # test_is_polygon()
         # test_arguments_exist()
         # test_field_in_feature_class()
-        test_add_external_area_field()
+        # test_add_external_area_field()
         # test_calculate_external_field()
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
         # test_add_layer_count()
-        # test_redistributePolygon()
+        test_redistributePolygon()
         # test_create_point()
         # test_create_points()
         # test_create_polygon()

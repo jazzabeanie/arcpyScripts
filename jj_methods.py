@@ -259,6 +259,7 @@ def calculate_external_field(target_layer, target_field, join_layer, join_field,
     logger.debug("  Spatially joining %s to %s" % (join_layer, target_layer))
     join_layer_buffered = "join_layer_buffered"
     delete_if_exists(join_layer_buffered)
+    delete_if_exists(join_layer_buffered)
     join_layer_buffered = arcpy.Buffer_analysis(
         in_features=join_layer,
         out_feature_class=join_layer_buffered,
@@ -329,11 +330,13 @@ def add_external_area_field(
 
     in_copy = "add_external_area_in_features_copy"
     delete_if_exists(in_copy)
+    delete_if_exists(in_copy) # why do I need to do this twice? What is goin on here?
     in_copy = arcpy.CopyFeatures_management(
         in_features = in_features,
         out_feature_class=in_copy)
     in_copy = arcpy.AddField_management(in_copy, new_field_name, "FLOAT")
     intersecting_with_external = "intersecting_with_external"
+    delete_if_exists(intersecting_with_external)
     delete_if_exists(intersecting_with_external)
     intersecting_with_external = arcpy.Intersect_analysis(
         in_features = [in_copy, layer_with_area_to_grab],
@@ -610,6 +613,8 @@ def redistributePolygon(redistribution_inputs):
     - fields_to_be_distributed"""
     local_number_of_properties_field = "intersected_total_properties"
     total_properties_field = "source_total_properties"
+    total_intersecting_area = "total_intersecting_area"
+    local_intersecting_area = "local_intersecting_area"
     intersecting_polygons = "intersecting_polygons"
     intersecting_polygons_buffered = "intersecting_polygons_buffered"
     desired_shape = "desired_shape"
@@ -617,6 +622,9 @@ def redistributePolygon(redistribution_inputs):
     total_area_field = "source_total_area"
     source_data = "source_data"
     delete_if_exists(source_data)
+    land_parcels = r'Database Connections\WindowAuth@Mapsdb01@SDE_Vector.sde' +\
+                   r'\sde_vector.TCC.Cadastral\sde_vector.TCC.Land_Parcels'
+    # land_parcels = r'C:\TempArcGIS\testing.gdb\testing_properties'
 
     def log_inputs():
         log("redistribution_inputs:")
@@ -740,6 +748,59 @@ def redistributePolygon(redistribution_inputs):
                 average = (area + properties) / 2
                 return average""")
 
+    def calculate_field_portion_of_external_area(
+            field_to_calculate,
+            total_external_area_field,
+            local_external_area_field,
+            total_properties_field,
+            local_properties_field,
+            total_area_field):
+        """TODO"""
+        logger.debug("Executing calculate_field_portion_of_external_area(\n\t\t%s, \n\t\t%s, \n\t\t%s, \n\t\t%s, \n\t\t%s, \n\t\t%s)..." % (
+            field_to_calculate,
+            total_external_area_field,
+            local_external_area_field,
+            total_properties_field,
+            local_properties_field,
+            total_area_field))
+        logger.debug("    Calculating %s field based on the proportion of the intersecting external area that falls within" % field_to_calculate)
+        arcpy.CalculateField_management(
+            intersecting_polygons,
+            field_to_calculate,
+            "return_external_area_proportion_of_total(!" + \
+                total_external_area_field + "!, !" + \
+                local_external_area_field + "!, !"  + \
+                total_properties_field + "!, !" + \
+                local_properties_field + "!, !"  + \
+                field_to_calculate  + "!, !" + \
+                total_area_field + "!, !Shape_Area!)",
+            "PYTHON_9.3",
+            """def return_external_area_proportion_of_total(
+                       total_external_area,
+                       local_external_area,
+                       total_properties,
+                       local_properties,
+                       field_to_calculate,
+                       total_area_field,
+                       Shape_Area):
+                   if total_external_area == None: # then total_external_area = 0
+                       if total_properties == None:
+                           new_value = int((float(Shape_Area)/float(total_area_field)) * int(field_to_calculate))
+                           # print("new value = %s" % new_value)
+                           # print("area = %s" % Shape_Area)
+                       new_value = int((float(local_properties)/total_properties) * int(field_to_calculate))
+                   else:
+                       new_value = int((float(local_external_area)/total_external_area) * int(field_to_calculate))
+                   return new_value""")
+
+    # TODO: create a function to replace the calculate functions above. It
+    # accepts a list of tuples (each tuple containig a total and a local value
+    # field). The function will take each tuple and calculate the field base on
+    # the portion of the values in each of the tuple field. If it finds any
+    # polygon where the total value is 0, it will move to the next tuple and do
+    # the same. This would be much more reusable.
+
+
     def add_area_field(layer, field_name):
         arcpy.AddField_management(layer, field_name, "FLOAT")
         arcpy.CalculateField_management(
@@ -796,27 +857,55 @@ def redistributePolygon(redistribution_inputs):
 
     add_area_field(source_data, total_area_field)
 
+    # I may be able to improve efficiency if I dissolve the distribute_method
+    # (if applicable) layer here, so that i don't have to do it twice below.
+
     if redistribution_inputs["distribution_method"] in (2, 3):
+        logger.debug("Adding %s to %s" % (total_properties_field, source_data))
         # Adding total properties to source_data
-        land_parcels = r'Database Connections\WindowAuth@Mapsdb01@SDE_Vector.sde' +\
-                       r'\sde_vector.TCC.Cadastral\sde_vector.TCC.Land_Parcels'
-        # land_parcels = r'C:\TempArcGIS\testing.gdb\testing_properties'
         source_data = add_layer_count(new_field_name = total_properties_field,
             in_features = source_data,
             count_features = land_parcels,
             output = "%s\\source_data" % arcpy.env.workspace)
     elif arcpy.Exists(redistribution_inputs["distribution_method"]):
+        logger.debug("Adding %s to %s" % (total_properties_field, source_data))
+        # Adding total properties to source_data
+        source_data = add_layer_count(new_field_name = total_properties_field,
+            in_features = source_data,
+            count_features = land_parcels,
+            output = "%s\\source_data" % arcpy.env.workspace)
+        logger.debug("Adding %s field to %s" % (total_intersecting_area, source_data))
         # Adding total intersecting area to source_data
-        pass  # TODO
+        source_data = add_external_area_field(
+            in_features = source_data,
+            new_field_name = total_intersecting_area,
+            layer_with_area_to_grab = redistribution_inputs["distribution_method"],
+            dissolve = True)
 
 
     intersecting_polygons = intersect(desired_shape, source_data)
 
     if redistribution_inputs["distribution_method"] in (2, 3):
+        logger.debug("Adding %s to %s" % (local_number_of_properties_field, intersecting_polygons))
+        # Adding local number of properties to intersecting_polygons
         intersecting_polygons = add_layer_count(new_field_name = local_number_of_properties_field,
             in_features = intersecting_polygons,
             count_features = land_parcels,
             output = "%s\\intersecting_polygons" % arcpy.env.workspace)
+    elif arcpy.Exists(redistribution_inputs["distribution_method"]):
+        logger.debug("Adding %s to %s" % (local_number_of_properties_field, intersecting_polygons))
+        # Adding local number of properties to intersecting_polygons
+        intersecting_polygons = add_layer_count(new_field_name = local_number_of_properties_field,
+            in_features = intersecting_polygons,
+            count_features = land_parcels,
+            output = "%s\\intersecting_polygons" % arcpy.env.workspace)
+        logger.debug("Adding %s field to %s" % (local_intersecting_area, source_data))
+        # Adding local intersecting area to intersecting_polygons
+        intersecting_polygons = add_external_area_field(
+            in_features = intersecting_polygons,
+            new_field_name = local_intersecting_area,
+            layer_with_area_to_grab = redistribution_inputs["distribution_method"],
+            dissolve = True)
 
     ## Recalculate groth model fields
     for field in redistribution_inputs["fields_to_be_distributed"]:
@@ -879,9 +968,16 @@ def redistributePolygon(redistribution_inputs):
                         "PYTHON_9.3",
                         """def returnNone():
                                return None""")
-            elif redistribution_inputs["distribution_method"] == 4:
-                logger.debug("Calculating %s field base on the portion of developable area" % field)
-                pass # TODO
+            elif arcpy.Exists(redistribution_inputs["distribution_method"]):
+                logger.debug("Calculating %s field base on the portion of %s" %
+                    (field, redistribution_inputs["distribution_method"]))
+                calculate_field_portion_of_external_area(
+                    field,
+                    total_intersecting_area,
+                    local_intersecting_area,
+                    total_properties_field,
+                    local_number_of_properties_field,
+                    total_area_field)
 
 
     ## Spatially Join intersecting_polygons back to redistribution layer
