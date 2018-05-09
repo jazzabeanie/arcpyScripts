@@ -193,44 +193,44 @@ def test_calculate_external_field():
             regexp = re.compile('from two_fields')
             assert(regexp.match("%s" % row))
     print "    pass"
-    print "  Testing tmp_field_name is deleted..."
-    output = "testing_join_field_is_deleted"
-    conflicting_layer = jj.create_basic_polygon()
-    arcpy.AddField_management(conflicting_layer, "first", "TEXT")
-    arcpy.AddField_management(conflicting_layer, "second", "TEXT")
-    arcpy.AddField_management(conflicting_layer, "delete_me", "TEXT")
-    arcpy.CalculateField_management(
-        conflicting_layer,
-        "first",
-        "get_text()",
-        "PYTHON_9.3",
-        """def get_text():
-            return 'from conflicting_layer'""")
-    arcpy.CalculateField_management(
-        conflicting_layer,
-        "second",
-        "get_text()",
-        "PYTHON_9.3",
-        """def get_text():
-            return 'from conflicting_layer'""")
-    arcpy.CalculateField_management(
-        conflicting_layer,
-        "delete_me",
-        "get_text()",
-        "PYTHON_9.3",
-        """def get_text():
-            return 'this text should not be visible'""")
-    jj.delete_if_exists(output)
-    try:
-        output = jj.calculate_external_field(one_field, "first", conflicting_layer, "delete_me", output)
-        print("    fail: no error was raised")
-    except AttributeError as e:
-        print("    pass")
-    except Exception as e:
-        print("    fail: some other error %s" % e.args[0])
-    print "  Testing spatial join works correctly for adjacent polygons..."
-    print("    TODO")
-    print "------"
+    # print "  Testing tmp_field_name is deleted..."
+    # output = "testing_join_field_is_deleted"
+    # conflicting_layer = jj.create_basic_polygon()
+    # arcpy.AddField_management(conflicting_layer, "first", "TEXT")
+    # arcpy.AddField_management(conflicting_layer, "second", "TEXT")
+    # arcpy.AddField_management(conflicting_layer, "delete_me", "TEXT")
+    # arcpy.CalculateField_management(
+    #     conflicting_layer,
+    #     "first",
+    #     "get_text()",
+    #     "PYTHON_9.3",
+    #     """def get_text():
+    #         return 'from conflicting_layer'""")
+    # arcpy.CalculateField_management(
+    #     conflicting_layer,
+    #     "second",
+    #     "get_text()",
+    #     "PYTHON_9.3",
+    #     """def get_text():
+    #         return 'from conflicting_layer'""")
+    # arcpy.CalculateField_management(
+    #     conflicting_layer,
+    #     "delete_me",
+    #     "get_text()",
+    #     "PYTHON_9.3",
+    #     """def get_text():
+    #         return 'this text should not be visible'""")
+    # jj.delete_if_exists(output)
+    # try:
+    #     output = jj.calculate_external_field(one_field, "first", conflicting_layer, "delete_me", output)
+    #     print("    fail: no error was raised")
+    # except AttributeError as e:
+    #     print("    pass")
+    # except Exception as e:
+    #     print("    fail: some other error %s" % e.args[0])
+    # print "  Testing spatial join works correctly for adjacent polygons..."
+    # print("    TODO")
+    # print "------"
 
 
 def test_get_file_from_path():
@@ -644,6 +644,25 @@ def test_redistributePolygon():
                     log("      Pass")
                 else:
                     log("      Fail: Dwelling_1 should be 3 and 9, in each area, but was %s" % row[0])
+        log("  Testing all distribution to one polygon:")
+        net_developable_area = jj.create_polygon(
+            "net_developable_area",
+            [(mid_x+5, lower_y),
+            (mid_x+5, upper_y),
+            (mid_x+15, upper_y),
+            (mid_x+15, lower_y),
+            (mid_x+5, lower_y)])
+        redistributePolygonInputs["distribution_method"] = net_developable_area
+        jj.redistributePolygon(redistributePolygonInputs)
+        with arcpy.da.SearchCursor(
+                redistributePolygonInputs["output_filename"],
+                ['Dwelling_1']
+        ) as cursor:
+            for row in cursor:
+                if row[0] in (12, None):
+                    log("      Pass")
+                else:
+                    log("      Fail: Dwelling_1 should be 12 and 0, in each area, but was %s" % row[0])
         log("  Testing areas with no external areas, but with properties:")
         sample_properties = jj.create_polygon(
                 "one_property_in_each",
@@ -1115,12 +1134,12 @@ if __name__ == '__main__':
         # test_arguments_exist()
         # test_field_in_feature_class()
         # test_add_external_area_field()
-        # test_calculate_external_field()
+        test_calculate_external_field()
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
         # test_add_layer_count()
-        test_redistributePolygon()
+        # test_redistributePolygon()
         # test_create_point()
         # test_create_points()
         # test_create_polygon()
