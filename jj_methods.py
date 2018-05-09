@@ -9,7 +9,7 @@ in ArcGIS.  It is designed to be imported into other python scripts."""
 # Copyright:   (c) TCC
 # ArcGIS Version:   10.5.1
 # Python Version:   2.7
-module_version = "01.01.20180417"
+module_version = "01.02.20180509"
 # Template Source: https://blogs.esri.com/esri/arcgis/2011/08/04/pythontemplate/
 # --------------------------------
 import os
@@ -610,7 +610,20 @@ def redistributePolygon(redistribution_inputs):
     - layer_to_be_redistributed
     - output_filename
     - distribution_method
-    - fields_to_be_distributed"""
+    - fields_to_be_distributed
+    - properties_layer
+
+    distribution_method: an integer, or a string containing the path to the
+                         distribution feature class.
+
+    fields_to_be_distributed: a list of the field names which should be
+                              distributed.
+
+    properties_layer: the layer which contains the property / land parcel
+                      boundaries. This will be used whenever the distribution
+                      by number of lots is called. If not provided, the
+                      sde_vector.TCC.Land_Parcels will be used.
+    """
     local_number_of_properties_field = "intersected_total_properties"
     total_properties_field = "source_total_properties"
     total_intersecting_area = "total_intersecting_area"
@@ -622,9 +635,14 @@ def redistributePolygon(redistribution_inputs):
     total_area_field = "source_total_area"
     source_data = "source_data"
     delete_if_exists(source_data)
-    land_parcels = r'Database Connections\WindowAuth@Mapsdb01@SDE_Vector.sde' +\
-                   r'\sde_vector.TCC.Cadastral\sde_vector.TCC.Land_Parcels'
-    # land_parcels = r'C:\TempArcGIS\testing.gdb\testing_properties'
+    if "properties_layer" in redistribution_inputs.keys():
+        land_parcels = redistribution_inputs["properties_layer"]
+        logger.debug("For this analysis, %s will be used as the properties layer" % land_parcels)
+    else:
+        land_parcels = r'Database Connections\WindowAuth@Mapsdb01@SDE_Vector.sde' +\
+                       r'\sde_vector.TCC.Cadastral\sde_vector.TCC.Land_Parcels'
+        # land_parcels = r'C:\TempArcGIS\testing.gdb\testing_properties'
+        logger.debug("For this analysis, %s will be used as the properties layer" % land_parcels)
 
     def log_inputs():
         log("redistribution_inputs:")

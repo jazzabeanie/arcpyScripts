@@ -523,7 +523,7 @@ def test_redistributePolygon():
 
     def testing_number_of_properties_method():
         log("  Testing number of properties method:")
-        log("    Testing simple distribution:")
+        log("    Testing simple distribution with no properties_layer provided:")
         redistributePolygonInputs["fields_to_be_distributed"] = ["Dwelling_1"]
         redistributePolygonInputs["distribution_method"] = 2
         jj.redistributePolygon(redistributePolygonInputs)
@@ -552,6 +552,43 @@ def test_redistributePolygon():
             log("      Fail: sum of dewllings is not equal for layer_to_be_redistributed (%s) and output (%s)" % (layer_to_be_redistributed_count, redistributed_count))
             log("  layer_to_be_redistributed = %s" % redistributePolygonInputs["layer_to_be_redistributed"])
             log("  output_filename = %s" % redistributePolygonInputs["output_filename"])
+
+
+    def testing_custom_properties_layer():
+        log("  Testing number of properties method with custom properties layer:")
+        redistributePolygonInputs["fields_to_be_distributed"] = ["Dwelling_1"]
+        redistributePolygonInputs["distribution_method"] = 2
+        custom_properties_layer = jj.create_polygon(
+            "testing_custom_properties",
+            [
+                (left_x+10, lower_y+10),
+                (left_x+10, upper_y-10),
+                (left_x+20, upper_y-10),
+                (left_x+20, lower_y+10),
+                (left_x+10, lower_y+10)
+            ], [
+                (left_x+20, lower_y+10),
+                (left_x+20, upper_y-10),
+                (left_x+30, upper_y-10),
+                (left_x+30, lower_y+10),
+                (left_x+20, lower_y+10)
+            ], [
+                (mid_x+20, lower_y+10),
+                (mid_x+20, upper_y-10),
+                (mid_x+30, upper_y-10),
+                (mid_x+30, lower_y+10),
+                (mid_x+20, lower_y+10)
+            ])
+        redistributePolygonInputs["properties_layer"] = custom_properties_layer
+        jj.redistributePolygon(redistributePolygonInputs)
+        with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['OBJECTID', 'Dwelling_1']) as cursor:
+            for row in cursor:
+                if row[0] == 1 and row[1] == 9:
+                    log("    Pass")
+                elif row[0] == 2 and row[1] == 4:
+                    log("    Pass")
+                else:
+                    log("    Fail: For Dwelling_1 should be 8 or 4, but was %s (for OBJECTID = %s)" % (row[1], row[0]))
 
 
     def testing_area_method():
@@ -662,6 +699,7 @@ def test_redistributePolygon():
     testing_invalid_distribution_method_is_caught()
     testing_invalid_field_is_caught()
     testing_number_of_properties_method()
+    testing_custom_properties_layer()
     testing_area_method()
     testing_generic_distribution_method()
     # testing_for_rounding() # tool currently has no way to combat this
