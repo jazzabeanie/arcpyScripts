@@ -244,28 +244,17 @@ def return_tuple_of_args():
 
 def calculate_external_field(target_layer, target_field, join_layer, join_field, output):
     """Calculates a target field from a field on another featre based on spatial intersect."""
-    logger.debug("  Field in join_layer (%s)" % join_layer)
-    for f in arcpy.ListFields(join_layer):
-        logger.debug("    %s" % f.name)
-
     tmp_field_name = "delete_me"
-    join_layer_layer = "join_layer_layer"
-    delete_if_exists(join_layer_layer)
-    logger.debug("Making feature layer of %s" % join_layer)
-    arcpy.MakeFeatureLayer_management(join_layer, join_layer_layer)
+    join_layer_copy = "join_layer_copy"
+    delete_if_exists(join_layer_copy)
+    logger.debug("Making copy of %s" % join_layer)
+    arcpy.CopyFeatures_management(join_layer, join_layer_copy)
     delete_if_exists(output)
     original_fields = arcpy.ListFields(target_layer)
     original_field_names = [f.name for f in original_fields]
 
-    logger.debug("  Field in join_layer_layer (%s)" % join_layer_layer)
-    for f in arcpy.ListFields(join_layer_layer):
-        logger.debug("    %s" % f.name)
-    logger.debug("  Field in join_layer (%s)" % join_layer)
-    for f in arcpy.ListFields(join_layer):
-        logger.debug("    %s" % f.name)
-
     def tmp_field_exists_in_join_layer():
-        if tmp_field_name in [f.name for f in arcpy.ListFields(join_layer_layer)]:
+        if tmp_field_name in [f.name for f in arcpy.ListFields(join_layer_copy)]:
             return True
         else:
             return False
@@ -283,32 +272,20 @@ def calculate_external_field(target_layer, target_field, join_layer, join_field,
     logger.debug("Calculating %s.%s from %s.%s" % (target_layer, target_field, join_layer, join_field))
 
     logger.debug("  Adding and calculating %s = %s" % (tmp_field_name, join_field))
-    arcpy.AddField_management(join_layer_layer, tmp_field_name, join_field_object.type)
-    arcpy.CalculateField_management(join_layer_layer, tmp_field_name, "!" + join_field + "!", "PYTHON", "")
-    logger.debug("  Field in join_layer_layer (%s)" % join_layer_layer)
-    for f in arcpy.ListFields(join_layer_layer):
-        logger.debug("    %s" % f.name)
-    logger.debug("  Field in join_layer (%s)" % join_layer)
-    for f in arcpy.ListFields(join_layer):
-        logger.debug("    %s" % f.name)
-    logger.debug("  Why does the %s now have a delete_me field??" % join_layer)  # FIXME
-    # raise ValueError("check if join_layer (%s) has been calculated" % join_layer) # It has been calculated.
-    # Why does changing the feature layer, change the underlying layer????
+    arcpy.AddField_management(join_layer_copy, tmp_field_name, join_field_object.type)
+    arcpy.CalculateField_management(join_layer_copy, tmp_field_name, "!" + join_field + "!", "PYTHON", "")
 
     logger.debug("  Spatially joining %s to %s" % (join_layer, target_layer))
     join_layer_buffered = "join_layer_buffered"
     delete_if_exists(join_layer_buffered)
     join_layer_buffered = arcpy.Buffer_analysis(
-        in_features=join_layer,
+        in_features=join_layer_copy,
         out_feature_class=join_layer_buffered,
         buffer_distance_or_field=-0.5)
     output = arcpy.SpatialJoin_analysis(target_layer, join_layer_buffered, output)
     output_fields = arcpy.ListFields(output)
     new_fields = [f for f in output_fields if f.name not in original_field_names]
     logger.debug("  Calculating %s = %s" % (target_field, tmp_field_name))
-    logger.debug("  Field in output (%s)" % output)
-    for f in arcpy.ListFields(output):
-        logger.debug("    %s" % f.name)
     arcpy.CalculateField_management(output, target_field, "!" + tmp_field_name + "!", "PYTHON", "") # FIXME: may need to make null values 0.
     logger.debug("  Deleting joined fields:")
     for f in new_fields:

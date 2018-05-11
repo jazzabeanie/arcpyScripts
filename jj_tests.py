@@ -193,44 +193,44 @@ def test_calculate_external_field():
             regexp = re.compile('from two_fields')
             assert(regexp.match("%s" % row))
     print "    pass"
-    # print "  Testing tmp_field_name is deleted..."
-    # output = "testing_join_field_is_deleted"
-    # conflicting_layer = jj.create_basic_polygon()
-    # arcpy.AddField_management(conflicting_layer, "first", "TEXT")
-    # arcpy.AddField_management(conflicting_layer, "second", "TEXT")
-    # arcpy.AddField_management(conflicting_layer, "delete_me", "TEXT")
-    # arcpy.CalculateField_management(
-    #     conflicting_layer,
-    #     "first",
-    #     "get_text()",
-    #     "PYTHON_9.3",
-    #     """def get_text():
-    #         return 'from conflicting_layer'""")
-    # arcpy.CalculateField_management(
-    #     conflicting_layer,
-    #     "second",
-    #     "get_text()",
-    #     "PYTHON_9.3",
-    #     """def get_text():
-    #         return 'from conflicting_layer'""")
-    # arcpy.CalculateField_management(
-    #     conflicting_layer,
-    #     "delete_me",
-    #     "get_text()",
-    #     "PYTHON_9.3",
-    #     """def get_text():
-    #         return 'this text should not be visible'""")
-    # jj.delete_if_exists(output)
-    # try:
-    #     output = jj.calculate_external_field(one_field, "first", conflicting_layer, "delete_me", output)
-    #     print("    fail: no error was raised")
-    # except AttributeError as e:
-    #     print("    pass")
-    # except Exception as e:
-    #     print("    fail: some other error %s" % e.args[0])
-    # print "  Testing spatial join works correctly for adjacent polygons..."
-    # print("    TODO")
-    # print "------"
+    print "  Testing tmp_field_name is deleted..."
+    output = "testing_join_field_is_deleted"
+    conflicting_layer = jj.create_basic_polygon()
+    arcpy.AddField_management(conflicting_layer, "first", "TEXT")
+    arcpy.AddField_management(conflicting_layer, "second", "TEXT")
+    arcpy.AddField_management(conflicting_layer, "delete_me", "TEXT")
+    arcpy.CalculateField_management(
+        conflicting_layer,
+        "first",
+        "get_text()",
+        "PYTHON_9.3",
+        """def get_text():
+            return 'from conflicting_layer'""")
+    arcpy.CalculateField_management(
+        conflicting_layer,
+        "second",
+        "get_text()",
+        "PYTHON_9.3",
+        """def get_text():
+            return 'from conflicting_layer'""")
+    arcpy.CalculateField_management(
+        conflicting_layer,
+        "delete_me",
+        "get_text()",
+        "PYTHON_9.3",
+        """def get_text():
+            return 'this text should not be visible'""")
+    jj.delete_if_exists(output)
+    try:
+        output = jj.calculate_external_field(one_field, "first", conflicting_layer, "delete_me", output)
+        print("    fail: no error was raised")
+    except AttributeError as e:
+        print("    pass")
+    except Exception as e:
+        print("    fail: some other error %s" % e.args[0])
+    print "  Testing spatial join works correctly for adjacent polygons..."
+    print("    TODO")
+    print "------"
 
 
 def test_get_file_from_path():
