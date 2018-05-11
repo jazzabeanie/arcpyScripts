@@ -155,6 +155,109 @@ def test_add_external_area_field():
                 print("      Pass")
             else:
                 print("      Fail: external area should have been 2000, but was %s" % row[0])
+    print("  Testing dissolve make tool calculate correctly")
+    print("    Testing area that needs dissolving, but didn't get it")
+    layer_with_area_to_grab_divided = jj.create_polygon(
+        "area_to_grab_divided",
+        [
+            (left_x, lower_y),
+            (left_x, upper_y-50),
+            (mid_right_x, upper_y-50),
+            (mid_right_x, lower_y),
+            (left_x, lower_y)
+        ], [
+            (left_x, upper_y-50),
+            (left_x, upper_y),
+            (mid_right_x, upper_y),
+            (mid_right_x, upper_y-50),
+            (left_x, upper_y-50)
+        ])
+    output = jj.add_external_area_field(
+        source_data,
+        "external_area",
+        layer_with_area_to_grab_divided,
+        dissolve=False)
+    with arcpy.da.SearchCursor(output, ["external_area"]) as cursor:
+        for row in cursor:
+            if row[0] == 2000:
+                print("      Fail: this should not have produced the correct output since dissolve was set to False")
+            else:
+                # Should fail because dissolve is required
+                print("      Pass")
+    print("    Testing area that needs dissolving, and gets it")
+    output = jj.add_external_area_field(
+        source_data,
+        "external_area",
+        layer_with_area_to_grab_divided,
+        dissolve=True)
+    with arcpy.da.SearchCursor(output, ["external_area"]) as cursor:
+        for row in cursor:
+            if row[0] == 2000:
+                print("      Pass")
+            else:
+                # Should pass here
+                print("      Fail: external area should have been 2000, but was %s" % row[0])
+    print("  Testing 1/1 external area outside in_features adds 0, not Null")
+    in_features_not_overlapping = jj.create_polygon(
+        "in_features_not_overlapping", [
+            (left_x, lower_y),
+            (left_x, upper_y),
+            (mid_left_x, upper_y),
+            (mid_left_x, lower_y),
+            (left_x, lower_y)])
+    non_intersecting_area = jj.create_polygon(
+        "non_intersecting_area", [
+            (mid_right_x, lower_y),
+            (mid_right_x, upper_y),
+            (right_x, upper_y),
+            (right_x, lower_y),
+            (mid_right_x, lower_y)])
+    output = jj.add_external_area_field(
+        in_features_not_overlapping,
+        "external_area",
+        non_intersecting_area,
+        dissolve=False)
+    with arcpy.da.SearchCursor(output, ["external_area"]) as cursor:
+        for row in cursor:
+            if row[0] == 0:
+                print("      Pass")
+            else:
+                print("      Fail: external area should have been 0, but was %s" % row[0])
+    print("  Testing 1/2 external area outside in_features adds 0, not Null")
+    in_features_some_overlapping = jj.create_polygon(
+        "in_features_some_overlapping",
+        [
+            (left_x, lower_y),
+            (left_x, upper_y),
+            (mid_left_x, upper_y),
+            (mid_left_x, lower_y),
+            (left_x, lower_y)
+        ],
+        [
+            (mid_left_x, lower_y),
+            (mid_left_x, upper_y),
+            (mid_right_x+10, upper_y),
+            (mid_right_x+10, lower_y),
+            (mid_left_x, lower_y)
+        ])
+    singular_intersecting_area = jj.create_polygon(
+        "singular_intersecting_area", [
+            (mid_right_x, lower_y),
+            (mid_right_x, upper_y),
+            (right_x, upper_y),
+            (right_x, lower_y),
+            (mid_right_x, lower_y)])
+    output = jj.add_external_area_field(
+        in_features_some_overlapping,
+        "external_area",
+        singular_intersecting_area,
+        dissolve=False)
+    with arcpy.da.SearchCursor(output, ["external_area"]) as cursor:
+        for row in cursor:
+            if row[0] in (0, 1000.0):
+                print("      Pass")
+            else:
+                print("      Fail: external area should have been 0 or 1000, but was %s" % row[0])
 
 
 def test_arguments_exist():
@@ -1134,12 +1237,12 @@ if __name__ == '__main__':
         # test_arguments_exist()
         # test_field_in_feature_class()
         # test_add_external_area_field()
-        test_calculate_external_field()
+        # test_calculate_external_field()
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
         # test_add_layer_count()
-        # test_redistributePolygon()
+        test_redistributePolygon()
         # test_create_point()
         # test_create_points()
         # test_create_polygon()

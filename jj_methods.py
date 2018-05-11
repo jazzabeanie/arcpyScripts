@@ -352,6 +352,11 @@ def add_external_area_field(
     in_copy = arcpy.CopyFeatures_management(
         in_features = in_features,
         out_feature_class=in_copy)
+    if dissolve:
+        delete_if_exists("layer_with_area_to_grab_dissolved")
+        layer_with_area_to_grab = arcpy.Dissolve_management(
+            in_features=layer_with_area_to_grab,
+            out_feature_class="layer_with_area_to_grab_dissolved")
     in_copy = arcpy.AddField_management(in_copy, new_field_name, "FLOAT")
     intersecting_with_external = "intersecting_with_external"
     delete_if_exists(intersecting_with_external)
@@ -365,8 +370,19 @@ def add_external_area_field(
         target_field = new_field_name,
         join_layer = intersecting_with_external,
         join_field = "Shape_Area",
-        # output = "%s_with_new_field" % get_file_from_path(in_features))
-        output = in_features)
+        output = "%s_with_new_field" % get_file_from_path(in_features))
+        # output = in_features) # TODO: change back FIXME
+    arcpy.CalculateField_management(
+        in_copy_with_new_field,
+        new_field_name,
+        "return_zero_where_None(!" + \
+            new_field_name  + "!)",
+        "PYTHON_9.3",
+        """def return_zero_where_None(value):
+               if value is None:
+                   return 0
+               else:
+                   return value""")
     return in_copy_with_new_field
 
 def renameFieldMap(fieldMap, name_text):
@@ -810,7 +826,8 @@ def redistributePolygon(redistribution_inputs):
                 total_properties_field + "!, !" + \
                 local_properties_field + "!, !"  + \
                 field_to_calculate  + "!, !" + \
-                total_area_field + "!, !Shape_Area!)",
+                total_area_field + "!, " + \
+                "!Shape_Area!)",
             "PYTHON_9.3",
             """def return_external_area_proportion_of_total(
                        total_external_area,
@@ -820,12 +837,17 @@ def redistributePolygon(redistribution_inputs):
                        field_to_calculate,
                        total_area_field,
                        Shape_Area):
-                   if total_external_area == None: # then total_external_area = 0
+                   if total_external_area == 0:
+                       # print("no external area, calculating by properties...")
                        if total_properties == None:
-                           new_value = int((float(Shape_Area)/float(total_area_field)) * int(field_to_calculate))
+                           # print("no properties, calculating by area...")
+                           # a floating point integer seems to be getting returned. It seems that arcpy will round this value to an integer if it is storing it in an integer field.
+                           new_value = Shape_Area/total_area_field * int(field_to_calculate)
+                           # new_value = int((float(Shape_Area)/float(total_area_field)) * int(field_to_calculate))
                            # print("new value = %s" % new_value)
                            # print("area = %s" % Shape_Area)
-                       new_value = int((float(local_properties)/total_properties) * int(field_to_calculate))
+                       else:
+                           new_value = int((float(local_properties)/total_properties) * int(field_to_calculate))
                    else:
                        new_value = int((float(local_external_area)/total_external_area) * int(field_to_calculate))
                    return new_value""")
@@ -937,12 +959,15 @@ def redistributePolygon(redistribution_inputs):
             count_features = land_parcels,
             output = "%s\\intersecting_polygons" % arcpy.env.workspace)
         logger.debug("Adding %s field to %s" % (local_intersecting_area, source_data))
-        # Adding local intersecting area to intersecting_polygons
         intersecting_polygons = add_external_area_field(
             in_features = intersecting_polygons,
             new_field_name = local_intersecting_area,
             layer_with_area_to_grab = redistribution_inputs["distribution_method"],
             dissolve = True)
+
+    delete_if_exists("before_calculating_fields")
+    before_calculating_fields = arcpy.Copy_management(intersecting_polygons, "before_calculating_fields")
+    logger.debug("check Dwelling1 of %s" % before_calculating_fields)
 
     ## Recalculate groth model fields
     for field in redistribution_inputs["fields_to_be_distributed"]:
