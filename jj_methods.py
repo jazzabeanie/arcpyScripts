@@ -628,14 +628,12 @@ def add_layer_count(in_features, count_features, new_field_name, output="in_memo
 
 
 def redistributePolygon(redistribution_inputs):
-    """This function redistributes a feature class to another feature class
-    based on different methods of distribution:
-    1: By proportion of area
-    2: By proportion of number of lots
-    3: By a combination of 1 and 2
-    feature_class: By passing this function a features class, it will
-                   redistribute by the proportion of the feature class that
-                   falls in each area.
+    """
+    This function redistributes the data in one feature class to another
+    feature class.
+
+    Params
+    ------
 
     It take a dictionary called 'redistribution_inputs' as an argument, which
     contains the following keys:
@@ -646,8 +644,15 @@ def redistributePolygon(redistribution_inputs):
     - fields_to_be_distributed
     - properties_layer
 
-    distribution_method: an integer, or a string containing the path to the
-                         distribution feature class.
+    distribution_method: an integer given below;
+                          1. distributes by proportion of area;
+                          2. distributes by number of lots;
+                          3. distributes by a combination of methods 1 and 2
+                             above (this is a special use case);
+                         or a string containing the path to the
+                         distribution feature class. If provided the fields
+                         will be distributed by the proportion of the area of
+                         this features class that falls within each polygon.
 
     fields_to_be_distributed: a list of the field names which should be
                               distributed.
@@ -656,6 +661,10 @@ def redistributePolygon(redistribution_inputs):
                       boundaries. This will be used whenever the distribution
                       by number of lots is called. If not provided, the
                       sde_vector.TCC.Land_Parcels will be used.
+
+    Returns
+    -------
+    No value returned.
     """
     local_number_of_properties_field = "intersected_total_properties"
     total_properties_field = "source_total_properties"
@@ -1045,7 +1054,7 @@ def redistributePolygon(redistribution_inputs):
     ## Spatially Join intersecting_polygons back to redistribution layer
     fieldmappings = arcpy.FieldMappings()
     for field in arcpy.ListFields(redistribution_inputs["layer_to_redistribute_to"]):
-        if field.name not in ['OBJECTID', 'Shape_Length', 'Shape_Area', 'Join_Count', 'Shape']:
+        if field.name not in ['OBJECTID', 'Shape_Length', 'Shape_Area', 'Join_Count', 'Shape', 'SHAPE']:
             logger.debug("Adding fieldmap for %s" % field.name)
             fm = arcpy.FieldMap()
             fm.addInputField(redistribution_inputs["layer_to_redistribute_to"], field.name)
