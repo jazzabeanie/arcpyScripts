@@ -25,9 +25,28 @@ except ImportError as e: # ie, when progressbar is not installed (this is untest
         return itterable
 jj = imp.load_source('jj_methods', r'\\corp\tcc\Plan & Comm Engage\Plan\Data\Planning_IP\Admin\Staff\Jared\GIS\Tools\arcpyScripts\jj_methods.py') # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
 
+# https://docs.python.org/2/library/argparse.html#module-argparse
+# https://docs.python.org/2/howto/argparse.html
+# parse the arguments:
+parser = argparse.ArgumentParser(description='TODO: write a little description about what the function does. Maybe this should be the same as the do_analysis docstring?')
+# TODO: set mandatory arguments here:
+# parser.add_argument("growth_by_gmz", help="A string containing the path to a csv file containing the growth information by GMZs.")
+# parser.add_argument("join_output", help="A string containing the path of the location to save the GMZ feature class once the growth data has been added.")
+# TODO: set optional arguments here:
+parser.add_argument("-t",
+                    "--testing",
+                    action="store_true",
+                    help="Indicates that the script is in testing mode. " + \
+                         "Gives development options, increased logging level.")
+args = parser.parse_args()
+if args.testing:
+    testing = True
+    print("Testing mode = %s" % testing)
+else:
+    testing = False
+
 # arcpy.env.workspace = "in_memory" # I think some tools aren't compatible with in_memory workspaces (like the redistributePolygon tool).
 arcpy.env.workspace = "C:\TempArcGIS\scratchworkspace.gdb"
-testing = True
 now = r'%s' % datetime.now().strftime("%Y%m%d%H%M")
 
 if __name__ == '__main__':
