@@ -416,7 +416,7 @@ def get_directory_from_path(path):
     if os.path.dirname(path):
         return os.path.dirname(path)
     else:
-        raise AttributeError("get_directory_from_path received a string with no path. What should be the default behaviour here? return arcpy.env.workspace of returnt he current working directory from os.path.abspath()?")
+        raise AttributeError("get_directory_from_path received a string with no path. What should be the default behaviour here? return arcpy.env.workspace or return the current working directory from os.path.abspath()?")
 
 
 def test_print():
@@ -1074,7 +1074,7 @@ def redistributePolygon(redistribution_inputs):
         in_features=intersecting_polygons,
         out_feature_class=intersecting_polygons_buffered,
         buffer_distance_or_field=-1)
-    arcpy.SpatialJoin_analysis(
+    output = arcpy.SpatialJoin_analysis(
         target_features=desired_shape,
         join_features=intersecting_polygons_buffered,
         out_feature_class=redistribution_inputs["output_filename"],
@@ -1082,6 +1082,8 @@ def redistributePolygon(redistribution_inputs):
         join_type="KEEP_ALL",
         field_mapping=fieldmappings,
         match_option="Intersect")
+    assert os.sep in str(output)
+    redistribution_inputs["output_filename"] = str(output)
     logger.info("Successfully redistributed %s to %s" % (source_data, desired_shape))
     logger.info("intersecting_polygons file can be found at %s\\%s" % (arcpy.env.workspace, intersecting_polygons))
     logger.info("Output file can be found at %s" % redistribution_inputs["output_filename"])
@@ -1190,3 +1192,20 @@ def join_csv(in_data, in_field, csv, csv_field, included_fields="#"):
         fields=included_fields)
     arcpy.Delete_management(arcpy.env.workspace+"\\temp_table")
     log('%s joined to %s' % (csv, in_data))
+
+def export_to_csv(in_data, out_csv):
+    """Write the input table to a csv file."""
+    from csv import writer
+    logger.debug("Exporting %s to %s" % (in_data, out_csv))
+    fields = arcpy.ListFields(in_data)
+    field_names = [f.name for f in fields]
+    logger.debug("  fields to add: %s" % field_names)
+    if arcpy.Exists(out_csv):
+        logger.warning("WARNING: %s was overwritten" % out_csv)
+    with open(out_csv, 'wb') as f:
+        w = writer(f)
+        w.writerow(field_names)
+        with arcpy.da.SearchCursor(in_data, field_names) as cursor:
+            for row in cursor:
+                w.writerow(row)
+

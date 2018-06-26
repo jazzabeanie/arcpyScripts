@@ -875,6 +875,13 @@ def test_redistributePolygon():
         else:
             log("    Fail: total dwellings in %s should be 1, but was %s. This error was unexpected and needs to be investigated." % (redistributePolygonInputs["output_filename"], total_dwellings))
 
+    def testing_that_output_contains_full_path():
+        log("  Testing that the output_filename value of the resulting dictionary contains the full path to the output layer...")
+        if os.path.dirname(redistributePolygonInputs["output_filename"]):
+            log("    Pass")
+        else:
+            log("    Fail: output_filename was not the full path (%s)" % redistributePolygonInputs["output_filename"])
+
 
     testing_number_of_fields()
     testing_invalid_distribution_method_is_caught()
@@ -885,6 +892,7 @@ def test_redistributePolygon():
     testing_generic_distribution_method()
     # testing_for_rounding() # tool currently has no way to combat this
     testing_for_integerising()
+    testing_that_output_contains_full_path()
     log("------")
 
 
@@ -1039,7 +1047,7 @@ def test_create_basic_polygon():
         print "    Pass"
     else:
         print "    Fail: creates %s features by default, should be 1" % number_of_features
-    print("  Testing creaet_polygon returns a unicode string...")
+    print("  Testing create_polygon returns a unicode string...")
     result = jj.create_basic_polygon()
     if type(result) == type(u'blah'):
         print("    Pass")
@@ -1228,28 +1236,46 @@ def test_get_sum():
     print "------"
 
 
+def test_export_to_csv():
+    print("Testing export_to_csv...")
+    print("  Testing basic polygon is exported to csv file...")
+    print(" arcpy.Exists('testing_export_to_csv') = %s" % arcpy.Exists('testing_export_to_csv'))
+    jj.delete_if_exists("testing_export_to_csv")
+    some_feature_class = jj.create_basic_polygon("testing_export_to_csv")
+    output_csv = r'C:\delete_me.csv'
+    jj.delete_if_exists(output_csv)
+    jj.export_to_csv(some_feature_class, output_csv)
+    if arcpy.Exists(output_csv):
+        print("    pass")
+        jj.delete_if_exists(output_csv)
+    else:
+        print("    fail")
+
+
+
 if __name__ == '__main__':
     try:
         logging.info("Running tests")
         logging.info("")
-        test_delete_if_exists()
-        test_is_polygon()
-        test_arguments_exist()
-        test_field_in_feature_class()
-        test_add_external_area_field()
-        test_calculate_external_field()
-        test_get_file_from_path()
-        test_get_directory_from_path()
-        test_renameFieldMap()
-        test_add_layer_count()
-        test_redistributePolygon()
-        test_create_point()
-        test_create_points()
-        test_create_polygon()
-        test_create_basic_polygon()
-        test_for_each_feature()
-        test_join_csv()
-        test_get_sum()
+        # test_delete_if_exists()
+        # test_is_polygon()
+        # test_arguments_exist()
+        # test_field_in_feature_class()
+        # test_add_external_area_field()
+        # test_calculate_external_field()
+        # test_get_file_from_path()
+        # test_get_directory_from_path()
+        # test_renameFieldMap()
+        # test_add_layer_count()
+        # test_redistributePolygon()
+        # test_create_point()
+        # test_create_points()
+        # test_create_polygon()
+        # test_create_basic_polygon()
+        # test_for_each_feature()
+        # test_join_csv()
+        # test_get_sum()
+        test_export_to_csv()
     except arcpy.ExecuteError:
         print arcpy.GetMessages(2)
         logging.exception(arcpy.GetMessages(2))
@@ -1257,4 +1283,4 @@ if __name__ == '__main__':
         logging.exception(e.args[0])
         print e.args[0]
 
-    # os.system('pause')
+    os.system('pause')
