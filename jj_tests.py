@@ -518,8 +518,17 @@ def test_add_layer_count():
             except AttributeError as e:
                 print("    Fail: an Attribute error was raised")
 
+        def test_original_layer_is_not_modified():
+            print("  Testing that the input layer is not modified")
+            if jj.field_in_feature_class(count_field_name, boundary_layer):
+                print("    fail")
+            else:
+                print("    pass")
+
+
         test_counts_correctly_by_centroid()
         test_points_can_be_used_as_count_layer()
+        test_original_layer_is_not_modified()
 
     test_by_area()
     test_by_centroid()
@@ -1266,7 +1275,7 @@ if __name__ == '__main__':
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
-        # test_add_layer_count()
+        test_add_layer_count()
         # test_redistributePolygon()
         # test_create_point()
         # test_create_points()
@@ -1275,7 +1284,7 @@ if __name__ == '__main__':
         # test_for_each_feature()
         # test_join_csv()
         # test_get_sum()
-        test_export_to_csv()
+        # test_export_to_csv()
     except arcpy.ExecuteError:
         print arcpy.GetMessages(2)
         logging.exception(arcpy.GetMessages(2))

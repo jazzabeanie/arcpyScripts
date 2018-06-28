@@ -564,6 +564,11 @@ def add_layer_count(in_features, count_features, new_field_name, output="in_memo
         Creates a new field in in_features called new_field_name, then populates
         it with the number of count_features' centroids that fall inside it.
         """
+        logger.debug("    Copying in_features to output (%s) so that the original is not modified" % output)
+        delete_if_exists(output)
+        output = arcpy.CopyFeatures_management(
+            in_features=in_features,
+            out_feature_class=output)
 
         # TODO: refactor this to use count_features as passed in
         in_features_fl = "in_features_fl"
@@ -604,19 +609,19 @@ def add_layer_count(in_features, count_features, new_field_name, output="in_memo
             stats,
             "Join_Count SUM",
             "JOIN_FID") # is this field auto added by spatial join?
-        logger.debug("    joining back to %s" % in_features)
+        logger.debug("    joining back to %s" % output)
         arcpy.JoinField_management(
-            in_features,
+            output,
             "OBJECTID",
             stats,
             "JOIN_FID",
             "FREQUENCY")
         logger.debug("    renaming 'FREQUENCY' to '%s'" % new_field_name)
         arcpy.AlterField_management(
-            in_features,
+            output,
             "FREQUENCY",
             new_field_name)
-        return in_features
+        return output
 
     if by_area is True:
         # TODO: check that count_features is a polygon
