@@ -450,7 +450,9 @@ def add_layer_count(in_features, count_features, new_field_name, output="in_memo
     third: new_field_name
         The name of the new field that will contain the count
     fourth: output (optional)
-        The output location to save the new layer
+        The output location to save the new layer. If not provided, the
+        original layer will be modified (I think this might only be the case
+        where by_area=False)
     fifth: by_area (optional)
         A boolean. If True, the count_features will be counted by the area that
         falls within the in_features. If False (default), the count_features
@@ -559,16 +561,19 @@ def add_layer_count(in_features, count_features, new_field_name, output="in_memo
         return output
 
 
-    def add_layer_count_by_centroid(in_features, count_features, new_field_name, output):
+    def add_layer_count_by_centroid(in_features, count_features, new_field_name, output=None):
         """
         Creates a new field in in_features called new_field_name, then populates
         it with the number of count_features' centroids that fall inside it.
         """
-        logger.debug("    Copying in_features to output (%s) so that the original is not modified" % output)
-        delete_if_exists(output)
-        output = arcpy.CopyFeatures_management(
-            in_features=in_features,
-            out_feature_class=output)
+        if output:
+            logger.debug("    Copying in_features to output (%s) so that the original is not modified" % output)
+            delete_if_exists(output)
+            output = arcpy.CopyFeatures_management(
+                in_features=in_features,
+                out_feature_class=output)
+        else:
+            output=in_features
 
         # TODO: refactor this to use count_features as passed in
         in_features_fl = "in_features_fl"
@@ -782,7 +787,9 @@ def redistributePolygon(redistribution_inputs):
                 larger_properties_field + "!, !" + \
                 local_number_of_properties_field + "!, !"  + \
                 field_to_calculate  + "!, !" + \
-                total_area_field + "!, !Shape_Area!)",
+                # total_area_field + "!)",
+                total_area_field + "!, !" + \
+                "shape.area@squaremeters" + "!)",
             "PYTHON_9.3",
             """def return_number_proportion_of_total(
                        total_properties,
@@ -804,7 +811,18 @@ def redistributePolygon(redistribution_inputs):
         """
         logger.debug("Executing calculate_field_proportion_based_on_combination(%s, %s, %s, %s)" % (field_to_calculate, larger_properties_field, local_number_of_properties_field, total_area_field))
         logger.debug("    Calculating %s field as the average value between area and number of lots method" % field_to_calculate)
-        arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_average_value(!"+larger_properties_field+"!, !"+local_number_of_properties_field+"!, !" + field_to_calculate + "!, !" + total_area_field + "!, !Shape_Area!)", "PYTHON_9.3", """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate):
+        arcpy.CalculateField_management(
+        intersecting_polygons,
+        field_to_calculate,
+        "return_average_value(!" + \
+            larger_properties_field + "!, !" + \
+            local_number_of_properties_field + "!, !" + \
+            field_to_calculate + "!, !" + \
+            total_area_field + "!, !" + \
+            # "Shape_Area" + "!)",
+            "shape.area@squaremeters" + "!)",
+        "PYTHON_9.3",
+        """def return_number_proportion_of_total(total_properties, local_properties, field_to_calculate):
                 new_value =  (float(local_properties)/total_properties) * int(field_to_calculate)
                 return int(new_value)
             def return_area_proportion_of_total(GMZ_total_area, Shape_Area, field_to_calculate):
@@ -938,15 +956,16 @@ def redistributePolygon(redistribution_inputs):
         # Adding total properties to source_data
         source_data = add_layer_count(new_field_name = total_properties_field,
             in_features = source_data,
-            count_features = land_parcels,
-            output = "%s\\source_data" % arcpy.env.workspace)
+            count_features = land_parcels)
+            # output = "%s\\source_data" % arcpy.env.workspace)
     elif arcpy.Exists(redistribution_inputs["distribution_method"]):
         logger.debug("Adding %s to %s" % (total_properties_field, source_data))
         # Adding total properties to source_data
-        source_data = add_layer_count(new_field_name = total_properties_field,
+        source_data = add_layer_count(
+            new_field_name = total_properties_field,
             in_features = source_data,
-            count_features = land_parcels,
-            output = "%s\\source_data" % arcpy.env.workspace)
+            count_features = land_parcels)
+            # output = "%s\\source_data" % arcpy.env.workspace)
         logger.debug("Adding %s field to %s" % (total_intersecting_area, source_data))
         # Adding total intersecting area to source_data
         source_data = add_external_area_field(
@@ -961,17 +980,19 @@ def redistributePolygon(redistribution_inputs):
     if redistribution_inputs["distribution_method"] in (2, 3):
         logger.debug("Adding %s to %s" % (local_number_of_properties_field, intersecting_polygons))
         # Adding local number of properties to intersecting_polygons
-        intersecting_polygons = add_layer_count(new_field_name = local_number_of_properties_field,
+        intersecting_polygons = add_layer_count(
+            new_field_name = local_number_of_properties_field,
             in_features = intersecting_polygons,
-            count_features = land_parcels,
-            output = "%s\\intersecting_polygons" % arcpy.env.workspace)
+            count_features = land_parcels)
+            # output = "%s\\intersecting_polygons" % arcpy.env.workspace)
     elif arcpy.Exists(redistribution_inputs["distribution_method"]):
         logger.debug("Adding %s to %s" % (local_number_of_properties_field, intersecting_polygons))
         # Adding local number of properties to intersecting_polygons
-        intersecting_polygons = add_layer_count(new_field_name = local_number_of_properties_field,
+        intersecting_polygons = add_layer_count(
+            new_field_name = local_number_of_properties_field,
             in_features = intersecting_polygons,
-            count_features = land_parcels,
-            output = "%s\\intersecting_polygons" % arcpy.env.workspace)
+            count_features = land_parcels)
+            # output = "%s\\intersecting_polygons" % arcpy.env.workspace)
         logger.debug("Adding %s field to %s" % (local_intersecting_area, source_data))
         intersecting_polygons = add_external_area_field(
             in_features = intersecting_polygons,
@@ -979,9 +1000,9 @@ def redistributePolygon(redistribution_inputs):
             layer_with_area_to_grab = redistribution_inputs["distribution_method"],
             dissolve = True)
 
-    delete_if_exists("before_calculating_fields")
-    before_calculating_fields = arcpy.Copy_management(intersecting_polygons, "before_calculating_fields")
-    logger.debug("check Dwelling1 of %s" % before_calculating_fields)
+    # delete_if_exists("before_calculating_fields")
+    # before_calculating_fields = arcpy.Copy_management(intersecting_polygons, "before_calculating_fields") # FIXME: this raises an ExecuteError. haven't investigates why, but I would use CopyFeatures_Management instead of Copy_management
+    # logger.debug("check Dwelling1 of %s" % before_calculating_fields)
 
     ## Recalculate groth model fields
     for field in redistribution_inputs["fields_to_be_distributed"]:
@@ -992,6 +1013,7 @@ def redistributePolygon(redistribution_inputs):
                     field,
                     total_area_field)
             elif redistribution_inputs["distribution_method"] == 2:
+                logger.debug("fields in intersecting_polygons = %s" % [f.name for f in arcpy.ListFields(intersecting_polygons)])
                 logger.debug("calculating %s field from total GMZ number of properties" % field)
                 calculate_field_proportion_based_on_number_of_lots(
                     field,

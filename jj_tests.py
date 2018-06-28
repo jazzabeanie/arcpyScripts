@@ -37,6 +37,7 @@ logging.basicConfig(filename='jj_tests.log',
     format='%(asctime)s @ %(lineno)d: %(message)s',
     datefmt='%Y-%m-%d,%H:%M:%S')
 
+logging.debug("workspace = %s" % arcpy.env.scratchGDB)
 
 def log(text):
     print(text)
@@ -1276,7 +1277,7 @@ if __name__ == '__main__':
         # test_get_directory_from_path()
         # test_renameFieldMap()
         test_add_layer_count()
-        # test_redistributePolygon()
+        test_redistributePolygon()
         # test_create_point()
         # test_create_points()
         # test_create_polygon()
