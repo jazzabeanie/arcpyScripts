@@ -399,6 +399,12 @@ def test_add_layer_count():
     far_right_x =479610
     bottom_y = 7871600
     top_y = 7871590
+    boundary_layer_mod = jj.create_basic_polygon(
+        output="boundary_layer_mod",
+        left_x = far_left_x,
+        lower_y = bottom_y,
+        right_x = 479602,
+        upper_y = top_y)
     boundary_layer = jj.create_basic_polygon(
         output="boundary_layer",
         left_x = far_left_x,
@@ -494,11 +500,11 @@ def test_add_layer_count():
         test_counts_correctly_by_area()
 
     def test_by_centroid():
-        result = jj.add_layer_count(boundary_layer, count_layer, count_field_name)
+        result = jj.add_layer_count(boundary_layer_mod, count_layer, count_field_name)
 
         def test_counts_correctly_by_centroid():
             print("  Testing: newly added field counts the number of occurences of")
-            print("  count_layer that are inside the input boundary_layer by each centroid")
+            print("  count_layer that are inside the input boundary_layer_mod by each centroid")
             print("  that falls within each shape...")
             with arcpy.da.SearchCursor(result, count_field_name) as cursor:
                 for row in cursor:
@@ -519,17 +525,123 @@ def test_add_layer_count():
             except AttributeError as e:
                 print("    Fail: an Attribute error was raised")
 
+        def test_original_layer_is_modified():
+            print("  Testing that the input layer is not modified when no output provided")
+            if jj.field_in_feature_class(count_field_name, boundary_layer_mod):
+                print("    pass")
+            else:
+                print("    fail")
+
+        result_w_output = jj.add_layer_count(boundary_layer, count_layer, count_field_name, output="add_layer_count_w_output")
+
         def test_original_layer_is_not_modified():
-            print("  Testing that the input layer is not modified")
+            print("  Testing that the input layer is not modified when output provided")
             if jj.field_in_feature_class(count_field_name, boundary_layer):
                 print("    fail")
             else:
                 print("    pass")
 
 
+        def test_new_field_already_exists():
+            print("  Testing that if the field being added already exists, an error is raised")
+            layer_with_field = jj.create_basic_polygon()
+            arcpy.AddField_management(
+                in_table=layer_with_field,
+                field_name="existing_field",
+                field_type="TEXT")
+            try:
+                jj.add_layer_count(
+                    in_features=layer_with_field,
+                    count_features=count_layer,
+                    new_field_name="existing_field")
+                print("    fail: no AttributeError was raised")
+            except AttributeError as e:
+                print("    pass")
+
+        def test_invalid_existing_fields_are_caught():
+            print("  Testing that if any fields used by the tool already exist, they are address, or an error is raised.")
+            # boundary_layer
+            # count_layer
+            boundary_layer_w_TARGET_FID = jj.create_basic_polygon()
+            arcpy.AddField_management(
+                in_table=boundary_layer_w_TARGET_FID,
+                field_name="TARGET_FID",
+                field_type="TEXT")
+
+            try:
+                jj.add_layer_count(
+                    in_features=boundary_layer_w_TARGET_FID,
+                    count_features=count_layer,
+                    new_field_name="some_count")
+                print("    fail: no AttributeError was raised")
+            except AttributeError as e:
+                if re.match('.*TARGET_FID.*', e.args[0]):
+                    log("    Pass")
+                else:
+                    log("    Fail: appropriate error not raised when TARGET_FID already existed")
+                    log(e.args[0])
+
+            boundary_layer_w_JOIN_FID = jj.create_basic_polygon()
+            arcpy.AddField_management(
+                in_table=boundary_layer_w_JOIN_FID,
+                field_name="JOIN_FID",
+                field_type="TEXT")
+            try:
+                jj.add_layer_count(
+                    in_features=boundary_layer_w_JOIN_FID,
+                    count_features=count_layer,
+                    new_field_name="some_count")
+                print("    fail: no AttributeError was raised")
+            except AttributeError as e:
+                if re.match('.*JOIN_FID.*', e.args[0]):
+                    log("    Pass")
+                else:
+                    log("    Fail: appropriate error not raised when JOIN_FID already existed")
+                    log(e.args[0])
+
+            boundary_layer_w_Join_Count = jj.create_basic_polygon()
+            arcpy.AddField_management(
+                    in_table=boundary_layer_w_Join_Count,
+                    field_name= "Join_Count",
+                    field_type="TEXT")
+            try:
+                jj.add_layer_count(
+                    in_features=boundary_layer_w_Join_Count,
+                    count_features=count_layer,
+                    new_field_name="some_count")
+                print("    fail: no AttributeError was raised")
+            except AttributeError as e:
+                if re.match('.*Join_Count.*', e.args[0]):
+                    log("    Pass")
+                else:
+                    log("    Fail: appropriate error not raised when Join_Count already existed")
+                    log(e.args[0])
+
+            boundary_layer_w_FREQUENCY = jj.create_basic_polygon()
+            arcpy.AddField_management(
+                    in_table=boundary_layer_w_FREQUENCY,
+                    field_name= "FREQUENCY",
+                    field_type="TEXT")
+            try:
+                jj.add_layer_count(
+                    in_features=boundary_layer_w_FREQUENCY,
+                    count_features=count_layer,
+                    new_field_name="some_count")
+                print("    fail: no AttributeError was raised")
+            except AttributeError as e:
+                if re.match('.*FREQUENCY.*', e.args[0]):
+                    log("    Pass")
+                else:
+                    log("    Fail: appropriate error not raised when FREQUENCY already existed")
+                    log(e.args[0])
+
+
         test_counts_correctly_by_centroid()
         test_points_can_be_used_as_count_layer()
+        test_original_layer_is_modified()
         test_original_layer_is_not_modified()
+        test_new_field_already_exists()
+        test_invalid_existing_fields_are_caught()
 
     test_by_area()
     test_by_centroid()
@@ -1277,7 +1389,7 @@ if __name__ == '__main__':
         # test_get_directory_from_path()
         # test_renameFieldMap()
         test_add_layer_count()
-        test_redistributePolygon()
+        # test_redistributePolygon()
         # test_create_point()
         # test_create_points()
         # test_create_polygon()

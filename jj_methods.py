@@ -435,7 +435,7 @@ def print_table(table):
             print(row)
 
 
-def add_layer_count(in_features, count_features, new_field_name, output="in_memory\\add_layer_count_result", by_area=False):
+def add_layer_count(in_features, count_features, new_field_name, output=None, by_area=False):
     """
     Creates a new field in in_features called new_field_name, then populates it
     with the number of count_features that fall inside it.
@@ -483,8 +483,12 @@ def add_layer_count(in_features, count_features, new_field_name, output="in_memo
             appendix += 1
         return name
 
-    def add_layer_count_by_area(in_features, count_features, new_field_name, output):
+    def add_layer_count_by_area(in_features, count_features, new_field_name, output=None):
         """Creates a new field in in_features called new_field_name, then populates it with the number of count_features that fall inside it."""
+
+        if not output:
+            # Do I need to add functionality to modify the in_features? This is the way add_layer_count_by_centroid is setup.
+            output="add_layer_count_result"
 
         id_field = get_identifying_field(in_features)
         count_field = get_count_field_name(count_features)
@@ -564,7 +568,9 @@ def add_layer_count(in_features, count_features, new_field_name, output="in_memo
     def add_layer_count_by_centroid(in_features, count_features, new_field_name, output=None):
         """
         Creates a new field in in_features called new_field_name, then populates
-        it with the number of count_features' centroids that fall inside it.
+        it with the number of count_features' centroids that fall inside it. If
+        output is provided, it creates a new layer as the output, otherwise, it
+        appends the layer count to in_features.
         """
         if output:
             logger.debug("    Copying in_features to output (%s) so that the original is not modified" % output)
@@ -576,17 +582,34 @@ def add_layer_count(in_features, count_features, new_field_name, output="in_memo
             output=in_features
 
         # TODO: refactor this to use count_features as passed in
-        in_features_fl = "in_features_fl"
-        delete_if_exists(in_features_fl)
-        logger.debug("    making feature layer from feature class %s" % in_features)
-        in_features_fl = arcpy.MakeFeatureLayer_management(
-            in_features = in_features,
-            out_layer = in_features_fl)
 
-        # why delete this feild?
-        if (field_in_feature_class("TARGET_FID", in_features_fl)):
-            logger.debug("    deleteing TARGET_FID field from in_features_fl")
-            arcpy.DeleteField_management(in_features_fl, "TARGET_FID")
+        # TODO: why create feature layer? Is it so I can delete the TARGET_FID field below?
+        # in_features_fl = "in_features_fl"
+        # delete_if_exists(in_features_fl)
+        # logger.debug("    making feature layer from feature class %s" % in_features)
+        # in_features_fl = arcpy.MakeFeatureLayer_management(
+        #     in_features = in_features,
+        #     out_layer = in_features_fl)
+        if field_in_feature_class("FREQUENCY", in_features) or field_in_feature_class("FREQUENCY", count_features):
+            raise AttributeError("Error, FREQUENCY already exists in either %s of %s. TODO: figure out how to address this situation." % (in_features, count_features))
+        if field_in_feature_class("Join_Count", in_features) or field_in_feature_class("Join_Count", count_features):
+            raise AttributeError("Error, Join_Count already exists in either %s of %s. TODO: figure out how to address this situation." % (in_features, count_features))
+        if field_in_feature_class("TARGET_FID", in_features) or field_in_feature_class("JOIN_FID", in_features):
+            raise AttributeError("Error, TARGET_FID or JOIN_FID already exists in %s. TODO: test the code below before removing this line." % in_features)
+
+            in_features_cleaned = "in_features_cleaned"
+            delete_if_exists(in_features_cleaned)
+            logger.debug("    making a copy of in_features so that TARGET_FID can be deleted" % in_features)
+            in_features_cleaned = arcpy.CopyFeatures_management(
+                in_features = in_features,
+                out_feature_class = in_features_cleaned)
+
+            if (field_in_feature_class("TARGET_FID", in_features_cleaned)):
+                logger.debug("    deleteing TARGET_FID field from in_features_cleaned")
+                arcpy.DeleteField_management(in_features_cleaned, "TARGET_FID")
+            # TODO: also delete JOIN_FID if it exists
+        else:
+            in_features_cleaned = in_features
 
         # multiple deletes needed if running from in ArcMap. Why??
         count_features_joined = "count_features_joined"
@@ -597,10 +620,10 @@ def add_layer_count(in_features, count_features, new_field_name, output="in_memo
         delete_if_exists(stats)
         delete_if_exists(stats)
         delete_if_exists(stats)
-        logger.debug("    joining count_features to %s and outputing to %s" % (in_features_fl, count_features_joined))
+        logger.debug("    joining count_features to %s and outputing to %s" % (in_features_cleaned, count_features_joined))
         arcpy.SpatialJoin_analysis(
             target_features = count_features,
-            join_features = in_features_fl,
+            join_features = in_features_cleaned,
             out_feature_class = count_features_joined,
             join_operation = "JOIN_ONE_TO_MANY",
             join_type = "KEEP_COMMON",
@@ -610,17 +633,20 @@ def add_layer_count(in_features, count_features, new_field_name, output="in_memo
             distance_field_name = "#")
         logger.debug("    Calculating statistics table at stats")
         arcpy.Statistics_analysis(
-            count_features_joined,
-            stats,
-            "Join_Count SUM",
-            "JOIN_FID") # is this field auto added by spatial join?
+            in_table = count_features_joined,
+             out_table = stats,
+            statistics_fields = "Join_Count SUM",
+            # the JOIN_FID field added by spatial join if JOIN_ONE_TO_MANY is
+            # selected. I think it corresponds with the OBJECTID of the
+            # join_feature used in Spatial Join
+            case_field = "JOIN_FID")
         logger.debug("    joining back to %s" % output)
         arcpy.JoinField_management(
-            output,
-            "OBJECTID",
-            stats,
-            "JOIN_FID",
-            "FREQUENCY")
+            in_data = output,
+            in_field = "OBJECTID",
+            join_table = stats,
+            join_field = "JOIN_FID",
+            fields = "FREQUENCY")
         logger.debug("    renaming 'FREQUENCY' to '%s'" % new_field_name)
         arcpy.AlterField_management(
             output,
