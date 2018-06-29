@@ -573,6 +573,7 @@ def add_layer_count(in_features, count_features, new_field_name, output=None, by
         appends the layer count to in_features.
         """
         if output:
+            raise RuntimeError("This code doesn't currently work because when the file is copied, the features get a new OBJECTID and so the join is incorrect. TODO: store the OBJECTID as a new field called OBJECTID_org before copying. Then join based on this field")
             logger.debug("    Copying in_features to output (%s) so that the original is not modified" % output)
             delete_if_exists(output)
             output = arcpy.CopyFeatures_management(
@@ -621,7 +622,7 @@ def add_layer_count(in_features, count_features, new_field_name, output=None, by
         delete_if_exists(stats)
         delete_if_exists(stats)
         logger.debug("    joining count_features to %s and outputing to %s" % (in_features_cleaned, count_features_joined))
-        arcpy.SpatialJoin_analysis(
+        count_features_joined = arcpy.SpatialJoin_analysis(
             target_features = count_features,
             join_features = in_features_cleaned,
             out_feature_class = count_features_joined,
@@ -643,15 +644,15 @@ def add_layer_count(in_features, count_features, new_field_name, output=None, by
         logger.debug("    joining back to %s" % output)
         arcpy.JoinField_management(
             in_data = output,
-            in_field = "OBJECTID",
+            in_field = "OBJECTID", # FIXME: this only works if the in_features are modified in place (ie, if no output is provided)
             join_table = stats,
             join_field = "JOIN_FID",
             fields = "FREQUENCY")
-        logger.debug("    renaming 'FREQUENCY' to '%s'" % new_field_name)
-        arcpy.AlterField_management(
-            output,
-            "FREQUENCY",
-            new_field_name)
+         logger.debug("    renaming 'FREQUENCY' to '%s'" % new_field_name)
+         arcpy.AlterField_management(
+             output,
+             "FREQUENCY",
+             new_field_name)
         return output
 
     if by_area is True:
@@ -1199,7 +1200,7 @@ def apply_symbology(source, destinations):
 
 
 def log(text):
-    # print(text)
+    print(text)
     logger.info(text)
     # TODO: if arcpy has attribute:
     #     arcpy.AddMessage(text)
