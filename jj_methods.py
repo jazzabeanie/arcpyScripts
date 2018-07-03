@@ -572,45 +572,45 @@ def add_layer_count(in_features, count_features, new_field_name, output=None, by
         output is provided, it creates a new layer as the output, otherwise, it
         appends the layer count to in_features.
         """
+        # in_features_copied = False
+
         if output:
-            raise RuntimeError("This code doesn't currently work because when the file is copied, the features get a new OBJECTID and so the join is incorrect. TODO: store the OBJECTID as a new field called OBJECTID_org before copying. Then join based on this field")
             logger.debug("    Copying in_features to output (%s) so that the original is not modified" % output)
             delete_if_exists(output)
-            output = arcpy.CopyFeatures_management(
-                in_features=in_features,
-                out_feature_class=output)
+            # Copy_management will perserve OBJECTID field, which is key to the
+            # stats table being joined back the output
+            output = arcpy.Copy_management(
+                in_data = in_features,
+                out_data = output)
+            # in_features_copied = True
         else:
             output=in_features
 
-        # TODO: refactor this to use count_features as passed in
+        def clean_in_features():
+            all_input_fields = [f.name for f in arcpy.ListFields(in_features)] + [f.name for f in arcpy.ListFields(count_features)]
+            invalid_fields = ["FREQUENCY", "Join_Count", "TARGET_FID", "JOIN_FID"]
+            invalid_fields_in_inputs = list(set(all_input_fields).intersection(invalid_fields))
+            if invalid_fields_in_inputs:
+                logging.debug("The following fields exist in either %s or %s: %s" % (in_features, count_features, invalid_fields_in_inputs))
+                in_features_cleaned = "in_features_cleaned"
+                delete_if_exists(in_features_cleaned)
+                logger.debug("    making a copy of in_features so that invalid fields can be deleted" % in_features)
+                # Copy_management will perserve OBJECTID field, which is key to
+                # the stats table being joined back the output
+                in_features_cleaned = arcpy.Copy_management(
+                    in_data = in_features,
+                    out_data = in_features_cleaned)
+                # in_features_copied = True
 
-        # TODO: why create feature layer? Is it so I can delete the TARGET_FID field below?
-        # in_features_fl = "in_features_fl"
-        # delete_if_exists(in_features_fl)
-        # logger.debug("    making feature layer from feature class %s" % in_features)
-        # in_features_fl = arcpy.MakeFeatureLayer_management(
-        #     in_features = in_features,
-        #     out_layer = in_features_fl)
-        if field_in_feature_class("FREQUENCY", in_features) or field_in_feature_class("FREQUENCY", count_features):
-            raise AttributeError("Error, FREQUENCY already exists in either %s of %s. TODO: figure out how to address this situation." % (in_features, count_features))
-        if field_in_feature_class("Join_Count", in_features) or field_in_feature_class("Join_Count", count_features):
-            raise AttributeError("Error, Join_Count already exists in either %s of %s. TODO: figure out how to address this situation." % (in_features, count_features))
-        if field_in_feature_class("TARGET_FID", in_features) or field_in_feature_class("JOIN_FID", in_features):
-            raise AttributeError("Error, TARGET_FID or JOIN_FID already exists in %s. TODO: test the code below before removing this line." % in_features)
+                for field in invalid_fields_in_inputs:
+                    logger.debug("    deleteing %s field from in_features_cleaned" % field)
+                    arcpy.DeleteField_management(in_features_cleaned, field)
+                return in_features_cleaned
+            else:
+                return in_features
 
-            in_features_cleaned = "in_features_cleaned"
-            delete_if_exists(in_features_cleaned)
-            logger.debug("    making a copy of in_features so that TARGET_FID can be deleted" % in_features)
-            in_features_cleaned = arcpy.CopyFeatures_management(
-                in_features = in_features,
-                out_feature_class = in_features_cleaned)
-
-            if (field_in_feature_class("TARGET_FID", in_features_cleaned)):
-                logger.debug("    deleteing TARGET_FID field from in_features_cleaned")
-                arcpy.DeleteField_management(in_features_cleaned, "TARGET_FID")
-            # TODO: also delete JOIN_FID if it exists
-        else:
-            in_features_cleaned = in_features
+        in_features_cleaned = clean_in_features()
+        logging.debug("in_features_cleaned can be found at %s" % in_features_cleaned)
 
         # multiple deletes needed if running from in ArcMap. Why??
         count_features_joined = "count_features_joined"
@@ -632,10 +632,10 @@ def add_layer_count(in_features, count_features, new_field_name, output=None, by
             match_option = "HAVE_THEIR_CENTER_IN",
             search_radius = "#",
             distance_field_name = "#")
-        logger.debug("    Calculating statistics table at stats")
+        logger.debug("    Calculating statistics table at %s" % stats)
         arcpy.Statistics_analysis(
             in_table = count_features_joined,
-             out_table = stats,
+            out_table = stats,
             statistics_fields = "Join_Count SUM",
             # the JOIN_FID field added by spatial join if JOIN_ONE_TO_MANY is
             # selected. I think it corresponds with the OBJECTID of the
@@ -648,11 +648,11 @@ def add_layer_count(in_features, count_features, new_field_name, output=None, by
             join_table = stats,
             join_field = "JOIN_FID",
             fields = "FREQUENCY")
-         logger.debug("    renaming 'FREQUENCY' to '%s'" % new_field_name)
-         arcpy.AlterField_management(
-             output,
-             "FREQUENCY",
-             new_field_name)
+        logger.debug("    renaming 'FREQUENCY' to '%s'" % new_field_name)
+        arcpy.AlterField_management(
+            output,
+            "FREQUENCY",
+            new_field_name)
         return output
 
     if by_area is True:

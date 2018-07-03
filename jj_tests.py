@@ -511,7 +511,19 @@ def test_add_layer_count():
                     if int(row[0]*10)/10 == 3.0:
                         print("    Pass")
                     else:
-                        print("    Fail: result was %s. Should have been 1.0" % row[0])
+                        print("    Fail: result was %s. Should have been 3.0" % row[0])
+            print("  Testing: real dataset")
+            real_result = jj.add_layer_count(
+                in_features=r'O:\Data\Planning_IP\Admin\Staff\Jared\Land_Use_Monitoring\Residential_Estates\residential_estates.gdb\residential_estate_extents',
+                count_features=r'O:\Data\Planning_IP\Spatial\Base Layers\Snapshots.gdb\Land_2016_July',
+                new_field_name="properties_2016",
+                output="estates_with_consumption")
+            with arcpy.da.SearchCursor(real_result, "properties_2016", "estate_name = 'Bushland Beach'") as cursor:
+                for row in cursor:
+                    if row[0] == 1:
+                        jj.log("    pass")
+                    else:
+                        jj.log("    fail: number of joined features should have been 1 but was %s" % row[0])
 
         def test_points_can_be_used_as_count_layer():
             print("  Testing: point can be used as the count_layer if by_area is")
@@ -641,9 +653,9 @@ def test_add_layer_count():
         test_original_layer_is_modified()
         test_original_layer_is_not_modified()
         test_new_field_already_exists()
-        test_invalid_existing_fields_are_caught()
+        # test_invalid_existing_fields_are_caught()
 
-    test_by_area()
+    # test_by_area()
     test_by_centroid()
 
 def test_redistributePolygon():
