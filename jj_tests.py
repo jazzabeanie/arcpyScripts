@@ -156,6 +156,20 @@ def test_add_external_area_field():
                 print("      Pass")
             else:
                 print("      Fail: external area should have been 2000, but was %s" % row[0])
+    print("    Testing tool returns new dataset")
+    if str(output) == str(source_data):
+        print("      Fail: output and source_data should not be the same file (output=%s, source_data=%s)" % (output, source_data))
+    else:
+        print("      Pass")
+    print("  Testing conflicting filename is not an issue")
+    # conflicting_file = jj.create_basic_polygon(
+    #     output = "add_external_area_field_in_features_with_new_field")
+    # output = jj.add_external_area_field(
+    #     source_data,
+    #     "external_area",
+    #     layer_with_area_to_grab,
+    #     dissolve=False)
+    print("    TODO")
     print("  Testing dissolve make tool calculate correctly")
     print("    Testing area that needs dissolving, but didn't get it")
     layer_with_area_to_grab_divided = jj.create_polygon(
@@ -259,7 +273,21 @@ def test_add_external_area_field():
                 print("      Pass")
             else:
                 print("      Fail: external area should have been 0 or 1000, but was %s" % row[0])
-
+    # This was created to test a known problem, but it's passing. Not sure what's going on.
+    print("  Testing with known problematic dataset")
+    wingate = r'O:\Data\Planning_IP\Admin\Staff\Jared\Land_Use_Monitoring\tools\distribute_growth\testing_datasets.gdb\add_external_area_in_features'
+    nda = r'O:\Data\Planning_IP\Admin\Staff\Jared\Land_Use_Monitoring\tools\distribute_growth\testing_results.gdb\net_developable_area'
+    output = jj.add_external_area_field(
+        in_features=wingate,
+        new_field_name="external_area",
+        layer_with_area_to_grab=nda,
+        dissolve=True)
+    with arcpy.da.SearchCursor(output, ["external_area"]) as cursor:
+        for row in cursor:
+            if int(row[0]) == 833883:
+                print("      Pass")
+            else:
+                print("      Fail: external area should have been 833883, but was %s" % row[0])
 
 def test_arguments_exist():
     print "Testing arguments_exist..."
@@ -1297,6 +1325,33 @@ def test_for_each_feature():
 
 def test_join_csv():
     print("Testing join_csv...")
+    print "  Testing join_csv returns new features class when output is provided..."
+    csv_file = open(".\\test.csv", "w")
+    csv_file.write("character,species\njake,dog\nfinn,human")
+    csv_file.close()
+    polygon = jj.create_basic_polygon()
+    arcpy.AddField_management(
+        in_table=polygon,
+        field_name="character",
+        field_type="TEXT")
+    arcpy.CalculateField_management(
+        in_table=polygon,
+        field="character",
+        expression='"finn"',
+        expression_type="PYTHON_9.3",
+        code_block="")
+    jj.delete_if_exists("blah")
+    output = jj.join_csv(
+        in_data=polygon,
+        in_field="character",
+        csv=".\\test.csv",
+        csv_field="character",
+        output="blah")
+    if jj.field_in_feature_class("species", polygon):
+        print("    fail: csv was joined to the original layer")
+    else:
+        print("    pass")
+
     print "  Testing join_csv joins fields..."
     csv_file = open(".\\test.csv", "w")
     csv_file.write("character,species\njake,dog\nfinn,human")
@@ -1395,12 +1450,12 @@ if __name__ == '__main__':
         # test_is_polygon()
         # test_arguments_exist()
         # test_field_in_feature_class()
-        # test_add_external_area_field()
+        test_add_external_area_field()
         # test_calculate_external_field()
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
-        test_add_layer_count()
+        # test_add_layer_count()
         # test_redistributePolygon()
         # test_create_point()
         # test_create_points()

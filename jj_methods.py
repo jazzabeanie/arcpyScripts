@@ -317,8 +317,9 @@ def add_external_area_field(
     third: layer_with_area_to_grab
         The layer that will be intersected to obtain the area
     fourth: dissolve (default = True)
-        If true, the layer_with_area_to_grab will be dissolved before being
-        intersected. This ensures that there is only 1 feature per in_feature.
+        If true, the layer_with_area_to_grab will be intersected, and then
+        dissolved before being intersected again. This ensures that there is
+        only 1 feature per in_feature.
 
     Returns a copy of the original in_features with the new field added.
     """
@@ -349,14 +350,23 @@ def add_external_area_field(
     in_copy = "add_external_area_in_features_copy"
     delete_if_exists(in_copy)
     # delete_if_exists(in_copy) # why do I need to do this twice? What is goin on here?
-    in_copy = arcpy.CopyFeatures_management(
-        in_features = in_features,
-        out_feature_class=in_copy)
+    in_copy = arcpy.Copy_management(
+        in_data = in_features,
+        out_data=in_copy)
     if dissolve:
+        if field_in_feature_class("FID_%s" % get_file_from_path(in_copy), in_copy):
+            raise AttributeError("Error: FID_%s already exists in %s" % (get_file_from_path(in_copy, in_copy)))
+        delete_if_exists("preliminary_intersect")
+        preliminary_intersect = arcpy.Intersect_analysis(
+            in_features = [in_copy, layer_with_area_to_grab],
+            out_feature_class = "preliminary_intersect",
+            join_attributes="ONLY_FID")
+        logging.debug("Preliminary dissolve found at %s\\preliminary_intersect" % arcpy.env.workspace)
         delete_if_exists("layer_with_area_to_grab_dissolved")
         layer_with_area_to_grab = arcpy.Dissolve_management(
-            in_features=layer_with_area_to_grab,
-            out_feature_class="layer_with_area_to_grab_dissolved")
+            in_features=preliminary_intersect,
+            out_feature_class="layer_with_area_to_grab_dissolved",
+            dissolve_field = "FID_%s" % get_file_from_path(in_copy))
     in_copy = arcpy.AddField_management(in_copy, new_field_name, "FLOAT")
     intersecting_with_external = "intersecting_with_external"
     delete_if_exists(intersecting_with_external)
@@ -364,7 +374,6 @@ def add_external_area_field(
         in_features = [in_copy, layer_with_area_to_grab],
         out_feature_class = intersecting_with_external)
     # TODO: What do I do if there are no intersecting areas? There will be an empty feature class
-    # TODO: join the area of intersecting_with_external back to in_copy then return it. Can I use calculate external field?
     in_copy_with_new_field = calculate_external_field(
         target_layer = in_copy,
         target_field = new_field_name,
@@ -734,8 +743,13 @@ def redistributePolygon(redistribution_inputs):
         if spatial_references_differ(
                 redistribution_inputs["layer_to_redistribute_to"],
                 redistribution_inputs["layer_to_be_redistributed"]):
+            logger.warning("spatial references differ")
+            logger.warning("layer_to_redistribute_to = %s" % redistribution_inputs["layer_to_redistribute_to"])
+            logger.warning("layer_to_be_redistributed = %s" % redistribution_inputs["layer_to_be_redistributed"])
             logger.warning(
-                "WARNING: %s and %s do not have the same coordinate system." +
+                "WARNING: %s and %s do not have the same coordinate system."  % (
+                    redistribution_inputs["layer_to_redistribute_to"],
+                    redistribution_inputs["layer_to_be_redistributed"]) +
                 " The area fields may not calculate with the same " +
                 "coordinates. According to " +
                 "http://pro.arcgis.com/en/pro-app/tool-reference/data-management/calculate-field.htm," +
@@ -743,9 +757,7 @@ def redistributePolygon(redistribution_inputs):
                 " questionable results as decimal degrees are not consistent" +
                 " across the globe.'\rThe best approach is to use the " +
                 "Project (Data Management) tool to reproject the data into " +
-                "MGA Zone 55 and try again." % (
-                    redistribution_inputs["layer_to_redistribute_to"],
-                    redistribution_inputs["layer_to_be_redistributed"]))
+                "MGA Zone 55 and try again.")
             logger.warning("  layer_to_redistribute_to: %s" %
                 arcpy.Describe(
                     redistribution_inputs["layer_to_redistribute_to"]
@@ -1139,7 +1151,7 @@ def redistributePolygon(redistribution_inputs):
     assert os.sep in str(output)
     redistribution_inputs["output_filename"] = str(output)
     logger.info("Successfully redistributed %s to %s" % (source_data, desired_shape))
-    logger.info("intersecting_polygons file can be found at %s\\%s" % (arcpy.env.workspace, intersecting_polygons))
+    logger.info("intersecting_polygons file can be found at %s" % intersecting_polygons)
     logger.info("Output file can be found at %s" % redistribution_inputs["output_filename"])
 
 
@@ -1206,10 +1218,14 @@ def log(text):
     #     arcpy.AddMessage(text)
 
 
-def join_csv(in_data, in_field, csv, csv_field, included_fields="#"):
+def join_csv(in_data, in_field, csv, csv_field, output=None, included_fields="#"):
     """
     Converts a csv to a table, then joins it to another table.
     """
+    if output:
+        in_data = arcpy.Copy_management(
+            in_data = in_data,
+            out_data = output)
     for f in arcpy.ListFields(csv):
         if re.match('[0-9]', f.name[0:1]):
             logger.warning("Warning: some fields in %s start with digits. these will not be joined." % csv)
@@ -1222,30 +1238,25 @@ def join_csv(in_data, in_field, csv, csv_field, included_fields="#"):
     logger.debug("included_fields = %s" % included_fields)
     logger.debug('%s in %s = %s' % (csv_field, csv, field_in_feature_class(csv_field, csv)))
     delete_if_exists(arcpy.env.workspace+"\\temp_table")
-    log('creating temp_table...')
+    logger.debug('creating temp_table...')
     arcpy.TableToTable_conversion(
         in_rows=csv,
         out_path=arcpy.env.workspace,
         out_name="temp_table")
-    log('joining temp_table to %s...' % in_data)
+    logger.debug('joining temp_table to %s...' % in_data)
     logger.debug('%s in %s = %s' % (csv_field, arcpy.env.workspace+"\\temp_table", field_in_feature_class(csv_field, arcpy.env.workspace+"\\temp_table")))
     logger.debug('fields in %s:' % arcpy.env.workspace+"\\temp_table")
     for f in arcpy.ListFields(arcpy.env.workspace+"\\temp_table"):
         logger.debug("  %s" % f.name)
-    # arcpy.JoinField_management(
-    #         in_data="mesh_blocks_feature_layer",
-    #         in_field="MB_CODE16",
-    #         join_table="temp_table",
-    #         join_field="MB_CODE_2016",
-    #         fields="MB_CATEGORY_NAME_2016;Dwelling;Person")
-    arcpy.JoinField_management(
+    output = arcpy.JoinField_management(
         in_data,
         in_field,
         join_table=arcpy.env.workspace+"\\temp_table",
         join_field=csv_field,
         fields=included_fields)
     arcpy.Delete_management(arcpy.env.workspace+"\\temp_table")
-    log('%s joined to %s' % (csv, in_data))
+    logger.debug('%s joined to %s' % (csv, in_data))
+    return output
 
 def export_to_csv(in_data, out_csv):
     """Write the input table to a csv file."""

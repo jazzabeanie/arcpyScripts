@@ -8,7 +8,6 @@ from __future__ import division
 # ArcGIS Version:   10.5
 # Python Version:   2.7
 # Source: https://blogs.esri.com/esri/arcgis/2011/08/04/pythontemplate/
-# Run command: execfile(r'__') TODO
 # --------------------------------
 import os # noqa
 import sys # noqa
@@ -16,6 +15,7 @@ import arcpy
 import logging
 import json
 import imp
+import argparse
 from datetime import datetime
 try:
     import progressbar
@@ -75,16 +75,19 @@ flood_study_areas = "%s\\WindowAuth@Mapsdb01@SDE_Vector.sde\\sde_vector.TCC.Floo
 ## Waste Water
 overall_catchments = "O:\\Data\\Planning_IP\\Admin\\Spatial Data\\Water_sewer\\Sewer_Catchments_2015\\Sewer_Catchments_2015.mdb\\Overall_Catchments"
 
+## Census
+SA1 = r'O:\Data\Planning_IP\Admin\Staff\Jared\LGIP\2016 Census Mesh Block Data\derived_layers.gdb\SA1_2016_TSV_Project'
+SA2 = r'O:\Data\Planning_IP\Admin\Staff\Jared\LGIP\2016 Census Mesh Block Data\derived_layers.gdb\SA2_2016_TSV_Project'
+
 ## Infrastructure
 with open("O:\\Data\\Planning_IP\\Admin\\Staff\\Jared\\GIS\\Tools\\arcpyScripts\\infrastructure_layers.json") as data_file:
         infrastructure = json.load(data_file)
 
 
 def do_analysis(*argv):
-    """TODO: Add documentation about this function here"""
     try:
-        # TODO: Add analysis here
         pass
+        # TODO: Add analysis here
     except arcpy.ExecuteError:
         print arcpy.GetMessages(2)
         logging.exception(arcpy.GetMessages(2))
@@ -102,17 +105,7 @@ def do_analysis(*argv):
 if __name__ == '__main__':
     logging.warning("------")
 
-    print(do_analysis.__doc__)
-    os.system('pause')
-    # TODO: consider using argparse: https://docs.python.org/2/library/argparse.html#module-argparse
-    # Arguments overwrite defaults
-    default_output = (r'')
-    argv = [default_output]
-    arguments_exist = True if (arcpy.GetArgumentCount() != 0) else False
-    if arguments_exist:
-        argv = tuple(arcpy.GetParameterAsText(i)
-                     for i in range(arcpy.GetArgumentCount()))
-    do_analysis(*argv)
+    do_analysis()
     # see here for help on #argv https://docs.python.org/2.7/tutorial/controlflow.html#unpacking-argument-lists # noqa
     # see here for help on reading *argv in new called function: https://docs.python.org/2.7/tutorial/controlflow.html#keyword-arguments
     os.system('pause')
