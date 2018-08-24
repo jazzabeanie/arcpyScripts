@@ -993,7 +993,8 @@ def redistributePolygon(redistribution_inputs):
     if redistribution_inputs["distribution_method"] in (2, 3):
         logger.debug("Adding %s to %s" % (total_properties_field, source_data))
         # Adding total properties to source_data
-        source_data = add_layer_count(new_field_name = total_properties_field,
+        source_data = add_layer_count(
+            new_field_name = total_properties_field,
             in_features = source_data,
             count_features = land_parcels)
             # output = "%s\\source_data" % arcpy.env.workspace)
@@ -1226,6 +1227,7 @@ def join_csv(in_data, in_field, csv, csv_field, output=None, included_fields="#"
         in_data = arcpy.Copy_management(
             in_data = in_data,
             out_data = output)
+    # TODO: check for strings and if they are found, issue a warning
     for f in arcpy.ListFields(csv):
         if re.match('[0-9]', f.name[0:1]):
             logger.warning("Warning: some fields in %s start with digits. these will not be joined." % csv)
