@@ -425,7 +425,7 @@ def get_directory_from_path(path):
     if os.path.dirname(path):
         return os.path.dirname(path)
     else:
-        raise AttributeError("get_directory_from_path received a string with no path. What should be the default behaviour here? return arcpy.env.workspace or return the current working directory from os.path.abspath()?")
+        raise AttributeError("get_directory_from_path received a string with no path (%s). What should be the default behaviour here? return arcpy.env.workspace or return the current working directory from os.path.abspath()?" % path)
 
 
 def test_print():
@@ -1158,7 +1158,7 @@ def redistributePolygon(redistribution_inputs):
 
 def for_each_feature(feature_class, cb, *args, **kwargs):
     """
-    Itterates over each feature in a feature class, and calls the cb function
+    Iterates over each feature in a feature class, and calls the cb function
     passing in a single feature layer containing the feature of the itteration.
     """
     if "where_clause" in kwargs.keys():
@@ -1193,7 +1193,7 @@ def get_sum(field_name, feature_class):
 
 def apply_symbology(source, destinations):
     """
-    Applys the symbology from the source to each layer in the destination list.
+    Applies the symbology from the source to each layer in the destination list.
     Only useful when run from the python window in arcmap.
 
     Params
