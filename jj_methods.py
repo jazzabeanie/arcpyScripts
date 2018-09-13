@@ -422,6 +422,7 @@ def get_directory_from_path(path):
     # string, the current working directory will be returned.
     # return os.path.dirname(os.path.abspath(path))
     path = str(path)
+    # logging.debug("in get_directory_from_path, path = %s" % path)
     if os.path.dirname(path):
         return os.path.dirname(path)
     else:
@@ -1260,6 +1261,7 @@ def join_csv(in_data, in_field, csv, csv_field, output=None, included_fields="#"
     logger.debug('%s joined to %s' % (csv, in_data))
     return output
 
+
 def export_to_csv(in_data, out_csv):
     """Write the input table to a csv file."""
     from csv import writer
@@ -1275,4 +1277,27 @@ def export_to_csv(in_data, out_csv):
         with arcpy.da.SearchCursor(in_data, field_names) as cursor:
             for row in cursor:
                 w.writerow(row)
+
+
+def list_contents_of(geodatabase, wildcard=None):
+    """returns a list of the features classes in the geodatabase supplied"""
+    logging.debug("setting input to string")
+    geodatabase = str(geodatabase)
+    logging.debug("Checking intput is gdb")
+    if not re.match(".*[.]gdb", geodatabase):
+        raise AttributeError("input provided is not a geodatabase ('.gdb' not found in path)")
+    logging.debug("preserving old workspace")
+    old_workspace = str(arcpy.env.workspace)
+    logging.debug("setting workspace to geodatabase")
+    arcpy.env.workspace = geodatabase
+    if wildcard:
+        logging.debug("getting results with wildcard")
+        result = arcpy.ListFeatureClasses(wildcard)
+    else:
+        logging.debug("getting results without wildcard")
+        result = arcpy.ListFeatureClasses()
+        logging.debug("result = %s" % result)
+    logging.debug("setting workspace back to what it was originally")
+    arcpy.env.workspace = old_workspace
+    return result
 

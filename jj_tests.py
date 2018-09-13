@@ -1441,6 +1441,40 @@ def test_export_to_csv():
         print("    fail")
 
 
+def test_list_contents_of():
+    print("Testing list_contents_of...")
+    temp_gdb = arcpy.CreateFileGDB_management(
+        out_folder_path="C:\\",
+        out_name="delete_me.gdb")
+    print("  Testing that workspace is preserved...")
+    results = jj.list_contents_of(temp_gdb)
+    if str(arcpy.env.workspace) == str(temp_gdb):
+        print("    fail: workspace was changed to the listing geodatabase")
+    else:
+        print("    pass: workspace was not changed to the list geodatabase")
+    print("  Testing that error is raised if .gdb not provided...")
+    try:
+        jj.list_contents_of("blah")
+        print("    fail: no error raised when geodatabase string not provided")
+    except AttributeError as e:
+        print("    pass")
+    print("  Testing that all feature classes are listed...")
+    jj.create_basic_polygon("%s\\foobar" % temp_gdb)
+    results = jj.list_contents_of(temp_gdb)
+    if "foobar" in results:
+        print("    pass")
+    else:
+        print("    fail: 'foobar' not found in %s" % results)
+    print("  Testing wildcard...")
+    jj.create_basic_polygon("%s\\foobar" % temp_gdb)
+    jj.create_basic_polygon("%s\\hidden" % temp_gdb)
+    results = jj.list_contents_of(temp_gdb, "foobar")
+    if "foobar" in results and "hidden" not in results:
+        print("    pass")
+    else:
+        print("    fail: wildcard not working. 'foobar' not found, or 'hidden' found in %s" % results)
+
+
 
 if __name__ == '__main__':
     try:
@@ -1456,7 +1490,7 @@ if __name__ == '__main__':
         # test_get_directory_from_path()
         # test_renameFieldMap()
         # test_add_layer_count()
-        test_redistributePolygon()
+        # test_redistributePolygon()
         # test_create_point()
         # test_create_points()
         # test_create_polygon()
@@ -1465,6 +1499,7 @@ if __name__ == '__main__':
         # test_join_csv()
         # test_get_sum()
         # test_export_to_csv()
+        test_list_contents_of()
     except arcpy.ExecuteError:
         print arcpy.GetMessages(2)
         logging.exception(arcpy.GetMessages(2))
