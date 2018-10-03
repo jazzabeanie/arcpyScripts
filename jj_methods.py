@@ -1230,42 +1230,50 @@ def join_csv(in_data, in_field, csv, csv_field, output=None, included_fields="#"
     """
     Converts a csv to a table, then joins it to another table.
     """
-    if output:
-        in_data = arcpy.Copy_management(
-            in_data = in_data,
-            out_data = output)
-    # TODO: check for strings and if they are found, issue a warning
-    for f in arcpy.ListFields(csv):
-        if re.match('[0-9]', f.name[0:1]):
-            logger.warning("Warning: some fields in %s start with digits. these will not be joined." % csv)
-    logger.debug("in_data = %s" % in_data)
-    logger.debug("in_field = %s" % in_field)
-    logger.debug("csv = %s" % csv)
-    logger.debug("csv_field = %s" % csv_field)
-    if re.match('[0-9]', csv_field[0:1]):
-        raise ValueError("the name of the csv field must not start with a digit.")
-    logger.debug("included_fields = %s" % included_fields)
-    logger.debug('%s in %s = %s' % (csv_field, csv, field_in_feature_class(csv_field, csv)))
-    delete_if_exists(arcpy.env.workspace+"\\temp_table")
-    logger.debug('creating temp_table...')
-    arcpy.TableToTable_conversion(
-        in_rows=csv,
-        out_path=arcpy.env.workspace,
-        out_name="temp_table")
-    logger.debug('joining temp_table to %s...' % in_data)
-    logger.debug('%s in %s = %s' % (csv_field, arcpy.env.workspace+"\\temp_table", field_in_feature_class(csv_field, arcpy.env.workspace+"\\temp_table")))
-    logger.debug('fields in %s:' % arcpy.env.workspace+"\\temp_table")
-    for f in arcpy.ListFields(arcpy.env.workspace+"\\temp_table"):
-        logger.debug("  %s" % f.name)
-    output = arcpy.JoinField_management(
-        in_data,
-        in_field,
-        join_table=arcpy.env.workspace+"\\temp_table",
-        join_field=csv_field,
-        fields=included_fields)
-    arcpy.Delete_management(arcpy.env.workspace+"\\temp_table")
-    logger.debug('%s joined to %s' % (csv, in_data))
-    return output
+    try:
+        if output:
+            in_data = arcpy.Copy_management(
+                in_data = in_data,
+                out_data = output)
+        # TODO: check for strings and if they are found, issue a warning
+        for f in arcpy.ListFields(csv):
+            if re.match('[0-9]', f.name[0:1]):
+                logger.warning("Warning: some fields in %s start with digits. these will not be joined." % csv)
+        logger.debug("in_data = %s" % in_data)
+        logger.debug("in_field = %s" % in_field)
+        logger.debug("csv = %s" % csv)
+        logger.debug("csv_field = %s" % csv_field)
+        if re.match('[0-9]', csv_field[0:1]):
+            raise ValueError("the name of the csv field must not start with a digit.")
+        logger.debug("included_fields = %s" % included_fields)
+        logger.debug('%s in %s = %s' % (csv_field, csv, field_in_feature_class(csv_field, csv)))
+        delete_if_exists(arcpy.env.workspace+"\\temp_table")
+        logger.debug('creating temp_table...')
+        arcpy.TableToTable_conversion(
+            in_rows=csv,
+            out_path=arcpy.env.workspace,
+            out_name="temp_table")
+        logger.debug('joining temp_table to %s...' % in_data)
+        logger.debug('%s in %s = %s' % (csv_field, arcpy.env.workspace+"\\temp_table", field_in_feature_class(csv_field, arcpy.env.workspace+"\\temp_table")))
+        logger.debug('fields in %s:' % arcpy.env.workspace+"\\temp_table")
+        for f in arcpy.ListFields(arcpy.env.workspace+"\\temp_table"):
+            logger.debug("  %s" % f.name)
+        output = arcpy.JoinField_management(
+            in_data,
+            in_field,
+            join_table=arcpy.env.workspace+"\\temp_table",
+            join_field=csv_field,
+            fields=included_fields)
+        arcpy.Delete_management(arcpy.env.workspace+"\\temp_table")
+        logger.debug('%s joined to %s' % (csv, in_data))
+        return output
+    except ExecuteError as e:
+        if re.match('.*The value is not a Data Element.*', e.args[0]):
+            jj.log("")
+            jj.log("WARNING: you may need to remove the in_data (%s) from the Table of contents before running this tool." % in_data)
+            raise e
+        else:
+            raise e
 
 
 def export_to_csv(in_data, out_csv):

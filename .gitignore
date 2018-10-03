@@ -8,3 +8,6 @@
 .ropeproject
 *.log
 *.pyc
+maps
+Thumbs.db
+tex2pdf.*
