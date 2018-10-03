@@ -1203,14 +1203,20 @@ def apply_symbology(source, destinations):
     first: source
         The layer that has the symbology to apply
     second: destinations
-        A list of layers to apply the symbology to.
+        A list of layers to apply the symbology to, or a string representing a
+        single layer.
 
     Returns nothing. The source can be easily written by draging the layer into
     the python window from the table of contents. The desintation list can be
     done similarly by dragging into multiple highlighted layers.
     """
-    for layer in destinations:
-        arcpy.ApplySymbologyFromLayer_management(layer, source)
+    if type(destinations) == type("some string"):
+        arcpy.ApplySymbologyFromLayer_management(destinations, source)
+    elif type(destinations) == type([]):
+        for layer in destinations:
+            arcpy.ApplySymbologyFromLayer_management(layer, source)
+    else:
+        raise AttributeError("Error: destinations attribute was %s, but should have been either string or list." % type(destinations))
 
 
 def log(text):
@@ -1297,6 +1303,8 @@ def list_contents_of(geodatabase, wildcard=None):
         logging.debug("getting results without wildcard")
         result = arcpy.ListFeatureClasses()
         logging.debug("result = %s" % result)
+    if result == []:
+        logging.warning("No results found in %s" % geodatabase)
     logging.debug("setting workspace back to what it was originally")
     arcpy.env.workspace = old_workspace
     return result
