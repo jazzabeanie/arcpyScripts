@@ -75,7 +75,7 @@ def create_polygon(output, *shapes_lists):
     delete_if_exists(output)
     logger.debug("directory = " + get_directory_from_path(output))
     logger.debug("name = " + get_file_from_path(output))
-    arcpy.CreateFeatureclass_management(
+    output = arcpy.CreateFeatureclass_management(
         get_directory_from_path(output), # out_path
         get_file_from_path(output), # out_name
         "POLYGON") # geometry_type
@@ -1267,7 +1267,7 @@ def join_csv(in_data, in_field, csv, csv_field, output=None, included_fields="#"
         arcpy.Delete_management(arcpy.env.workspace+"\\temp_table")
         logger.debug('%s joined to %s' % (csv, in_data))
         return output
-    except ExecuteError as e:
+    except arcpy.ExecuteError as e:
         if re.match('.*The value is not a Data Element.*', e.args[0]):
             jj.log("")
             jj.log("WARNING: you may need to remove the in_data (%s) from the Table of contents before running this tool." % in_data)
