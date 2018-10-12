@@ -242,15 +242,25 @@ def return_tuple_of_args():
     return args
 
 
-def calculate_external_field(target_layer, target_field, join_layer, join_field, output):
-    """Calculates a target field from a field on another featre based on spatial intersect."""
+def calculate_external_field(target_layer, target_field, join_layer, join_field, output, **spatial_join_attributes):
+    """Calculates a target field from a field on another featre based on
+    spatial intersect. If output is None, target_layer field will be calculated
+    in place.
+
+    WARNING: Using output == None with a temporary workspace risks deleting the
+    target_layer. Use with caution."""
     tmp_field_name = "delete_me"
     join_layer_copy = "join_layer_copy"
     delete_if_exists(join_layer_copy)
+    target_layer_copy = "target_layer_copy"
+    delete_if_exists(target_layer_copy)
     logger.debug("Making copy of %s" % join_layer)
     arcpy.CopyFeatures_management(join_layer, join_layer_copy)
-    delete_if_exists(output)
-    original_fields = arcpy.ListFields(target_layer)
+    logger.debug("Making copy of %s" % target_layer)
+    arcpy.CopyFeatures_management(target_layer, target_layer_copy)
+    if output:
+        delete_if_exists(output)
+    original_fields = arcpy.ListFields(target_layer_copy)
     original_field_names = [f.name for f in original_fields]
 
     def tmp_field_exists_in_join_layer():
@@ -269,20 +279,36 @@ def calculate_external_field(target_layer, target_field, join_layer, join_field,
     if len(arcpy.ListFields(join_layer, join_field)) > 1:
         raise AttributeError("Multiple fields found when searching for the %s in %s" % (join_field, join_layer))
 
-    logger.debug("Calculating %s.%s from %s.%s" % (target_layer, target_field, join_layer, join_field))
+    logger.debug("Calculating %s.%s from %s.%s" % (target_layer_copy, target_field, join_layer, join_field))
 
     logger.debug("  Adding and calculating %s = %s" % (tmp_field_name, join_field))
     arcpy.AddField_management(join_layer_copy, tmp_field_name, join_field_object.type)
     arcpy.CalculateField_management(join_layer_copy, tmp_field_name, "!" + join_field + "!", "PYTHON", "")
 
-    logger.debug("  Spatially joining %s to %s" % (join_layer, target_layer))
+    logger.debug("  Spatially joining %s to %s" % (join_layer, target_layer_copy))
     join_layer_buffered = "join_layer_buffered"
     delete_if_exists(join_layer_buffered)
     join_layer_buffered = arcpy.Buffer_analysis(
         in_features=join_layer_copy,
         out_feature_class=join_layer_buffered,
         buffer_distance_or_field=-0.5)
-    output = arcpy.SpatialJoin_analysis(target_layer, join_layer_buffered, output)
+    if output == None:
+        output = str(target_layer)
+        delete_if_exists(output)
+    try:
+        output = arcpy.SpatialJoin_analysis(target_layer_copy, join_layer_buffered, output, **spatial_join_attributes)
+    except TypeError as e:
+        jj.log("Error: probably some invalid keword argument was passed in. calculate_external_field passes all optional keyword argument on to SpatialJoin_analysis.")
+        if not arcpy.Exists(output):
+            jj.log("Copying target_layer_copy back to target_layer...")
+            arcpy.CopyFeatures_management(target_layer_copy, target_layer)
+        raise e
+    except Exception as e:
+        jj.log("SpatialJoin_analysis failed.")
+        if not arcpy.Exists(output):
+            jj.log("Copying target_layer_copy back to target_layer...")
+            arcpy.CopyFeatures_management(target_layer_copy, target_layer)
+        raise e
     output_fields = arcpy.ListFields(output)
     new_fields = [f for f in output_fields if f.name not in original_field_names]
     logger.debug("  Calculating %s = %s" % (target_field, tmp_field_name))

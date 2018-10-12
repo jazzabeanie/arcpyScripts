@@ -306,7 +306,7 @@ def test_arguments_exist():
 def test_calculate_external_field():
     print "Testing calculate_external_field..."
     print "  Testing external field is joined..."
-    one_field = jj.create_basic_polygon()
+    one_field = jj.create_basic_polygon(output="calculate_external_one_field")
     arcpy.AddField_management(one_field, "first", "TEXT")
     arcpy.CalculateField_management(one_field,  "first", "get_text()", "PYTHON_9.3", """def get_text():
             return 'from one_field'""")
@@ -327,7 +327,7 @@ def test_calculate_external_field():
     print "    pass"
     print "  Testing tmp_field_name is deleted..."
     output = "testing_join_field_is_deleted"
-    conflicting_layer = jj.create_basic_polygon()
+    conflicting_layer = jj.create_basic_polygon(output="calculate_external_conflicting_layer")
     arcpy.AddField_management(conflicting_layer, "first", "TEXT")
     arcpy.AddField_management(conflicting_layer, "second", "TEXT")
     arcpy.AddField_management(conflicting_layer, "delete_me", "TEXT")
@@ -360,6 +360,27 @@ def test_calculate_external_field():
         print("    pass")
     except Exception as e:
         print("    fail: some other error %s" % e.args[0])
+    print "  Testing output must be provided..."
+    try:
+        output = jj.calculate_external_field(one_field, "first", conflicting_layer, "delete_me")
+        print("    fail: no execption raised")
+    except TypeError as e:
+        print("    pass: exception raised")
+    print "  Testing option keyword arguments are passed on to SpatialJoin_analysis..."
+    jj.delete_if_exists("testing_kwargs")
+    output = jj.calculate_external_field(one_field, "first", two_fields, "first", output="testing_kwargs", "TODO: add optional arguments to be used in SpatialJoin_analysis")
+    # with arcpy.da.SearchCursor(one_field, "first") as cursor:
+    #     for row in cursor:
+    #         regexp = re.compile('from two_fields')
+    #         assert(regexp.match("%s" % row))
+    print "    TODO"
+    print "  Testing output=None changes target_layer in place..."
+    output = jj.calculate_external_field(one_field, "first", two_fields, "first", output=None)
+    with arcpy.da.SearchCursor(one_field, "first") as cursor:
+        for row in cursor:
+            regexp = re.compile('from two_fields')
+            assert(regexp.match("%s" % row))
+    print "    pass"
     print "  Testing spatial join works correctly for adjacent polygons..."
     print("    TODO")
     print "------"
@@ -1485,7 +1506,7 @@ if __name__ == '__main__':
         # test_arguments_exist()
         # test_field_in_feature_class()
         # test_add_external_area_field()
-        # test_calculate_external_field()
+        test_calculate_external_field()
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
@@ -1499,7 +1520,7 @@ if __name__ == '__main__':
         # test_join_csv()
         # test_get_sum()
         # test_export_to_csv()
-        test_list_contents_of()
+        # test_list_contents_of()
     except arcpy.ExecuteError:
         print arcpy.GetMessages(2)
         logging.exception(arcpy.GetMessages(2))
