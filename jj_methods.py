@@ -244,11 +244,15 @@ def return_tuple_of_args():
 
 def calculate_external_field(target_layer, target_field, join_layer, join_field, output, **spatial_join_attributes):
     """Calculates a target field from a field on another featre based on
-    spatial intersect. If output is None, target_layer field will be calculated
+    spatial join. If output is None, target_layer field will be calculated
     in place.
 
     WARNING: Using output == None with a temporary workspace risks deleting the
     target_layer. Use with caution."""
+    if arcpy.Describe(join_layer).shapeType != "Polygon":
+        raise AttributeError("This tool currently only works when the join_layer is a polgyon.")
+    if "distance_field_name" in spatial_join_attributes.keys():
+        raise AttributeError("This tool only adds the join_field. A distance field will not be added from the spatial join.")
     tmp_field_name = "delete_me"
     join_layer_copy = "join_layer_copy"
     delete_if_exists(join_layer_copy)
@@ -287,6 +291,7 @@ def calculate_external_field(target_layer, target_field, join_layer, join_field,
 
     logger.debug("  Spatially joining %s to %s" % (join_layer, target_layer_copy))
     join_layer_buffered = "join_layer_buffered"
+    # TODO: skip the buffer step if the join_layer is a point or a line type feature class
     delete_if_exists(join_layer_buffered)
     join_layer_buffered = arcpy.Buffer_analysis(
         in_features=join_layer_copy,

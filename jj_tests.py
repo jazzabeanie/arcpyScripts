@@ -360,20 +360,18 @@ def test_calculate_external_field():
         print("    pass")
     except Exception as e:
         print("    fail: some other error %s" % e.args[0])
-    print "  Testing output must be provided..."
+    jj.log("  Testing output must be provided...")
     try:
         output = jj.calculate_external_field(one_field, "first", conflicting_layer, "delete_me")
         print("    fail: no execption raised")
     except TypeError as e:
         print("    pass: exception raised")
-    print "  Testing option keyword arguments are passed on to SpatialJoin_analysis..."
-    jj.delete_if_exists("testing_kwargs")
-    output = jj.calculate_external_field(one_field, "first", two_fields, "first", output="testing_kwargs", "TODO: add optional arguments to be used in SpatialJoin_analysis")
-    # with arcpy.da.SearchCursor(one_field, "first") as cursor:
-    #     for row in cursor:
-    #         regexp = re.compile('from two_fields')
-    #         assert(regexp.match("%s" % row))
-    print "    TODO"
+    jj.log("  Testing using distance_field_name options raises an error...")
+    try:
+        output = jj.calculate_external_field(one_field, "first", two_fields, "first", output="testing_kwargs", match_option="CLOSEST", distance_field_name="distance_to", search_radius=100)
+        print("    fail - no error was raised")
+    except AttributeError as e:
+        print("    pass")
     print "  Testing output=None changes target_layer in place..."
     output = jj.calculate_external_field(one_field, "first", two_fields, "first", output=None)
     with arcpy.da.SearchCursor(one_field, "first") as cursor:
@@ -381,8 +379,29 @@ def test_calculate_external_field():
             regexp = re.compile('from two_fields')
             assert(regexp.match("%s" % row))
     print "    pass"
-    print "  Testing spatial join works correctly for adjacent polygons..."
-    print("    TODO")
+    jj.log("  Testing Spatial Join keyword arguments affect join behaviour...")
+    test_join_method = jj.create_basic_polygon(output="test_join_method")
+    # create a new field to calculate
+    arcpy.AddField_management(test_join_method, "no_data", "TEXT")
+    arcpy.CalculateField_management(test_join_method,  "no_data", "get_none()", "PYTHON_9.3", """def get_none():
+            return None""")
+    shape_near_by = jj.create_basic_polygon(output="shape_near_by", left_x=479570, lower_y=7871450, right_x=479572, upper_y=7871452)
+    # create a new field to get data form
+    arcpy.AddField_management(shape_near_by, "some_data", "TEXT")
+    arcpy.CalculateField_management(shape_near_by,  "some_data", "get_text()", "PYTHON_9.3", """def get_text():
+            return 'wazoo'""")
+    jj.delete_if_exists("no_data_joined")
+    jj.delete_if_exists("data_joined")
+    no_data_joined = jj.calculate_external_field(test_join_method, "no_data", shape_near_by, "some_data", output="no_data_joined")
+    data_joined = jj.calculate_external_field(test_join_method, "no_data", shape_near_by, "some_data", output="data_joined", search_radius=100)
+    with arcpy.da.SearchCursor(no_data_joined, "no_data") as cursor:
+        for row in cursor:
+            assert(row[0] == None)
+    with arcpy.da.SearchCursor(data_joined, "no_data") as cursor:
+        for row in cursor:
+            regexp = re.compile('wazoo')
+            assert(regexp.match("%s" % row))
+    print "    pass"
     print "------"
 
 
