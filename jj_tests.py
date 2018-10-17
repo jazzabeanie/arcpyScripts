@@ -1515,6 +1515,41 @@ def test_list_contents_of():
         print("    fail: wildcard not working. 'foobar' not found, or 'hidden' found in %s" % results)
 
 
+def test_get_duplicates():
+    jj.log("Testing get_duplicates...")
+    jj.log("  testing basic example...")
+    some_fc = jj.create_points(coords_list=((479578, 7871429), (479580, 7871430), (479582, 7871435), (479582, 7871445), (479582, 7871439)), output="testing_get_duplicates")
+    logging.debug("adding some_field")
+    arcpy.AddField_management(
+        in_table=some_fc,
+        field_name="some_field",
+        field_type="TEXT")
+    logging.debug("writing all data in some_field")
+    arcpy.CalculateField_management(some_fc, "some_field", '"blah"')
+    logging.debug("writing changing only first feature")
+    with arcpy.da.UpdateCursor(some_fc, ["some_field"], where_clause='"OBJECTID" = 1') as cursor:
+        for row in cursor:
+            row[0] = "blee"
+            cursor.updateRow(row)
+    with arcpy.da.UpdateCursor(some_fc, ["some_field"], where_clause='"OBJECTID" = 2') as cursor:
+        for row in cursor:
+            row[0] = "blee"
+            cursor.updateRow(row)
+    with arcpy.da.UpdateCursor(some_fc, ["some_field"], where_clause='"OBJECTID" = 5') as cursor:
+        for row in cursor:
+            row[0] = "bloo"
+            cursor.updateRow(row)
+    logging.debug("printing some_field")
+    # with arcpy.da.SearchCursor(some_fc, ["OBJECTID", "some_field"]) as cursor:
+    #     for row in cursor:
+    #         print("    %s = %s" % (row[0], row[1]))
+    duplicates = jj.get_duplicates(some_fc, "some_field")
+    if len(duplicates) == 2:
+        print("    pass")
+    else:
+        print("    fail: duplicates should have been 'blah' and 'blee', but were %s" % duplicates)
+
+
 
 if __name__ == '__main__':
     try:
@@ -1525,7 +1560,7 @@ if __name__ == '__main__':
         # test_arguments_exist()
         # test_field_in_feature_class()
         # test_add_external_area_field()
-        test_calculate_external_field()
+        # test_calculate_external_field()
         # test_get_file_from_path()
         # test_get_directory_from_path()
         # test_renameFieldMap()
@@ -1540,6 +1575,7 @@ if __name__ == '__main__':
         # test_get_sum()
         # test_export_to_csv()
         # test_list_contents_of()
+        test_get_duplicates()
     except arcpy.ExecuteError:
         print arcpy.GetMessages(2)
         logging.exception(arcpy.GetMessages(2))

@@ -133,6 +133,9 @@ def create_point(x_coord=479585, y_coord=7871450, output="basic_point"):
 def create_points(coords_list=None, output="points"):
     """
     Creates a features class with a bunch of points as passed in.
+
+    The coords_list must be an itterable, where each item is another itterable
+    with an x and y coordinate.
     """
     # if type(coords_list) != type(()) or type(coords_list) != type([]):
     if type(coords_list) != type(()):
@@ -303,15 +306,15 @@ def calculate_external_field(target_layer, target_field, join_layer, join_field,
     try:
         output = arcpy.SpatialJoin_analysis(target_layer_copy, join_layer_buffered, output, **spatial_join_attributes)
     except TypeError as e:
-        jj.log("Error: probably some invalid keword argument was passed in. calculate_external_field passes all optional keyword argument on to SpatialJoin_analysis.")
+        log("Error: probably some invalid keword argument was passed in. calculate_external_field passes all optional keyword argument on to SpatialJoin_analysis.")
         if not arcpy.Exists(output):
-            jj.log("Copying target_layer_copy back to target_layer...")
+            log("Copying target_layer_copy back to target_layer...")
             arcpy.CopyFeatures_management(target_layer_copy, target_layer)
         raise e
     except Exception as e:
-        jj.log("SpatialJoin_analysis failed.")
+        log("SpatialJoin_analysis failed.")
         if not arcpy.Exists(output):
-            jj.log("Copying target_layer_copy back to target_layer...")
+            log("Copying target_layer_copy back to target_layer...")
             arcpy.CopyFeatures_management(target_layer_copy, target_layer)
         raise e
     output_fields = arcpy.ListFields(output)
@@ -1300,8 +1303,8 @@ def join_csv(in_data, in_field, csv, csv_field, output=None, included_fields="#"
         return output
     except arcpy.ExecuteError as e:
         if re.match('.*The value is not a Data Element.*', e.args[0]):
-            jj.log("")
-            jj.log("WARNING: you may need to remove the in_data (%s) from the Table of contents before running this tool." % in_data)
+            log("")
+            log("WARNING: you may need to remove the in_data (%s) from the Table of contents before running this tool." % in_data)
             raise e
         else:
             raise e
@@ -1348,3 +1351,15 @@ def list_contents_of(geodatabase, wildcard=None):
     arcpy.env.workspace = old_workspace
     return result
 
+def get_duplicates(table, field):
+    def get_all_values(table, field):
+        with arcpy.da.SearchCursor(table, [field]) as cursor:
+            return [row[0] for row in cursor]
+
+    uniques = unique_values(table, field)
+    all_values = get_all_values(table, field)
+    for value in uniques:
+        i = all_values.index(value)
+        del all_values[i]
+    duplicates = sorted(all_values)
+    return duplicates
