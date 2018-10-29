@@ -1,9 +1,6 @@
 redistributePolygon Documentation
 =================================
 
-Note
-----
-
 [//]: # (An early version of this tool is in O:\Data\Planning_IP\Admin\Staff\Jared\Sewer Strategy Report Catchments\UpperRoss\redistributePolygon.py)
 
 [//]: # (Current version is in jj_methods.py)
@@ -116,12 +113,14 @@ The value of this key should contain a list of the field names that contain the 
 
 By default, where the properties layer is required, this tool will use the `sde_vector.TCC.Cadastral\sde_vector.TCC.Land_Parcels` layer. If a different properties layer is required, it can be provided here.
 
-Although this parameter was intended to provide the ability to based on a historical properties layer, any layer can be used as the properties layer and the distribution will be based on the number of polygons.
+Although this parameter was intended to provide the ability to distribute based on a historical properties layer, any layer can be used as the properties layer and the distribution will be based on the number of polygons whose centroid falls within each area.
 
-For example ,if the layers in Figure \ref{distribution_method_string} were used in the tool, but the net developable area was used as the properties layer and a distribution method of 2 was selected, we would get the following results:
+For example, if the layers in Figure \ref{distribution_method_string} were used in the tool, but the net developable area was used as the properties layer and a distribution method of 2 was selected, we would get the following results:
 
-- polygon 3 will receive 100% of the data from polygon 2 (the distribution only looks at the centroid of the properties layer)
-- the data from polygon 4 will not be included in the output
+- polygon 1 will receive no data (the distribution only looks at the centroid of the properties layer)
+- polygon 3 will receive 100% of the data from polygon 2 
+- polygon 3 will also receive 50% of the data from polygon 4 (the tool will distribute by area for a given polygon of the layer_to_be_distributed when no properties can be found)
+- 50% of the data from polygon 4 will not be included in the output
 
 Issues
 ------
@@ -163,3 +162,9 @@ fields. This doesn't seem to impact on the final results, but this issue
 should be fully understood before and / or fixed before this tool is used on
 other areas.
 
+Quality Control (Unit Tests)
+----------------------------
+
+Unit tests have been written to aid development and demonstrate functionality of the tool. The tests are run through the jj_tests.py file.
+
+TODO: write unit tests provided for the examples given in this documentation.

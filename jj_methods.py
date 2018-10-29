@@ -733,7 +733,11 @@ def redistributePolygon(redistribution_inputs):
                          or a string containing the path to the
                          distribution feature class. If provided the fields
                          will be distributed by the proportion of the area of
-                         this features class that falls within each polygon.
+                         this features class that falls within each polygon. If
+                         none exists for a particular area, properties will be
+                         used as the distribution method. If no properties
+                         exist for a particular area, the area method will be
+                         used.
 
     fields_to_be_distributed: a list of the field names which should be
                               distributed.
@@ -747,6 +751,12 @@ def redistributePolygon(redistribution_inputs):
     -------
     No value returned.
     """
+
+    # TODO:
+    # In the future, the distribution method should be provided as a list. For
+    # example, you might want to first distribute by Net Developable Area (by
+    # area), then by properties (by centroid), then by area.
+
     local_number_of_properties_field = "intersected_total_properties"
     total_properties_field = "source_total_properties"
     total_intersecting_area = "total_intersecting_area"
@@ -764,15 +774,15 @@ def redistributePolygon(redistribution_inputs):
         land_parcels = redistribution_inputs["properties_layer"]
         logger.debug("For this analysis, %s will be used as the properties layer" % land_parcels)
     else:
-        land_parcels = r'Database Connections\WindowAuth@Mapsdb01@SDE_Vector.sde' +\
+        land_parcels = r'Database Connections\WindowAuth@gisdbcore01@sde_vector.sde' +\
                        r'\sde_vector.TCC.Cadastral\sde_vector.TCC.Land_Parcels'
         # land_parcels = r'C:\TempArcGIS\testing.gdb\testing_properties'
         logger.debug("For this analysis, %s will be used as the properties layer" % land_parcels)
 
     def log_inputs():
-        log("redistribution_inputs:")
+        logging.debug("redistribution_inputs:")
         for key in redistribution_inputs:
-            log("  %s = %s" % (key, redistribution_inputs[key]))
+            logging.debug("  %s = %s" % (key, redistribution_inputs[key]))
 
     def perform_checks():
         if spatial_references_differ(
@@ -842,6 +852,7 @@ def redistributePolygon(redistribution_inputs):
         logger.debug("    Calculating %s field based on the proportion of the polygon area to the %s field" % (field_to_calculate, total_area_field))
         arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_area_proportion_of_total(!"+total_area_field+"!, !Shape_Area!, !" + field_to_calculate + "!)", "PYTHON_9.3", """def return_area_proportion_of_total(total_area_field, Shape_Area, field_to_calculate):
                 return Shape_Area/total_area_field * int(field_to_calculate)""") # a floating point integer seems to be getting returned. It seems that arcpy will round this value to an integer if it is storing it in an integer field.
+            # FIXME: Why does this cooerce field_to_calculate to an integer? I don't think it should be doing that.
 
     def calculate_field_proportion_based_on_number_of_lots(field_to_calculate, larger_properties_field, local_number_of_properties_field, total_area_field):
         """
@@ -935,6 +946,7 @@ def redistributePolygon(redistribution_inputs):
                 total_area_field + "!, " + \
                 "!Shape_Area!)",
             "PYTHON_9.3",
+            # FIXME: this function always returns an integer. This shouldn't be the case. What gets returned should depend on the data type of the source. If I return a float, arcpy should cooerce this to an integer if it's an integer field anyway.
             """def return_external_area_proportion_of_total(
                        total_external_area,
                        local_external_area,
@@ -1363,3 +1375,15 @@ def get_duplicates(table, field):
         del all_values[i]
     duplicates = sorted(all_values)
     return duplicates
+
+def get_verts(fcl):
+    """get the verticies of a polygon. source: https://gis.stackexchange.com/questions/9433/extracting-coordinates-of-polygon-vertices-in-arcmap"""
+    desc = arcpy.Describe(fcl)
+    shapefieldname = desc.ShapeFieldName
+    gebieden = arcpy.UpdateCursor(fcl)
+    for gebied in gebieden:
+        polygoon = gebied.getValue(shapefieldname)
+        for punten in polygoon:
+            print "shape:"
+            for punt in punten:
+                print "  ", punt.X, punt.Y

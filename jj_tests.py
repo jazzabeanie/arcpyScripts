@@ -911,126 +911,296 @@ def test_redistributePolygon():
                     log("      Fail: Dwelling_1 should be 4, but was %s" % row[0])
 
     def testing_generic_distribution_method():
-        log("  Testing even distribution for generic distribution method:")
-        net_developable_area = jj.create_polygon(
-            "net_developable_area",
-            [(mid_x-10, lower_y),
-            (mid_x-10, upper_y),
-            (mid_x+10, upper_y),
-            (mid_x+10, lower_y),
-            (mid_x-10, lower_y)])
-        redistributePolygonInputs["distribution_method"] = net_developable_area
-        jj.redistributePolygon(redistributePolygonInputs)
-        with arcpy.da.SearchCursor(
-                redistributePolygonInputs["output_filename"],
-                ['Dwelling_1']
-        ) as cursor:
-            for row in cursor:
-                if row[0] == 6:
-                    log("      Pass")
-                else:
-                    log("      Fail: Dwelling_1 should be 6 in each area, but was %s" % row[0])
-        log("  Testing uneven distribution method:")
-        net_developable_area = jj.create_polygon(
-            "net_developable_area",
-            [(mid_x-5, lower_y),
-            (mid_x-5, upper_y),
-            (mid_x+15, upper_y),
-            (mid_x+15, lower_y),
-            (mid_x-5, lower_y)])
-        redistributePolygonInputs["distribution_method"] = net_developable_area
-        jj.redistributePolygon(redistributePolygonInputs)
-        with arcpy.da.SearchCursor(
-                redistributePolygonInputs["output_filename"],
-                ['Dwelling_1']
-        ) as cursor:
-            for row in cursor:
-                if row[0] in (3, 9):
-                    log("      Pass")
-                else:
-                    log("      Fail: Dwelling_1 should be 3 and 9, in each area, but was %s" % row[0])
-        log("  Testing all distribution to one polygon:")
-        net_developable_area = jj.create_polygon(
-            "net_developable_area",
-            [(mid_x+5, lower_y),
-            (mid_x+5, upper_y),
-            (mid_x+15, upper_y),
-            (mid_x+15, lower_y),
-            (mid_x+5, lower_y)])
-        redistributePolygonInputs["distribution_method"] = net_developable_area
-        jj.redistributePolygon(redistributePolygonInputs)
-        with arcpy.da.SearchCursor(
-                redistributePolygonInputs["output_filename"],
-                ['Dwelling_1']
-        ) as cursor:
-            for row in cursor:
-                if row[0] in (12, 0):
-                    log("      Pass")
-                else:
-                    log("      Fail: Dwelling_1 should be 12 and 0, in each area, but was %s" % row[0])
-        log("  Testing areas with no external areas, but with properties:")
-        sample_properties = jj.create_polygon(
-                "one_property_in_each",
+        def generic_distribution():
+            log("  Testing even distribution for generic distribution method (distribution method provided by another feature class):")
+            net_developable_area = jj.create_polygon(
+                "net_developable_area",
+                [(mid_x-10, lower_y),
+                (mid_x-10, upper_y),
+                (mid_x+10, upper_y),
+                (mid_x+10, lower_y),
+                (mid_x-10, lower_y)])
+            redistributePolygonInputs["distribution_method"] = net_developable_area
+            jj.redistributePolygon(redistributePolygonInputs)
+            with arcpy.da.SearchCursor(
+                    redistributePolygonInputs["output_filename"],
+                    ['Dwelling_1']
+            ) as cursor:
+                for row in cursor:
+                    if row[0] == 6:
+                        log("      Pass")
+                    else:
+                        log("      Fail: Dwelling_1 should be 6 in each area, but was %s" % row[0])
+
+        def unever_distribution():
+            log("  Testing uneven distribution method:")
+            net_developable_area = jj.create_polygon(
+                "net_developable_area",
+                [(mid_x-5, lower_y),
+                (mid_x-5, upper_y),
+                (mid_x+15, upper_y),
+                (mid_x+15, lower_y),
+                (mid_x-5, lower_y)])
+            redistributePolygonInputs["distribution_method"] = net_developable_area
+            jj.redistributePolygon(redistributePolygonInputs)
+            with arcpy.da.SearchCursor(
+                    redistributePolygonInputs["output_filename"],
+                    ['Dwelling_1']
+            ) as cursor:
+                for row in cursor:
+                    if row[0] in (3, 9):
+                        log("      Pass")
+                    else:
+                        log("      Fail: Dwelling_1 should be 3 and 9, in each area, but was %s" % row[0])
+
+        def all_to_one():
+            log("  Testing all distribution to one polygon:")
+            net_developable_area = jj.create_polygon(
+                "net_developable_area",
+                [(mid_x+5, lower_y),
+                (mid_x+5, upper_y),
+                (mid_x+15, upper_y),
+                (mid_x+15, lower_y),
+                (mid_x+5, lower_y)])
+            redistributePolygonInputs["distribution_method"] = net_developable_area
+            jj.redistributePolygon(redistributePolygonInputs)
+            with arcpy.da.SearchCursor(
+                    redistributePolygonInputs["output_filename"],
+                    ['Dwelling_1']
+            ) as cursor:
+                for row in cursor:
+                    if row[0] in (12, 0):
+                        log("      Pass")
+                    else:
+                        log("      Fail: Dwelling_1 should be 12 and 0, in each area, but was %s" % row[0])
+
+        def no_exteral_but_with_properties():
+            log("  Testing areas with no external areas, but with properties:")
+            # This tests the case where data is to be distributed based on the area
+            # of some feature class, but that feature class doesn't cover every
+            # polygon. The case that this test was designed for was when growth was
+            # to be distributed by Net Developable Area. In the case where growth
+            # exists, but there is no net developable area, it should be assumed
+            # that the growth will occur due to increased density. In this case
+            # distribution should be performed by number of properties.
+
+            # In the future, the distribution method should be provided as a list
+            # of priorities. For example, you might want to first distribute by Net
+            # Developable Area (by area), then by properties (by centroid), then by
+            # area.
+            sample_properties = jj.create_polygon(
+                    "one_property_in_each",
+                    [
+                        (mid_x-20, lower_y+10),
+                        (mid_x-20, upper_y-10),
+                        (mid_x-10, upper_y-10),
+                        (mid_x-10, lower_y+10),
+                        (mid_x-20, lower_y+10)
+                    ], [
+                        (mid_x+10, lower_y+10),
+                        (mid_x+10, upper_y-10),
+                        (mid_x+20, upper_y-10),
+                        (mid_x+20, lower_y+10),
+                        (mid_x+10, lower_y+10)
+                    ])
+            net_developable_area_outside_inputs = jj.create_polygon(
+                "net_developable_area_outside_inputs",
                 [
-                    (mid_x-20, lower_y+10),
-                    (mid_x-20, upper_y-10),
-                    (mid_x-10, upper_y-10),
-                    (mid_x-10, lower_y+10),
-                    (mid_x-20, lower_y+10)
-                ], [
-                    (mid_x+10, lower_y+10),
-                    (mid_x+10, upper_y-10),
-                    (mid_x+20, upper_y-10),
-                    (mid_x+20, lower_y+10),
-                    (mid_x+10, lower_y+10)
+                    (mid_x-5, upper_y+10),
+                    (mid_x-5, upper_y+20),
+                    (mid_x+15, upper_y+20),
+                    (mid_x+15, upper_y+10),
+                    (mid_x-5, upper_y+10)
                 ])
-        net_developable_area_outside_inputs = jj.create_polygon(
-            "net_developable_area_outside_inputs",
-            [
-                (mid_x-5, upper_y+10),
-                (mid_x-5, upper_y+20),
-                (mid_x+15, upper_y+20),
-                (mid_x+15, upper_y+10),
-                (mid_x-5, upper_y+10)
-            ])
-        redistributePolygonInputs["distribution_method"] = net_developable_area_outside_inputs
-        redistributePolygonInputs["properties_layer"] = sample_properties
-        jj.redistributePolygon(redistributePolygonInputs)
-        with arcpy.da.SearchCursor(
-                redistributePolygonInputs["output_filename"],
-                ['Dwelling_1']
-        ) as cursor:
-            for row in cursor:
-                if row[0] == 6:
-                    log("      Pass")
-                else:
-                    log("      Fail: Dwelling_1 should be 6 in each area, but was %s" % row[0])
-        log("  Testing areas with no external areas or properties:")
-        sample_properties_outside = jj.create_polygon(
-                "properties_outside",
+            redistributePolygonInputs["distribution_method"] = net_developable_area_outside_inputs
+            redistributePolygonInputs["properties_layer"] = sample_properties
+            jj.redistributePolygon(redistributePolygonInputs)
+            with arcpy.da.SearchCursor(
+                    redistributePolygonInputs["output_filename"],
+                    ['Dwelling_1']
+            ) as cursor:
+                for row in cursor:
+                    if row[0] == 6:
+                        log("      Pass")
+                    else:
+                        log("      Fail: Dwelling_1 should be 6 in each area, but was %s" % row[0])
+
+        def custom_properties_docs_example():
+            log("  Testing areas with no external areas, but with properties (docs example):")
+            # This test the example given in the docs under the explanation of the
+            # properties_layer attribute.
+            redistributePolygonInputs["layer_to_redistribute_to"] = jj.create_polygon(
+                    'no_external_but_w_prop_docs_to',
+                    [
+                        (479568.031311, 7871494.1203),
+                        (479578.031311, 7871494.1203),
+                        (479578.031311, 7871484.1203),
+                        (479568.031311, 7871484.1203),
+                        (479568.031311, 7871494.1203)
+                    ], [
+                        (479578.031311, 7871494.1203),
+                        (479588.031311, 7871494.1203),
+                        (479588.031311, 7871484.1203),
+                        (479578.031311, 7871484.1203),
+                        (479578.031311, 7871494.1203)
+                    ]
+                    )
+            redistributePolygonInputs["layer_to_be_redistributed"] = jj.create_polygon(
+                    'no_external_but_w_prop_docs_from',
+                    [
+                        (479578.031311, 7871494.1203),
+                        (479583.031311, 7871494.1203),
+                        (479583.031311, 7871484.1203),
+                        (479578.031311, 7871484.1203),
+                        (479573.031311, 7871484.1203),
+                        (479573.031311, 7871494.1203),
+                        (479578.031311, 7871494.1203)
+                    ], [
+                        (479583.031311, 7871484.1203),
+                        (479583.031311, 7871494.1203),
+                        (479588.031311, 7871494.1203),
+                        (479593.031311, 7871494.1203),
+                        (479593.031311, 7871484.1203),
+                        (479588.031311, 7871484.1203),
+                        (479583.031311, 7871484.1203)
+                    ]
+                    )
+            arcpy.AddField_management(redistributePolygonInputs["layer_to_be_redistributed"], "Dwelling_1", "SHORT")
+            arcpy.CalculateField_management(redistributePolygonInputs["layer_to_be_redistributed"],  "Dwelling_1", "get_number()", "PYTHON_9.3", """def get_number():
+                return 16""")
+            redistributePolygonInputs["distribution_method"] = 2
+            redistributePolygonInputs["properties_layer"] = jj.create_polygon(
+                    'no_external_but_w_prop_docs_properties',
+                    [
+                        (479576.022888, 7871487.88507),
+                        (479576.022888, 7871489.88507),
+                        (479578.022888, 7871489.88507),
+                        (479582.022888, 7871489.88507),
+                        (479582.022888, 7871487.88507),
+                        (479578.022888, 7871487.88507),
+                        (479576.022888, 7871487.88507)
+                    ])
+            redistributePolygonInputs["fields_to_be_distributed"] = ["Dwelling_1"]
+            jj.redistributePolygon(redistributePolygonInputs)
+            with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['OBJECTID', 'Dwelling_1']) as cursor:
+                for row in cursor:
+                    if row[0] == 1 and row[1] == None:
+                        log("    pass")
+                    elif row[0] == 2 and row[1] == 24:
+                        log("    pass")
+                    else:
+                        log("    fail: population should be either 0 or 24, but was %s" % row[1])
+
+        def feature_layer_docs_example():
+            log("  Testing feature layer distribution method (docs example):")
+            # This test the example given in the docs under the feature layer
+            # parameter section.
+            redistributePolygonInputs["layer_to_redistribute_to"] = jj.create_polygon(
+                    'docs_layer_to_redistribute_to',
+                    [
+                        (479568.031311, 7871494.1203),
+                        (479578.031311, 7871494.1203),
+                        (479578.031311, 7871484.1203),
+                        (479568.031311, 7871484.1203),
+                        (479568.031311, 7871494.1203)
+                    ], [
+                        (479578.031311, 7871494.1203),
+                        (479588.031311, 7871494.1203),
+                        (479588.031311, 7871484.1203),
+                        (479578.031311, 7871484.1203),
+                        (479578.031311, 7871494.1203)
+                    ]
+                    )
+            redistributePolygonInputs["layer_to_be_redistributed"] = jj.create_polygon(
+                    'docs_layer_to_be_redistributed',
+                    [
+                        (479578.031311, 7871494.1203),
+                        (479583.031311, 7871494.1203),
+                        (479583.031311, 7871484.1203),
+                        (479578.031311, 7871484.1203),
+                        (479573.031311, 7871484.1203),
+                        (479573.031311, 7871494.1203),
+                        (479578.031311, 7871494.1203)
+                    ], [
+                        (479583.031311, 7871484.1203),
+                        (479583.031311, 7871494.1203),
+                        (479588.031311, 7871494.1203),
+                        (479593.031311, 7871494.1203),
+                        (479593.031311, 7871484.1203),
+                        (479588.031311, 7871484.1203),
+                        (479583.031311, 7871484.1203)
+                    ]
+                    )
+            arcpy.AddField_management(redistributePolygonInputs["layer_to_be_redistributed"], "Dwelling_1", "DOUBLE")
+            arcpy.CalculateField_management(redistributePolygonInputs["layer_to_be_redistributed"],  "Dwelling_1", "get_number()", "PYTHON_9.3", """def get_number():
+                return 1.2""")
+            redistributePolygonInputs["distribution_method"] = jj.create_polygon(
+                    'docs_nda',
+                    [
+                        (479576.022888, 7871487.88507),
+                        (479576.022888, 7871489.88507),
+                        (479578.022888, 7871489.88507),
+                        (479582.022888, 7871489.88507),
+                        (479582.022888, 7871487.88507),
+                        (479578.022888, 7871487.88507),
+                        (479576.022888, 7871487.88507)
+                    ])
+            redistributePolygonInputs["fields_to_be_distributed"] = ["Dwelling_1"]
+            jj.redistributePolygon(redistributePolygonInputs)
+            with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['OBJECTID', 'Dwelling_1']) as cursor:
+                for row in cursor:
+                    if row[0] == 1 and row[1] == 4:
+                        log("    pass. OBJECTID 1 = 4")
+                    elif row[0] == 2 and row[1] == 14:
+                        log("    pass. OBJECTID 2 = 14")
+                    else:
+                        log("    fail: population should be either 4 or 14, but was %s. I think this might be an example of a rounding or decimal point loss error." % row[1])
+
+        def no_external_or_properties():
+            log("  Testing areas with no external areas or properties:")
+            net_developable_area_outside_inputs = jj.create_polygon(
+                "net_developable_area_outside_inputs",
                 [
-                    (mid_x-20, upper_y+10),
-                    (mid_x-20, upper_y+20),
-                    (mid_x-10, upper_y+20),
-                    (mid_x-10, upper_y+10),
-                    (mid_x-20, upper_y+10)
-                ], [
-                    (mid_x+10, upper_y+10),
-                    (mid_x+10, upper_y+20),
-                    (mid_x+20, upper_y+20),
-                    (mid_x+20, upper_y+10),
-                    (mid_x+10, upper_y+10)
+                    (mid_x-5, upper_y+10),
+                    (mid_x-5, upper_y+20),
+                    (mid_x+15, upper_y+20),
+                    (mid_x+15, upper_y+10),
+                    (mid_x-5, upper_y+10)
                 ])
-        redistributePolygonInputs["properties_layer"] = sample_properties_outside
-        jj.redistributePolygon(redistributePolygonInputs)
-        with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['OBJECTID', 'Dwelling_1']) as cursor:
-            for row in cursor:
-                if row[0] == 1 and row[1] == 4:
-                    log("      Pass")
-                elif row[0] == 2 and row[1] == 8:
-                    log("      Pass")
-                else:
-                    log("      Fail: Dwelling_1 should be 4 or 8, but was %s" % row[1])
+            redistributePolygonInputs["distribution_method"] = net_developable_area_outside_inputs
+            sample_properties_outside = jj.create_polygon(
+                    "properties_outside",
+                    [
+                        (mid_x-20, upper_y+10),
+                        (mid_x-20, upper_y+20),
+                        (mid_x-10, upper_y+20),
+                        (mid_x-10, upper_y+10),
+                        (mid_x-20, upper_y+10)
+                    ], [
+                        (mid_x+10, upper_y+10),
+                        (mid_x+10, upper_y+20),
+                        (mid_x+20, upper_y+20),
+                        (mid_x+20, upper_y+10),
+                        (mid_x+10, upper_y+10)
+                    ])
+            redistributePolygonInputs["properties_layer"] = sample_properties_outside
+            jj.redistributePolygon(redistributePolygonInputs)
+            with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['OBJECTID', 'Dwelling_1']) as cursor:
+                for row in cursor:
+                    if row[0] == 1 and row[1] == 4:
+                        log("      Pass")
+                    elif row[0] == 2 and row[1] == 8:
+                        log("      Pass")
+                    else:
+                        log("      Fail: Dwelling_1 should be 4 or 8, but was %s" % row[1])
+
+        generic_distribution()
+        unever_distribution()
+        all_to_one()
+        no_exteral_but_with_properties()
+        custom_properties_docs_example()
+        feature_layer_docs_example()
+        no_external_or_properties()
 
     def testing_for_rounding():
         log("  Testing for rounding:")
@@ -1085,16 +1255,16 @@ def test_redistributePolygon():
             log("    Fail: output_filename was not the full path (%s)" % redistributePolygonInputs["output_filename"])
 
 
-    testing_number_of_fields()
-    testing_invalid_distribution_method_is_caught()
-    testing_invalid_field_is_caught()
-    testing_number_of_properties_method()
+    # testing_number_of_fields()
+    # testing_invalid_distribution_method_is_caught()
+    # testing_invalid_field_is_caught()
+    # testing_number_of_properties_method()
     testing_custom_properties_layer()
     testing_area_method()
     testing_generic_distribution_method()
-    # testing_for_rounding() # tool currently has no way to combat this
+    # # testing_for_rounding() # tool currently has no way to combat this
     testing_for_integerising()
-    testing_that_output_contains_full_path()
+    # testing_that_output_contains_full_path()
     log("------")
 
 
@@ -1413,7 +1583,10 @@ def test_join_csv():
         csv=".\\test.csv",
         csv_field="character")
     if jj.field_in_feature_class("species", polygon):
-        print "    Pass"
+        with arcpy.da.SearchCursor(polygon, field_names=["species"]) as cursor:
+            for row in cursor:
+                if row[0] in ("dog", "human"):
+                    print("    Pass - column exists and values are correct")
     else:
         print "    Fail: %s field not found in %s" % ("species", polygon)
         print "    The following fields were found: "
@@ -1565,7 +1738,7 @@ if __name__ == '__main__':
         # test_get_directory_from_path()
         # test_renameFieldMap()
         # test_add_layer_count()
-        # test_redistributePolygon()
+        test_redistributePolygon()
         # test_create_point()
         # test_create_points()
         # test_create_polygon()
@@ -1575,7 +1748,7 @@ if __name__ == '__main__':
         # test_get_sum()
         # test_export_to_csv()
         # test_list_contents_of()
-        test_get_duplicates()
+        # test_get_duplicates()
     except arcpy.ExecuteError:
         print arcpy.GetMessages(2)
         logging.exception(arcpy.GetMessages(2))
