@@ -851,8 +851,7 @@ def redistributePolygon(redistribution_inputs):
         logger.debug("Executing calculate_field_proportion_based_on_area(%s, %s)" % (field_to_calculate, total_area_field))
         logger.debug("    Calculating %s field based on the proportion of the polygon area to the %s field" % (field_to_calculate, total_area_field))
         arcpy.CalculateField_management (intersecting_polygons, field_to_calculate, "return_area_proportion_of_total(!"+total_area_field+"!, !Shape_Area!, !" + field_to_calculate + "!)", "PYTHON_9.3", """def return_area_proportion_of_total(total_area_field, Shape_Area, field_to_calculate):
-                return Shape_Area/total_area_field * int(field_to_calculate)""") # a floating point integer seems to be getting returned. It seems that arcpy will round this value to an integer if it is storing it in an integer field.
-            # FIXME: Why does this cooerce field_to_calculate to an integer? I don't think it should be doing that.
+                return Shape_Area/total_area_field * field_to_calculate""") # a floating point integer seems to be getting returned. It seems that arcpy will round this value to an integer if it is storing it in an integer field.
 
     def calculate_field_proportion_based_on_number_of_lots(field_to_calculate, larger_properties_field, local_number_of_properties_field, total_area_field):
         """
@@ -946,7 +945,6 @@ def redistributePolygon(redistribution_inputs):
                 total_area_field + "!, " + \
                 "!Shape_Area!)",
             "PYTHON_9.3",
-            # FIXME: this function always returns an integer. This shouldn't be the case. What gets returned should depend on the data type of the source. If I return a float, arcpy should cooerce this to an integer if it's an integer field anyway.
             """def return_external_area_proportion_of_total(
                        total_external_area,
                        local_external_area,
@@ -958,16 +956,11 @@ def redistributePolygon(redistribution_inputs):
                    if total_external_area == 0:
                        # print("no external area, calculating by properties...")
                        if total_properties == None:
-                           # print("no properties, calculating by area...")
-                           # a floating point integer seems to be getting returned. It seems that arcpy will round this value to an integer if it is storing it in an integer field.
-                           new_value = Shape_Area/total_area_field * int(field_to_calculate)
-                           # new_value = int((float(Shape_Area)/float(total_area_field)) * int(field_to_calculate))
-                           # print("new value = %s" % new_value)
-                           # print("area = %s" % Shape_Area)
+                           new_value = Shape_Area/total_area_field * field_to_calculate
                        else:
-                           new_value = int((float(local_properties)/total_properties) * int(field_to_calculate))
+                           new_value = (float(local_properties)/total_properties) * field_to_calculate
                    else:
-                       new_value = int((float(local_external_area)/total_external_area) * int(field_to_calculate))
+                       new_value = (float(local_external_area)/total_external_area) * field_to_calculate
                    return new_value""")
 
     # TODO: create a function to replace the calculate functions above. It

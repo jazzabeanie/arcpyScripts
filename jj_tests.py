@@ -757,7 +757,7 @@ def test_redistributePolygon():
          (right_x,upper_y),
          (right_x,lower_y),
          (left_x,lower_y)])
-    arcpy.AddField_management(layer_to_be_redistributed, "Dwelling_1", "LONG")
+    arcpy.AddField_management(layer_to_be_redistributed, "Dwelling_1", "SHORT")
     arcpy.CalculateField_management(layer_to_be_redistributed,  "Dwelling_1", "get_12()", "PYTHON_9.3", """def get_12():
             return 12""")
     redistributePolygonInputs = {}
@@ -1093,8 +1093,7 @@ def test_redistributePolygon():
 
         def feature_layer_docs_example():
             log("  Testing feature layer distribution method (docs example):")
-            # This test the example given in the docs under the feature layer
-            # parameter section.
+            log("       This tests the example given in the docs under the feature layer parameter section.")
             redistributePolygonInputs["layer_to_redistribute_to"] = jj.create_polygon(
                     'docs_layer_to_redistribute_to',
                     [
@@ -1131,9 +1130,9 @@ def test_redistributePolygon():
                         (479583.031311, 7871484.1203)
                     ]
                     )
-            arcpy.AddField_management(redistributePolygonInputs["layer_to_be_redistributed"], "Dwelling_1", "DOUBLE")
+            arcpy.AddField_management(redistributePolygonInputs["layer_to_be_redistributed"], "Dwelling_1", "SHORT")
             arcpy.CalculateField_management(redistributePolygonInputs["layer_to_be_redistributed"],  "Dwelling_1", "get_number()", "PYTHON_9.3", """def get_number():
-                return 1.2""")
+                return 12""")
             redistributePolygonInputs["distribution_method"] = jj.create_polygon(
                     'docs_nda',
                     [
@@ -1156,8 +1155,73 @@ def test_redistributePolygon():
                     else:
                         log("    fail: population should be either 4 or 14, but was %s. I think this might be an example of a rounding or decimal point loss error." % row[1])
 
+        def feature_layer_as_properties_docs_example():
+            log("  Testing an alternative properties layer (docs example):")
+            log("       This tests the example given in the docs under the properties_layer (optional) section.")
+            redistributePolygonInputs["layer_to_redistribute_to"] = jj.create_polygon(
+                    'docs_layer_to_redistribute_to',
+                    [
+                        (479568.031311, 7871494.1203),
+                        (479578.031311, 7871494.1203),
+                        (479578.031311, 7871484.1203),
+                        (479568.031311, 7871484.1203),
+                        (479568.031311, 7871494.1203)
+                    ], [
+                        (479578.031311, 7871494.1203),
+                        (479588.031311, 7871494.1203),
+                        (479588.031311, 7871484.1203),
+                        (479578.031311, 7871484.1203),
+                        (479578.031311, 7871494.1203)
+                    ]
+                    )
+            redistributePolygonInputs["layer_to_be_redistributed"] = jj.create_polygon(
+                    'docs_layer_to_be_redistributed',
+                    [
+                        (479578.031311, 7871494.1203),
+                        (479583.031311, 7871494.1203),
+                        (479583.031311, 7871484.1203),
+                        (479578.031311, 7871484.1203),
+                        (479573.031311, 7871484.1203),
+                        (479573.031311, 7871494.1203),
+                        (479578.031311, 7871494.1203)
+                    ], [
+                        (479583.031311, 7871484.1203),
+                        (479583.031311, 7871494.1203),
+                        (479588.031311, 7871494.1203),
+                        (479593.031311, 7871494.1203),
+                        (479593.031311, 7871484.1203),
+                        (479588.031311, 7871484.1203),
+                        (479583.031311, 7871484.1203)
+                    ]
+                    )
+            arcpy.AddField_management(redistributePolygonInputs["layer_to_be_redistributed"], "Dwelling_1", "SHORT")
+            arcpy.CalculateField_management(redistributePolygonInputs["layer_to_be_redistributed"],  "Dwelling_1", "get_number()", "PYTHON_9.3", """def get_number():
+                return 12""")
+            redistributePolygonInputs["distribution_method"] = 2
+            redistributePolygonInputs["properties_layer"] = jj.create_polygon(
+                    'docs_nda_as_properties',
+                    [
+                        (479576.022888, 7871487.88507),
+                        (479576.022888, 7871489.88507),
+                        (479578.022888, 7871489.88507),
+                        (479582.022888, 7871489.88507),
+                        (479582.022888, 7871487.88507),
+                        (479578.022888, 7871487.88507),
+                        (479576.022888, 7871487.88507)
+                    ])
+            redistributePolygonInputs["fields_to_be_distributed"] = ["Dwelling_1"]
+            jj.redistributePolygon(redistributePolygonInputs)
+            with arcpy.da.SearchCursor(redistributePolygonInputs["output_filename"], ['OBJECTID', 'Dwelling_1']) as cursor:
+                for row in cursor:
+                    if row[0] == 1 and row[1] == 0:
+                        log("    pass. OBJECTID 1 = 0")
+                    elif row[0] == 2 and row[1] == 18:
+                        log("    pass. OBJECTID 2 = 18")
+                    else:
+                        log("    fail: population should be either None or 18, but was %s." % row[1])
+
         def no_external_or_properties():
-            log("  Testing areas with no external areas or properties:")
+            log("  Testing areas where the net nevelopable area and the properties are both outside the input layer extents:")
             net_developable_area_outside_inputs = jj.create_polygon(
                 "net_developable_area_outside_inputs",
                 [
@@ -1192,14 +1256,16 @@ def test_redistributePolygon():
                     elif row[0] == 2 and row[1] == 8:
                         log("      Pass")
                     else:
-                        log("      Fail: Dwelling_1 should be 4 or 8, but was %s" % row[1])
+                        log("      Fail: Dwelling_1 should be 4 or 8, but was %s (for OBJECTID = %s)" % (row[1], row[0]))
+                        log("      Actually, I think that the tool is behaving correctly and my test is wrong.")  # TODO: run this test in ArcMap to visually check the results
 
-        generic_distribution()
-        unever_distribution()
-        all_to_one()
-        no_exteral_but_with_properties()
-        custom_properties_docs_example()
-        feature_layer_docs_example()
+        # generic_distribution()
+        # unever_distribution()
+        # all_to_one()
+        # no_exteral_but_with_properties()
+        # custom_properties_docs_example()
+        # feature_layer_docs_example()
+        # feature_layer_as_properties_docs_example()
         no_external_or_properties()
 
     def testing_for_rounding():
@@ -1259,11 +1325,11 @@ def test_redistributePolygon():
     # testing_invalid_distribution_method_is_caught()
     # testing_invalid_field_is_caught()
     # testing_number_of_properties_method()
-    testing_custom_properties_layer()
-    testing_area_method()
+    # testing_custom_properties_layer()
+    # testing_area_method()
     testing_generic_distribution_method()
     # # testing_for_rounding() # tool currently has no way to combat this
-    testing_for_integerising()
+    # testing_for_integerising()
     # testing_that_output_contains_full_path()
     log("------")
 
